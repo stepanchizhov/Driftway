@@ -13,9 +13,12 @@ the project bible:
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
+
+log = logging.getLogger("driftway")
 
 from .geometry import (
     SHAPES,
@@ -35,6 +38,7 @@ from .scorer import (
     dedupe,
     describe_character,
     passes_validation,
+    rejection_reason,
     score_route,
 )
 
@@ -105,6 +109,24 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
 
     # 5. validate
     valid = [ev for ev in evaluated if passes_validation(ev, finish)]
+
+    # Diagnostic breadcrumbs — visible in the Render logs. If routes come back
+    # empty, this tells you *where* in the pipeline they were lost.
+    from collections import Counter
+    reasons = Counter(
+        rejection_reason(ev, finish) for ev in evaluated
+        if rejection_reason(ev, finish) is not None
+    )
+    log.info(
+        "generate: provider=%s candidates=%d evaluated=%d valid=%d rejects=%s (target=%dmin %s)",
+        router.name,
+        len(candidates),
+        len(evaluated),
+        len(valid),
+        dict(reasons),
+        req.target_minutes,
+        profile,
+    )
 
     # 6. score and sort
     scored = sorted(

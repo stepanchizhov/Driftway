@@ -8,7 +8,7 @@ HYPOTHESES from the project bible; real ride data should retune them.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from .geometry import haversine_km
 from .models import Coord, RoadMix
@@ -37,25 +37,42 @@ def _self_overlap_ratio(geometry: List[Coord]) -> float:
 def _passes_near_finish_early(geometry: List[Coord], finish: Coord) -> bool:
     """True if the route comes within 300 m of the finish before the final
     fifth of the journey — a loop that 'arrives home' too soon."""
-    if len(geometry) < 10:
+def _passes_near_finish_early(geometry: List[Coord], finish: Coord) -> bool:
+    """True only if the route passes near the finish in the *middle* of the
+    journey — a genuine premature return.
+
+    Important: for a loop, start and finish are usually the same point (Home),
+    so the route legitimately begins AND ends near the finish. We must ignore
+    those. We only inspect the middle band (20%-80% of the route); a pass near
+    the finish there means the loop doubles back home too soon.
+    """
+    n = len(geometry)
+    if n < 12:
         return False
-    cutoff = int(len(geometry) * 0.8)
-    for pt in geometry[2:cutoff]:
+    lo = int(n * 0.20)   # skip the departure away from Home
+    hi = int(n * 0.80)   # skip the final approach back to Home
+    for pt in geometry[lo:hi]:
         if haversine_km(pt, finish) < 0.3:
             return True
     return False
 
 
-def passes_validation(route: EvaluatedRoute, finish: Coord) -> bool:
+def rejection_reason(route: EvaluatedRoute, finish: Coord) -> Optional[str]:
+    """Return why a route is invalid, or None if it passes. Used for logging
+    so empty results are diagnosable from the Render logs."""
     if route.minutes <= 0 or route.distance_km <= 0:
-        return False
+        return "no_duration"
     if route.has_uturn:
-        return False
-    if _self_overlap_ratio(route.geometry) > 0.30:
-        return False
+        return "uturn"
+    if _self_overlap_ratio(route.geometry) > 0.35:
+        return "overlap"
     if _passes_near_finish_early(route.geometry, finish):
-        return False
-    return True
+        return "early_finish"
+    return None
+
+
+def passes_validation(route: EvaluatedRoute, finish: Coord) -> bool:
+    return rejection_reason(route, finish) is None
 
 
 # ------------------------------------------------------------------- scoring

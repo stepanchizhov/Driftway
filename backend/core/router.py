@@ -15,6 +15,8 @@ Both return the same EvaluatedRoute shape.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import math
 import os
 import random
@@ -22,6 +24,8 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Protocol
 
 import httpx
+
+log = logging.getLogger("driftway")
 
 from .geometry import haversine_km
 from .models import Coord, RoadMix
@@ -99,6 +103,33 @@ _TOMTOM_BASE = "https://api.tomtom.com/routing/1/calculateRoute"
 _TOMTOM_TRAVEL_MODE = "car"
 
 
+class _RateLimiter:
+    """Caps how often requests *start*, to respect TomTom's QPS ceiling.
+
+    The free tier allows 5 calls/second for non-tile APIs. We fire many route
+    candidates per request, so without this they'd burst past the limit and get
+    throttled (HTTP 429). This spaces request starts ~`1/rate` seconds apart.
+    """
+
+    def __init__(self, rate_per_sec: float):
+        self._min_interval = 1.0 / rate_per_sec
+        self._lock = asyncio.Lock()
+        self._next = 0.0
+
+    async def wait(self) -> None:
+        async with self._lock:
+            now = asyncio.get_event_loop().time()
+            if now < self._next:
+                await asyncio.sleep(self._next - now)
+                now = asyncio.get_event_loop().time()
+            self._next = now + self._min_interval
+
+
+# TomTom free tier: 5 req/sec. Stay just under it.
+_TOMTOM_RATE = 4.0
+_TOMTOM_MAX_RETRIES = 3
+
+
 class TomTomRouter:
     name = "tomtom"
 
@@ -107,6 +138,7 @@ class TomTomRouter:
             raise ValueError("TomTom API key is required for TomTomRouter")
         self._key = api_key
         self._client = client or httpx.AsyncClient(timeout=12.0)
+        self._limiter = _RateLimiter(_TOMTOM_RATE)
 
     async def evaluate(self, start, finish, anchors, profile):
         # Build the "lat,lng:lat,lng:..." locations string.
@@ -127,12 +159,42 @@ class TomTomRouter:
         elif profile == "motorway":
             params["routeType"] = "fastest"
 
-        try:
-            resp = await self._client.get(url, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-        except (httpx.HTTPError, ValueError):
-            return None  # caller treats None as "candidate failed"
+        data = None
+        for attempt in range(_TOMTOM_MAX_RETRIES):
+            await self._limiter.wait()
+            try:
+                resp = await self._client.get(url, params=params)
+            except httpx.HTTPError as e:
+                log.warning("TomTom request error: %s", e)
+                continue  # transient; retry
+
+            if resp.status_code == 429:
+                # Throttled. Back off a little and retry.
+                wait_s = 0.5 * (attempt + 1)
+                log.warning("TomTom 429 (throttled); backing off %.1fs", wait_s)
+                await asyncio.sleep(wait_s)
+                continue
+            if resp.status_code in (401, 403):
+                # Auth/permission problem — retrying won't help. Log loudly once.
+                log.error(
+                    "TomTom %s: key rejected or Routing product not enabled. "
+                    "Body: %.200s",
+                    resp.status_code,
+                    resp.text,
+                )
+                return None
+            if resp.status_code >= 400:
+                log.warning("TomTom %s: %.200s", resp.status_code, resp.text)
+                continue
+            try:
+                data = resp.json()
+                break
+            except ValueError:
+                log.warning("TomTom returned non-JSON body")
+                continue
+
+        if data is None:
+            return None  # all attempts failed; caller treats as "candidate failed"
 
         routes = data.get("routes") or []
         if not routes:
