@@ -1,0 +1,6 @@
+# Pinned with >= so pip pulls a version with prebuilt wheels for your Python.
+# (Hard == pins to old releases can force a from-source build on new Pythons.)
+fastapi>=0.118.0
+uvicorn[standard]>=0.34.0
+httpx>=0.28.1
+pydantic>=2.13.0
