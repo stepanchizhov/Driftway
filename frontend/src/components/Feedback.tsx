@@ -26,9 +26,9 @@ export function Feedback({ route, onDone }: Props) {
   if (sent) {
     return (
       <div className="feedback feedback-done">
-        <p>Logged. Thanks — that's how the routes get better.</p>
+        <p>Logged — thanks. That's how the routes get better.</p>
         <button className="btn-quiet" onClick={onDone}>
-          Plan another drive
+          Done
         </button>
       </div>
     );

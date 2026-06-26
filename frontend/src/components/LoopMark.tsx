@@ -3,17 +3,28 @@ import type { Coord } from "../types";
 interface Props {
   start: Coord;
   waypoints: Coord[];
+  /** Real road polyline (downsampled). Preferred over anchors when present. */
+  geometry?: Coord[];
   size?: number;
   /** Decorative ring only, used as the app's signature motif. */
   ring?: boolean;
 }
 
-// Draws a small outline of the loop: start -> waypoints -> back to start.
-// Coordinates are projected to a local plane (good enough at this scale) and
-// normalised to fit the box. This is the "simple route preview" the project
-// bible asks each card to show.
-export function LoopMark({ start, waypoints, size = 64, ring = false }: Props) {
-  const pts: Coord[] = [start, ...waypoints, start];
+// Draws a small outline of the loop. When the backend supplies the real road
+// polyline (`geometry`), we draw that, so the preview matches the actual drive.
+// Otherwise we fall back to the anchor shape (start -> waypoints -> start),
+// which is what the mock router and older responses provide.
+export function LoopMark({
+  start,
+  waypoints,
+  geometry,
+  size = 64,
+  ring = false,
+}: Props) {
+  const pts: Coord[] =
+    geometry && geometry.length >= 3
+      ? geometry
+      : [start, ...waypoints, start];
 
   // Equirectangular projection around the start latitude.
   const latRad = (start.lat * Math.PI) / 180;

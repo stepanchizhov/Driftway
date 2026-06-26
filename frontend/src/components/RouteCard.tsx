@@ -7,6 +7,7 @@ interface Props {
   rank: number;
   targetMinutes: number;
   onStart: (route: RouteOption) => void;
+  started?: boolean;
 }
 
 function deltaLabel(delta: number): { text: string; tone: string } {
@@ -16,13 +17,13 @@ function deltaLabel(delta: number): { text: string; tone: string } {
   return { text: `${Math.abs(rounded)} min under`, tone: "neutral" };
 }
 
-export function RouteCard({ route, start, rank, onStart }: Props) {
+export function RouteCard({ route, start, rank, onStart, started }: Props) {
   const minutes = Math.round(route.predicted_minutes);
   const distance = route.distance_km.toFixed(0);
   const delta = deltaLabel(route.delta_minutes);
 
   return (
-    <article className="card">
+    <article className={`card${started ? " card-started" : ""}`}>
       <div className="card-top">
         <div className="card-figures">
           <div className="card-minutes">
@@ -34,13 +35,19 @@ export function RouteCard({ route, start, rank, onStart }: Props) {
             <span className="card-distance">{distance} km</span>
           </div>
         </div>
-        <LoopMark start={start} waypoints={route.waypoints} size={72} ring />
+        <LoopMark
+          start={start}
+          waypoints={route.waypoints}
+          geometry={route.geometry}
+          size={72}
+          ring
+        />
       </div>
 
       <p className="card-character">{route.character}</p>
 
       <button className="btn-start" onClick={() => onStart(route)}>
-        Start in Google Maps
+        {started ? "Reopen in Google Maps" : "Start in Google Maps"}
         <span className="btn-start-rank">Option {rank}</span>
       </button>
     </article>
