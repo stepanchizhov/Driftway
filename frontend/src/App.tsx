@@ -17,8 +17,7 @@ import { Feedback } from "./components/Feedback";
 type Screen =
   | { name: "plan" }
   | { name: "loading" }
-  | { name: "results"; data: GenerateResponse; start: Coord }
-  | { name: "feedback"; route: RouteOption };
+  | { name: "results"; data: GenerateResponse; start: Coord };
 
 const DURATIONS = [20, 30, 45, 60, 90];
 
@@ -46,6 +45,9 @@ export default function App() {
   const [tolerance, setTolerance] = useState<number>(settings.lastTolerance);
   const [direction, setDirection] = useState<Direction>("surprise");
   const [error, setError] = useState<string | null>(null);
+  // Which route the user has launched in Google Maps (drives the inline
+  // feedback prompt). Null means none started yet.
+  const [startedId, setStartedId] = useState<string | null>(null);
 
   // Resolve the start point: live location, or saved Home as a fallback.
   const start: Coord | null =
@@ -54,6 +56,7 @@ export default function App() {
   async function onGenerate() {
     if (!start) return;
     setError(null);
+    setStartedId(null);
     setScreen({ name: "loading" });
     update({
       lastDuration: duration,
@@ -77,10 +80,11 @@ export default function App() {
   }
 
   function onStartRoute(route: RouteOption) {
-    // Open Google Maps (new tab / the Maps app on a phone), then move to
-    // the feedback screen so it's waiting when the parent returns.
+    // Open Google Maps (new tab / the Maps app on a phone) but STAY on the
+    // results screen so the other two routes remain available to compare.
+    // The inline feedback prompt appears under the chosen route.
     window.open(route.maps_url, "_blank", "noopener");
-    setScreen({ name: "feedback", route });
+    setStartedId(route.id);
   }
 
   function saveHomeFromLocation() {
@@ -188,27 +192,25 @@ export default function App() {
             Three loops for about {screen.data.target_minutes} minutes
           </p>
           {screen.data.routes.map((r, i) => (
-            <RouteCard
-              key={r.id}
-              route={r}
-              start={screen.start}
-              rank={i + 1}
-              targetMinutes={screen.data.target_minutes}
-              onStart={onStartRoute}
-            />
+            <div key={r.id}>
+              <RouteCard
+                route={r}
+                start={screen.start}
+                rank={i + 1}
+                targetMinutes={screen.data.target_minutes}
+                onStart={onStartRoute}
+                started={startedId === r.id}
+              />
+              {startedId === r.id && (
+                <Feedback route={r} onDone={() => setStartedId(null)} />
+              )}
+            </div>
           ))}
           <p className="results-foot">
-            Times use current traffic and may shift as you drive.
+            {startedId
+              ? "Started in Google Maps. You can still compare the other loops above."
+              : "Times use current traffic and may shift as you drive."}
           </p>
-        </main>
-      )}
-
-      {screen.name === "feedback" && (
-        <main className="feedback-screen">
-          <Feedback
-            route={screen.route}
-            onDone={() => setScreen({ name: "plan" })}
-          />
         </main>
       )}
     </div>

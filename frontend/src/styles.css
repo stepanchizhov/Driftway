@@ -370,6 +370,21 @@ body {
   padding: 18px;
   margin-bottom: 14px;
 }
+.card-started {
+  border-color: var(--accent);
+}
+/* When feedback follows a started card, tuck it directly beneath. */
+.card-started {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.card-started + .feedback {
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-bottom: 14px;
+}
 .card-top {
   display: flex;
   align-items: center;

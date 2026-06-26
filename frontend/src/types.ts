@@ -34,6 +34,7 @@ export interface RouteOption {
   score: number;
   delta_minutes: number;
   waypoints: Coord[];
+  geometry: Coord[];
   maps_url: string;
   confidence: "low" | "medium" | "high";
 }
