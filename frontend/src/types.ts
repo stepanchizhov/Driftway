@@ -55,4 +55,28 @@ export interface FeedbackRequest {
   would_use_again?: boolean | null;
   baby_slept?: "yes" | "no" | "unknown" | null;
   notes?: string | null;
+  owner?: string | null;
+}
+
+export interface FavouriteCreate {
+  owner: string;
+  label?: string;
+  place_label?: string;
+  duration_minutes: number;
+  distance_km?: number;
+  road_profile?: string;
+  character?: string;
+  maps_url?: string;
+}
+
+export interface Favourite {
+  id: string;
+  label: string;
+  place_label: string;
+  duration_minutes: number;
+  distance_km: number;
+  road_profile: string;
+  character: string;
+  maps_url: string;
+  created_at: string;
 }

@@ -1,4 +1,6 @@
 import type { Coord, RouteOption } from "../types";
+import type { Units } from "../hooks/useSettings";
+import { formatDistance } from "../lib/units";
 import { LoopMark } from "./LoopMark";
 
 interface Props {
@@ -8,6 +10,9 @@ interface Props {
   targetMinutes: number;
   onStart: (route: RouteOption) => void;
   started?: boolean;
+  onSave?: (route: RouteOption) => void;
+  saved?: boolean;
+  units?: Units;
 }
 
 function deltaLabel(delta: number): { text: string; tone: string } {
@@ -17,9 +22,9 @@ function deltaLabel(delta: number): { text: string; tone: string } {
   return { text: `${Math.abs(rounded)} min under`, tone: "neutral" };
 }
 
-export function RouteCard({ route, start, rank, onStart, started }: Props) {
+export function RouteCard({ route, start, rank, onStart, started, onSave, saved, units = "km" }: Props) {
   const minutes = Math.round(route.predicted_minutes);
-  const distance = route.distance_km.toFixed(0);
+  const distance = formatDistance(route.distance_km, units);
   const delta = deltaLabel(route.delta_minutes);
 
   return (
@@ -32,16 +37,28 @@ export function RouteCard({ route, start, rank, onStart, started }: Props) {
           </div>
           <div className="card-meta">
             <span className={`tag tag-${delta.tone}`}>{delta.text}</span>
-            <span className="card-distance">{distance} km</span>
+            <span className="card-distance">{distance}</span>
           </div>
         </div>
-        <LoopMark
-          start={start}
-          waypoints={route.waypoints}
-          geometry={route.geometry}
-          size={72}
-          ring
-        />
+        <div className="card-right">
+          {onSave && (
+            <button
+              className={`card-save${saved ? " card-save-on" : ""}`}
+              onClick={() => onSave(route)}
+              aria-label={saved ? "Saved to favourites" : "Save to favourites"}
+              title={saved ? "Saved" : "Save to favourites"}
+            >
+              {saved ? "★" : "☆"}
+            </button>
+          )}
+          <LoopMark
+            start={start}
+            waypoints={route.waypoints}
+            geometry={route.geometry}
+            size={72}
+            ring
+          />
+        </div>
       </div>
 
       <p className="card-character">{route.character}</p>

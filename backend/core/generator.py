@@ -25,7 +25,13 @@ from .geometry import (
     bearings_for_direction,
     build_candidate,
     estimate_radius_km,
+    haversine_km,
     rescale_anchors,
+)
+from .detour import (
+    build_detour_candidates,
+    estimate_bulge_km,
+    rescale_detour,
 )
 from .models import (
     Coord,
@@ -93,18 +99,27 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
     finish = req.finish or req.start
     profile = req.road_profile.value
 
-    # 1. seed radius
-    radius = estimate_radius_km(req.target_minutes, profile)
+    # A loop returns to its start; a detour ends somewhere else (e.g. quick
+    # drive home from the current location). We treat "finish within 100 m of
+    # start" as a loop. Both share the evaluate -> validate -> score pipeline;
+    # only candidate generation and rescaling differ.
+    is_loop = haversine_km(start, finish) < 0.1
 
-    # 2. build candidates across shapes and bearings
-    candidates: List[List[Coord]] = []
-    for bearing in bearings_for_direction(req.direction):
-        for shape in SHAPES:
-            candidates.append(build_candidate(start, bearing, radius, shape))
+    if is_loop:
+        # 1-2. loop candidates across shapes and bearings
+        radius = estimate_radius_km(req.target_minutes, profile)
+        candidates: List[List[Coord]] = []
+        for bearing in bearings_for_direction(req.direction):
+            for shape in SHAPES:
+                candidates.append(build_candidate(start, bearing, radius, shape))
+                if len(candidates) >= MAX_CANDIDATES:
+                    break
             if len(candidates) >= MAX_CANDIDATES:
                 break
-        if len(candidates) >= MAX_CANDIDATES:
-            break
+    else:
+        # 1-2. detour candidates: padded routes from start to finish
+        bulge = estimate_bulge_km(start, finish, req.target_minutes, profile)
+        candidates = build_detour_candidates(start, finish, bulge)
 
     # 3. evaluate
     evaluated = await _evaluate_all(router, start, finish, candidates, profile)
@@ -115,9 +130,12 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
         for ev in evaluated:
             if abs(ev.minutes - req.target_minutes) > req.tolerance_minutes and ev.minutes > 0:
                 scale = req.target_minutes / ev.minutes
-                # clamp scale so we don't make wild jumps
-                scale = max(0.5, min(1.8, scale))
-                to_fix.append(rescale_anchors(start, ev.anchors, scale))
+                if is_loop:
+                    scale = max(0.5, min(1.8, scale))
+                    to_fix.append(rescale_anchors(start, ev.anchors, scale))
+                else:
+                    scale = max(0.3, min(2.5, scale))
+                    to_fix.append(rescale_detour(start, finish, ev.anchors, scale))
         if to_fix:
             refined = await _evaluate_all(router, start, finish, to_fix, profile)
             evaluated.extend(refined)

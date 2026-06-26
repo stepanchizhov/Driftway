@@ -4,12 +4,13 @@ import { sendFeedback } from "../api";
 
 interface Props {
   route: RouteOption;
+  owner?: string;
   onDone: () => void;
 }
 
 // Two-tap "would use again?" plus an optional actual-duration field, matching
 // the Alpha 0 scope. Records predicted-vs-actual, the core learning signal.
-export function Feedback({ route, onDone }: Props) {
+export function Feedback({ route, owner, onDone }: Props) {
   const [actual, setActual] = useState("");
   const [sent, setSent] = useState(false);
 
@@ -19,6 +20,7 @@ export function Feedback({ route, onDone }: Props) {
       predicted_minutes: route.predicted_minutes,
       actual_minutes: actual ? Number(actual) : null,
       would_use_again: wouldUseAgain,
+      owner,
     });
     setSent(true);
   }

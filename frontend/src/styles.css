@@ -17,6 +17,7 @@
   --ok: #8fd3a6;
   --warn: #e8c36b;
   --danger: #e89090;
+  --route-start: #E8556B;
 
   --display: "Space Grotesk", system-ui, sans-serif;
   --body: "Hanken Grotesk", system-ui, sans-serif;
@@ -108,6 +109,69 @@ body {
 }
 .loc-warn {
   color: var(--warn);
+}
+
+/* quick drive home — a calm secondary fast-lane, not a second hero */
+.quick {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    180deg,
+    rgba(242, 177, 121, 0.06),
+    rgba(242, 177, 121, 0.02)
+  );
+  padding: 14px 16px;
+  margin-bottom: 24px;
+}
+.quick-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 11px;
+}
+.quick-title {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--ink);
+}
+.quick-sub {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+.quick-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.quick-btn {
+  padding: 12px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
+}
+.quick-btn:active {
+  transform: scale(0.97);
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.quick-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.quick-note {
+  margin: 9px 0 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+.quick-err {
+  color: var(--danger);
 }
 
 /* duration hero with the signature ring */
@@ -391,6 +455,117 @@ body {
   justify-content: space-between;
   gap: 14px;
 }
+.card-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-save {
+  background: transparent;
+  border: 0;
+  color: var(--ink-dim);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s ease, transform 0.05s ease;
+}
+.card-save:active {
+  transform: scale(0.9);
+}
+.card-save-on {
+  color: var(--accent);
+}
+
+/* favourites screen */
+.favs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.favs-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 22px;
+  margin: 0;
+}
+.favs-empty {
+  color: var(--ink-dim);
+  text-align: center;
+  margin-top: 40px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.fav-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.fav-figures {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.fav-min {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 30px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.fav-min-unit {
+  color: var(--ink-dim);
+  font-size: 14px;
+}
+.fav-dist {
+  color: var(--ink-dim);
+  font-size: 13px;
+  margin-left: 6px;
+}
+.fav-meta {
+  margin: 7px 0 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+.fav-character {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+.fav-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.fav-go {
+  display: inline-block;
+  text-align: center;
+  text-decoration: none;
+  padding: 9px 16px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: #2a1c0c;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 14px;
+}
+.fav-del {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
 .card-minutes {
   display: flex;
   align-items: baseline;
@@ -559,4 +734,95 @@ body {
   * {
     transition: none !important;
   }
+}
+
+/* --- settings screen --------------------------------------- */
+.settings-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 22px;
+  margin: 4px 0 20px;
+}
+.settings-note {
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin: -8px 0 22px;
+  line-height: 1.5;
+}
+.settings-about {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 6px;
+}
+.settings-about-title {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 16px;
+  color: var(--accent);
+  margin: 18px 0 8px;
+}
+.settings-about p {
+  font-size: 14px;
+  color: var(--ink);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+.settings-safety {
+  color: var(--ink-dim) !important;
+  font-size: 13px !important;
+  border-left: 2px solid var(--line);
+  padding-left: 12px;
+}
+.settings-roadmap {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.settings-roadmap li {
+  margin-bottom: 2px;
+}
+.settings-feedback {
+  font-size: 13px !important;
+  color: var(--ink-dim) !important;
+}
+
+/* --- masthead actions + pre-launch variants ---------------- */
+.masthead-actions {
+  display: flex;
+  gap: 8px;
+}
+.extend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  margin-top: 4px;
+}
+.extend-label {
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+.extend-btns {
+  display: flex;
+  gap: 8px;
+}
+.extend-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+}
+.extend-btn:active {
+  transform: scale(0.97);
+  border-color: var(--accent);
 }

@@ -2,6 +2,8 @@ import type {
   GenerateRequest,
   GenerateResponse,
   FeedbackRequest,
+  FavouriteCreate,
+  Favourite,
 } from "./types";
 
 // In dev, vite proxies /api to localhost:8000 (see vite.config.ts).
@@ -41,5 +43,38 @@ export async function sendFeedback(fb: FeedbackRequest): Promise<void> {
     });
   } catch {
     // Feedback is best-effort in the alpha; never block the UI on it.
+  }
+}
+
+export async function listFavourites(owner: string): Promise<Favourite[]> {
+  const res = await fetch(
+    `${API_BASE}/api/favourites?owner=${encodeURIComponent(owner)}`,
+  );
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function saveFavourite(fav: FavouriteCreate): Promise<Favourite | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/favourites`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fav),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteFavourite(id: string, owner: string): Promise<void> {
+  try {
+    await fetch(
+      `${API_BASE}/api/favourites/${id}?owner=${encodeURIComponent(owner)}`,
+      { method: "DELETE" },
+    );
+  } catch {
+    /* best-effort */
   }
 }

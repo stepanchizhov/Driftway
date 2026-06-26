@@ -5,3 +5,9 @@ uvicorn[standard]>=0.34.0
 httpx>=0.28.1
 pydantic>=2.13.0
 python-dotenv>=1.0.1
+sqlalchemy>=2.0.0
+
+# Postgres driver — only needed when DATABASE_URL points at Postgres (Render).
+# The platform marker means it is NOT installed on local Windows/macOS, so it
+# can't reintroduce the wheel-build problem; local dev uses SQLite (stdlib).
+psycopg[binary]>=3.1; sys_platform == "linux"

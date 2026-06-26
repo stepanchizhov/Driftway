@@ -84,8 +84,16 @@ export function LoopMark({
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      {/* start / finish marker */}
-      <circle cx={proj[0].x} cy={proj[0].y} r="3" fill="var(--accent)" />
+      {/* start / finish marker — red so the loop's home point is obvious */}
+      <circle cx={proj[0].x} cy={proj[0].y} r="3.5" fill="var(--route-start)" />
+      <circle
+        cx={proj[0].x}
+        cy={proj[0].y}
+        r="3.5"
+        fill="none"
+        stroke="var(--ground)"
+        strokeWidth="1"
+      />
     </svg>
   );
 }

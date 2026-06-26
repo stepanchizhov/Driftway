@@ -6,18 +6,25 @@ import type {
   RoadProfile,
   RouteOption,
 } from "./types";
-import { generateRoutes } from "./api";
+import { generateRoutes, saveFavourite } from "./api";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useSettings } from "./hooks/useSettings";
+import { usePlaces } from "./hooks/usePlaces";
+import { useOwner } from "./hooks/useOwner";
 import { ChipGroup } from "./components/ChipGroup";
 import { RouteCard } from "./components/RouteCard";
 import { SafetyNote } from "./components/SafetyNote";
 import { Feedback } from "./components/Feedback";
+import { QuickDrive } from "./components/QuickDrive";
+import { Favourites } from "./components/Favourites";
+import { SettingsScreen } from "./components/SettingsScreen";
 
 type Screen =
   | { name: "plan" }
   | { name: "loading" }
-  | { name: "results"; data: GenerateResponse; start: Coord };
+  | { name: "results"; data: GenerateResponse; start: Coord; profile: RoadProfile }
+  | { name: "favourites" }
+  | { name: "settings" };
 
 const DURATIONS = [20, 30, 45, 60, 90];
 
@@ -38,6 +45,8 @@ const DIRECTION_OPTS: { value: Direction; label: string }[] = [
 export default function App() {
   const { state: geo, locate } = useGeolocation();
   const { settings, update } = useSettings();
+  const { defaultPlace, saveHome } = usePlaces();
+  const owner = useOwner();
 
   const [screen, setScreen] = useState<Screen>({ name: "plan" });
   const [duration, setDuration] = useState<number>(settings.lastDuration);
@@ -48,15 +57,22 @@ export default function App() {
   // Which route the user has launched in Google Maps (drives the inline
   // feedback prompt). Null means none started yet.
   const [startedId, setStartedId] = useState<string | null>(null);
+  // Route ids saved to favourites this session (fills the star).
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   // Resolve the start point: live location, or saved Home as a fallback.
-  const start: Coord | null =
-    geo.status === "ready" ? geo.coord : settings.home;
+  const homeCoord: Coord | null = defaultPlace
+    ? { lat: defaultPlace.lat, lng: defaultPlace.lng }
+    : null;
+  const liveCoord: Coord | null =
+    geo.status === "ready" ? geo.coord : null;
+  const start: Coord | null = liveCoord ?? homeCoord;
 
-  async function onGenerate() {
+  async function runGenerate(targetMinutes: number) {
     if (!start) return;
     setError(null);
     setStartedId(null);
+    setSavedIds(new Set());
     setScreen({ name: "loading" });
     update({
       lastDuration: duration,
@@ -66,17 +82,28 @@ export default function App() {
     try {
       const data = await generateRoutes({
         start,
-        finish: settings.home ?? start,
-        target_minutes: duration,
+        finish: homeCoord ?? start,
+        target_minutes: targetMinutes,
         tolerance_minutes: tolerance,
         road_profile: profile,
         direction,
       });
-      setScreen({ name: "results", data, start });
+      setScreen({ name: "results", data, start, profile });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
       setScreen({ name: "plan" });
     }
+  }
+
+  function onGenerate() {
+    void runGenerate(duration);
+  }
+
+  // Pre-launch variants (Option C): regenerate a longer companion before
+  // setting off, so a parent can pre-decide on a bit more driving.
+  function onExtendPlan(extraMinutes: number) {
+    if (screen.name !== "results") return;
+    void runGenerate(screen.data.target_minutes + extraMinutes);
   }
 
   function onStartRoute(route: RouteOption) {
@@ -87,8 +114,23 @@ export default function App() {
     setStartedId(route.id);
   }
 
+  async function onSaveRoute(route: RouteOption) {
+    if (screen.name !== "results") return;
+    if (savedIds.has(route.id)) return; // already saved
+    setSavedIds((prev) => new Set(prev).add(route.id)); // optimistic
+    await saveFavourite({
+      owner,
+      duration_minutes: screen.data.target_minutes,
+      distance_km: route.distance_km,
+      road_profile: screen.profile,
+      character: route.character,
+      maps_url: route.maps_url,
+      place_label: defaultPlace?.label ?? "Home",
+    });
+  }
+
   function saveHomeFromLocation() {
-    if (geo.status === "ready") update({ home: geo.coord });
+    if (geo.status === "ready") saveHome(geo.coord);
   }
 
   return (
@@ -106,6 +148,23 @@ export default function App() {
             ← Plan
           </button>
         )}
+        {screen.name === "plan" && (
+          <div className="masthead-actions">
+            <button
+              className="btn-back"
+              onClick={() => setScreen({ name: "favourites" })}
+            >
+              ★ Saved
+            </button>
+            <button
+              className="btn-back"
+              onClick={() => setScreen({ name: "settings" })}
+              aria-label="Settings"
+            >
+              ⚙
+            </button>
+          </div>
+        )}
       </header>
 
       {screen.name === "plan" && (
@@ -117,9 +176,15 @@ export default function App() {
 
           <LocationRow
             geo={geo}
-            home={settings.home}
+            home={homeCoord}
             onRetry={locate}
             onSaveHome={saveHomeFromLocation}
+          />
+
+          <QuickDrive
+            current={liveCoord}
+            home={homeCoord}
+            profile={settings.quickDriveProfile}
           />
 
           <div className="duration-hero">
@@ -200,18 +265,48 @@ export default function App() {
                 targetMinutes={screen.data.target_minutes}
                 onStart={onStartRoute}
                 started={startedId === r.id}
+                onSave={onSaveRoute}
+                saved={savedIds.has(r.id)}
+                units={settings.units}
               />
               {startedId === r.id && (
-                <Feedback route={r} onDone={() => setStartedId(null)} />
+                <Feedback
+                  route={r}
+                  owner={owner}
+                  onDone={() => setStartedId(null)}
+                />
               )}
             </div>
           ))}
+          <div className="extend">
+            <span className="extend-label">Want a bit longer?</span>
+            <div className="extend-btns">
+              <button className="extend-btn" onClick={() => onExtendPlan(15)}>
+                +15 min
+              </button>
+              <button className="extend-btn" onClick={() => onExtendPlan(30)}>
+                +30 min
+              </button>
+            </div>
+          </div>
           <p className="results-foot">
             {startedId
               ? "Started in Google Maps. You can still compare the other loops above."
               : "Times use current traffic and may shift as you drive."}
           </p>
         </main>
+      )}
+
+      {screen.name === "favourites" && (
+        <Favourites
+          owner={owner}
+          units={settings.units}
+          onBack={() => setScreen({ name: "plan" })}
+        />
+      )}
+
+      {screen.name === "settings" && (
+        <SettingsScreen settings={settings} update={update} />
       )}
     </div>
   );

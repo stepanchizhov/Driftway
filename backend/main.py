@@ -31,8 +31,12 @@ except ImportError:
     )
 
 from routes.api import router as api_router
+from core.db import init_db
 
 logging.basicConfig(level=logging.INFO)
+
+# Create tables on startup (SQLite locally, Postgres on Render).
+init_db()
 
 app = FastAPI(title="Driftway API", version="0.1.0")
 

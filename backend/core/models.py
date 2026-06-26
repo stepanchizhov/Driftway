@@ -78,3 +78,27 @@ class FeedbackRequest(BaseModel):
     would_use_again: Optional[bool] = None
     baby_slept: Optional[str] = None     # "yes" | "no" | "unknown"
     notes: Optional[str] = None
+    owner: Optional[str] = None          # anonymous local id from the device
+
+
+class FavouriteCreate(BaseModel):
+    owner: str
+    label: str = ""
+    place_label: str = "Home"
+    duration_minutes: int
+    distance_km: float = 0.0
+    road_profile: str = "mixed"
+    character: str = ""
+    maps_url: str = ""
+
+
+class FavouriteOut(BaseModel):
+    id: str
+    label: str
+    place_label: str
+    duration_minutes: int
+    distance_km: float
+    road_profile: str
+    character: str
+    maps_url: str
+    created_at: str
