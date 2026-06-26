@@ -12,9 +12,23 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Load a local .env file (if present) so ROUTING_PROVIDER, TOMTOM_API_KEY, etc.
+# are available when running locally. On Render this is a no-op — those values
+# are set as real environment variables in the dashboard.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    logging.warning(
+        "python-dotenv not installed; .env will be ignored. "
+        "Run: pip install -r requirements.txt"
+    )
 
 from routes.api import router as api_router
 
