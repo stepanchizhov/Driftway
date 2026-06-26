@@ -57,6 +57,7 @@ class RouteOption(BaseModel):
     score: float
     delta_minutes: float                # predicted - target (can be negative)
     waypoints: List[Coord]              # intermediate anchors only (max 3)
+    geometry: List[Coord] = []          # downsampled real road polyline (for preview)
     maps_url: str
     confidence: str = "medium"          # low | medium | high (placeholder)
 

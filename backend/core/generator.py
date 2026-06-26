@@ -48,6 +48,21 @@ MAX_CANDIDATES = 15
 RESCALE_ENABLED = True
 
 
+def downsample(points: List[Coord], max_points: int = 48) -> List[Coord]:
+    """Thin a dense polyline down to ~max_points for the card preview.
+
+    TomTom returns hundreds of points per route; a thumbnail needs far fewer.
+    Always keeps the first and last point so the loop stays closed.
+    """
+    n = len(points)
+    if n <= max_points:
+        return points
+    step = n / max_points
+    out = [points[int(i * step)] for i in range(max_points)]
+    out[-1] = points[-1]  # ensure the loop closes on the true finish
+    return out
+
+
 def google_maps_url(start: Coord, finish: Coord, anchors: List[Coord]) -> str:
     """Build a Google Maps directions URL. Mobile supports up to 3 waypoints,
     so we cap anchors at 3 (our shapes already respect this)."""
@@ -148,6 +163,7 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
                 score=score_route(ev, req.target_minutes, profile),
                 delta_minutes=round(ev.minutes - req.target_minutes, 1),
                 waypoints=ev.anchors[:3],
+                geometry=downsample(ev.geometry),
                 maps_url=google_maps_url(start, finish, ev.anchors),
                 confidence="medium",
             )
