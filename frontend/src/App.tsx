@@ -26,7 +26,7 @@ type Screen =
   | { name: "favourites" }
   | { name: "settings" };
 
-const DURATIONS = [20, 30, 45, 60, 90];
+const DURATIONS = [5, 10, 15, 20, 30, 45, 60, 90];
 
 const PROFILE_OPTS: { value: RoadProfile; label: string; sub: string }[] = [
   { value: "motorway", label: "Motorways", sub: "Steady & fast" },

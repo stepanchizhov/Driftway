@@ -8,7 +8,7 @@ interface Props {
   profile: RoadProfile;           // last-used profile, or a sensible default
 }
 
-const QUICK_DURATIONS = [15, 30, 60];
+const QUICK_DURATIONS = [5, 10, 15, 30];
 
 // The fast lane: one tap launches a drive of the chosen total duration that
 // ends at Home, from wherever you are now. No route comparison, no extra
