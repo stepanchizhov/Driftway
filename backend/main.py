@@ -31,7 +31,15 @@ except ImportError:
     )
 
 from routes.api import router as api_router
+from routes.meetups import router as meetup_router
 from core.db import init_db
+
+# Importing the meetup tables registers them on the shared metadata so
+# init_db() creates them. It must happen before init_db() runs, and it must not
+# open a connection - see core/db.py for why import-time connections are
+# forbidden here.
+import core.accounts  # noqa: F401
+import core.meetups   # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
 
@@ -51,6 +59,10 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix="/api")
+# Meet Halfway is gated per-endpoint by a server-side feature flag rather than
+# by conditional mounting, so a disabled deployment returns a clean 404 instead
+# of a differently-shaped app.
+app.include_router(meetup_router, prefix="/api")
 
 
 @app.get("/")

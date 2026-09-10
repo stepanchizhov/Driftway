@@ -1081,3 +1081,343 @@ body {
   border-left: 2px solid var(--line);
   padding-left: 10px;
 }
+
+/* ============================================================
+   Meet Halfway — the shared-planning surface.
+   Same night palette; wider rhythm because these screens are
+   read sitting still, not glanced at in a car.
+   ============================================================ */
+
+.mh {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding-bottom: 40px;
+}
+
+.mh-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.mh-title {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.mh-sub {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-dim);
+  max-width: 42ch;
+}
+
+.mh-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 18px;
+}
+
+.mh-h2 {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  margin: 0;
+}
+
+.mh-hint {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--ink-dim);
+}
+
+.mh-error {
+  margin: 0;
+  background: rgba(232, 144, 144, 0.12);
+  border-left: 3px solid var(--danger);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 11px 14px;
+  font-size: 0.9rem;
+}
+
+.mh-notice {
+  margin: 0;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 11px 14px;
+  font-size: 0.9rem;
+}
+
+/* A no-fit result is a different claim from an ordinary note, so it gets its
+   own colour rather than a louder version of the same one. */
+.mh-notice-warn { border-left-color: var(--warn); }
+
+.mh-readonly {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--ink-dim);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 13px;
+}
+
+.mh-nudge {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--warn);
+  border-left: 2px solid var(--warn);
+  padding-left: 10px;
+}
+
+/* --- form bits ---------------------------------------------- */
+
+.mh-field { display: flex; flex-direction: column; gap: 6px; }
+.mh-field-sm { flex: 1 1 140px; }
+
+.mh-label {
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.mh-input {
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font: inherit;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.mh-input::placeholder { color: var(--ink-dim); }
+
+.mh-prefs { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.mh-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.mh-check input { margin-top: 3px; flex: none; }
+.mh-check span { display: flex; flex-direction: column; gap: 2px; }
+.mh-check-label { font-size: 0.92rem; }
+.mh-check-hint { font-size: 0.82rem; color: var(--ink-dim); }
+
+.mh-adder-off { opacity: 0.55; pointer-events: none; }
+
+/* --- people -------------------------------------------------- */
+
+.mh-people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.mh-person {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.mh-person:last-child { border-bottom: none; padding-bottom: 0; }
+.mh-person-name { font-weight: 600; }
+.mh-person-where { font-size: 0.84rem; color: var(--ink-dim); text-align: right; }
+
+/* --- invite links -------------------------------------------- */
+
+.mh-links { gap: 16px; }
+
+.mh-link {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mh-link-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mh-link-title { font-weight: 600; font-size: 0.95rem; }
+.mh-link-hint { font-size: 0.82rem; color: var(--ink-dim); }
+
+.mh-link-url {
+  font-size: 0.74rem;
+  color: var(--ink-dim);
+  background: var(--ground);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 5px 8px;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+
+/* --- candidate cards ----------------------------------------- */
+
+.mh-results { display: flex; flex-direction: column; gap: 12px; }
+
+.mhc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 16px 18px;
+}
+
+/* Someone is over their stated limit: mark the whole card, not just the row,
+   because that fact decides whether the venue is viable at all. */
+.mhc-over { border-color: rgba(232, 144, 144, 0.5); }
+
+.mhc-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.mhc-title { display: flex; gap: 11px; align-items: flex-start; min-width: 0; }
+
+.mhc-rank {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.mhc-name { margin: 0; font-family: var(--display); font-size: 1.02rem; overflow-wrap: anywhere; }
+.mhc-address { margin: 2px 0 0; font-size: 0.82rem; color: var(--ink-dim); overflow-wrap: anywhere; }
+.mhc-rating { flex: none; font-size: 0.86rem; color: var(--ink-dim); }
+
+.mhc-times { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.mhc-time {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.mhc-who { color: var(--ink-dim); font-size: 0.9rem; }
+
+/* Tabular figures so the minutes line up down the column and can be compared
+   at a glance. */
+.mhc-min {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.mhc-min-over { color: var(--danger); }
+
+.mhc-over-tag {
+  font-family: var(--body);
+  font-size: 0.72rem;
+  margin-left: 7px;
+  color: var(--danger);
+}
+
+.mhc-pending { margin: 0; font-size: 0.85rem; color: var(--ink-dim); }
+
+.mhc-spread {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  font-size: 0.88rem;
+  color: var(--ink-dim);
+}
+
+.mhc-fit { color: var(--ink); }
+
+.mhc-votes { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.mhc-vote {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 11px;
+  cursor: pointer;
+}
+
+.mhc-vote-on { border-color: var(--accent); color: var(--accent); }
+
+.mhc-count {
+  margin-left: 6px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.mhc-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+.mhc-nav { color: var(--accent); font-size: 0.9rem; }
+
+.btn-secondary {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 13px 16px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn-secondary:active { background: var(--line); }
+
+/* --- the agreed venue ---------------------------------------- */
+
+.mh-decided { border-color: var(--accent); }
+
+.mh-decided-head { display: flex; justify-content: space-between; align-items: center; }
+
+.mh-decided-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.mh-decided-name { margin: 0; font-family: var(--display); font-size: 1.35rem; }
+
+.mh-nav-btn { text-align: center; text-decoration: none; display: block; }
+
+.mh-longer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.mh-longer-title { font-weight: 600; }
+.mh-longer-hint { font-size: 0.82rem; color: var(--ink-dim); }
+.mh-longer-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.mhc-right { display: flex; gap: 8px; align-items: center; }
+
+.mhc-choose {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--ground);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.86rem;
+  padding: 7px 13px;
+  cursor: pointer;
+}
+
+.mhc-choose:active { background: var(--accent-press); }

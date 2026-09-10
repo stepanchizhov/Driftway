@@ -49,6 +49,22 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false
 
+      # --- Meet Halfway (staging experiment) ---------------------------
+      # Off unless explicitly switched on. Every meetup endpoint returns 404
+      # while this is false, so shipping the code does not ship the feature.
+      - key: MEET_HALFWAY_ENABLED
+        value: "false"
+
+      # Account creation is server-side gated. Never set this to "open" while
+      # the product is running a closed test.
+      - key: REGISTRATION_MODE
+        value: invite_only
+
+      # Founder-only secret for minting beta invites. With no value, the admin
+      # endpoints refuse every request rather than defaulting to open.
+      - key: ADMIN_API_TOKEN
+        sync: false
+
   # --------------------------------------------------------------- frontend
   - type: web
     name: Driftway-Front

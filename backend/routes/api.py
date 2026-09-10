@@ -18,6 +18,7 @@ from core.models import (
     GenerateResponse,
     SearchResponse,
 )
+from core.config import meet_halfway_enabled
 from core.router import get_router
 from core.search import SearchUnavailable, get_search
 
@@ -109,6 +110,9 @@ async def health():
         "provider": get_router().name,
         "search": get_search().name,
         "storage": "ok" if storage_available() else "unavailable",
+        # The client uses this to decide whether to offer the staging entry
+        # point at all, rather than showing a button that 404s.
+        "meet_halfway": meet_halfway_enabled(),
     }
 
 

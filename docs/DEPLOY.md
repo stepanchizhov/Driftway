@@ -130,6 +130,58 @@ backend cannot know the frontend's URL until the frontend exists.
 
 ---
 
+## Step 4a — Meet Halfway (optional, staging experiment)
+
+Off by default. Every meetup endpoint returns 404 until it is switched on, so
+deploying the code does not deploy the feature.
+
+Backend service (**Driftway**) → **Environment**:
+
+| Key | Value |
+|---|---|
+| `MEET_HALFWAY_ENABLED` | `true` |
+| `REGISTRATION_MODE` | `invite_only` |
+| `ADMIN_API_TOKEN` | a long random string you keep private |
+
+`ADMIN_API_TOKEN` guards beta-invite creation. **Leave it unset and the admin
+endpoints refuse everything** — a missing secret is not permission. Generate
+one with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+No frontend change is needed. The app asks `/api/health` whether the feature is
+on and only then shows the entry point.
+
+### Minting a beta invite
+
+There is no admin UI yet, by design — §5.6 of the brief says not to delay
+founder testing for admin chrome. Use the API:
+
+```bash
+curl -X POST "https://driftway.onrender.com/api/admin/beta-invites?ttl_days=14" \
+  -H "X-Admin-Token: <your ADMIN_API_TOKEN>"
+```
+
+The raw token comes back **once**, in that response, and is never retrievable
+again — only its hash is stored. Listing invites shows status, never tokens.
+
+To revoke: `POST /api/admin/beta-invites/{id}/revoke` with the same header.
+
+### A note on schema changes
+
+There is no migration tool. `init_db()` calls `create_all()`, which creates
+missing *tables* but never adds columns to existing ones. The meetup tables are
+created on first deploy and will be correct. **A later column addition will not
+appear**, and the endpoint using it will 500 with `no such column`.
+
+Until Alembic is adopted, a staging schema change means dropping the meetup
+tables and letting them rebuild. They hold only test data during the closed
+test; `feedback`, `favourites` and `saved_places` must be left alone.
+
+---
+
 ## Step 5 — Verify
 
 **Backend health** — open `https://driftway.onrender.com/api/health`:
@@ -145,6 +197,8 @@ Check all four:
 - `storage: ok` — `unavailable` means the database is unreachable. **The API
   keeps serving routes either way**; favourites and feedback return 503 until
   it is fixed.
+- `meet_halfway` — `true` only if you completed step 4a. The app hides the
+  entry point when this is false.
 
 **Search** — `https://driftway.onrender.com/api/search?q=SL4%201NJ` should
 return one Windsor result. This is the most reliable check that a deploy
@@ -173,6 +227,15 @@ match the site's origin. Scheme, host, no trailing slash.
 **The app loads but nothing happens on the button** — `VITE_API_BASE` was
 missing or wrong at build time. Fix it and **trigger a fresh deploy**; the
 value is compiled into the bundle.
+
+**Meet Halfway 404s everywhere** — `MEET_HALFWAY_ENABLED` is not `true` on the
+backend. Check `/api/health`.
+
+**Minting an invite returns 503** — `ADMIN_API_TOKEN` is unset. That is the
+deliberate refusal, not a bug.
+
+**A meetup endpoint 500s with `no such column`** — a schema change landed
+without a migration. See the note in step 4a.
 
 **The frontend won't build** — check Root Directory is `frontend` and Publish
 Directory is `dist`. If the build log shows TypeScript errors about `path` or

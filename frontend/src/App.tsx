@@ -22,6 +22,8 @@ import type { QuickTarget } from "./components/QuickDrive";
 import { Favourites } from "./components/Favourites";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { PlaceSearch } from "./components/PlaceSearch";
+import { MeetHalfway } from "./meetup/MeetHalfway";
+import { meetHalfwayEnabled } from "./meetup/api";
 import type { Endpoint } from "./components/PlaceSearch";
 
 type Screen =
@@ -36,7 +38,8 @@ type Screen =
       toLabel: string;
     }
   | { name: "favourites" }
-  | { name: "settings" };
+  | { name: "settings" }
+  | { name: "meethalfway" };
 
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60, 90];
 
@@ -66,7 +69,12 @@ export default function App() {
   const { recent, remember } = useRecentDestination();
   const owner = useOwner();
 
-  const [screen, setScreen] = useState<Screen>({ name: "plan" });
+  // A meetup link should open the meetup, not the planner. Checked once, from
+  // the URL, before anything else renders.
+  const [screen, setScreen] = useState<Screen>(() =>
+    hasMeetupLink() ? { name: "meethalfway" } : { name: "plan" },
+  );
+  const [meetupAvailable, setMeetupAvailable] = useState(false);
   const [mode, setMode] = useState<RouteMode>("loop");
   const [duration, setDuration] = useState<number>(settings.lastDuration);
   const [profile, setProfile] = useState<RoadProfile>(settings.lastProfile);
@@ -176,6 +184,10 @@ export default function App() {
     toEndpoint?.coord.lat,
     toEndpoint?.coord.lng,
   ]);
+
+  useEffect(() => {
+    void meetHalfwayEnabled().then(setMeetupAvailable);
+  }, []);
 
   async function runGenerate(targetMinutes: number) {
     if (!start) return;
@@ -414,6 +426,15 @@ export default function App() {
             {generateLabel(mode, start, toEndpoint)}
           </button>
 
+          {meetupAvailable && (
+            <button
+              className="btn-secondary"
+              onClick={() => setScreen({ name: "meethalfway" })}
+            >
+              Meet another parent halfway
+            </button>
+          )}
+
           <SafetyNote />
         </main>
       )}
@@ -499,8 +520,27 @@ export default function App() {
       {screen.name === "settings" && (
         <SettingsScreen settings={settings} update={update} />
       )}
+
+      {screen.name === "meethalfway" && (
+        <MeetHalfway
+          currentLocation={liveCoord}
+          home={homeEndpoint}
+          onExit={() => {
+            // Clear the meetup query string so a reload does not bounce
+            // straight back into it.
+            window.history.replaceState(null, "", window.location.pathname);
+            setScreen({ name: "plan" });
+          }}
+        />
+      )}
     </div>
   );
+}
+
+/** True when the URL carries a meetup participant or results capability. */
+function hasMeetupLink(): boolean {
+  const q = new URLSearchParams(window.location.search);
+  return Boolean((q.get("meetup") && q.get("join")) || q.get("results"));
 }
 
 function generateLabel(

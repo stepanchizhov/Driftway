@@ -48,6 +48,19 @@ class Router(Protocol):
                        anchors: List[Coord], profile: str) -> Optional[EvaluatedRoute]:
         ...
 
+    async def travel_matrix(self, origins: List[Coord], destinations: List[Coord],
+                            profile: str) -> List[List[Optional[float]]]:
+        """Minutes from every origin to every destination.
+
+        Meet Halfway needs participants x venues, which is a matrix question,
+        not N route questions. Asking it as a matrix keeps a two-parent,
+        five-venue plan at one provider call instead of ten.
+
+        Returns a grid indexed [origin][destination]; a cell is None when that
+        pair could not be routed.
+        """
+        ...
+
 
 # --------------------------------------------------------------------------
 # Mock implementation
@@ -88,6 +101,18 @@ class MockRouter:
             road_mix=_MOCK_MIX.get(profile, _MOCK_MIX["mixed"]),
             geometry=pts,
         )
+
+
+    async def travel_matrix(self, origins, destinations, profile):
+        speed = _MOCK_SPEED.get(profile, 46.0)
+        grid = []
+        for o in origins:
+            row = []
+            for d in destinations:
+                km = haversine_km(o, d) * 1.25
+                row.append(round((km / speed) * 60.0, 1))
+            grid.append(row)
+        return grid
 
 
 # --------------------------------------------------------------------------
@@ -221,6 +246,59 @@ class TomTomRouter:
             has_uturn=_has_uturn(routes[0]),
             raw=summary,
         )
+
+
+    async def travel_matrix(self, origins, destinations, profile):
+        """TomTom Matrix Routing v2.
+
+        Verified live: one POST returns every origin/destination pair with
+        traffic-aware travel times. Falls back to None cells rather than
+        raising, so one unroutable venue does not sink a whole meetup.
+        """
+        if not origins or not destinations:
+            return []
+
+        body = {
+            "origins": [{"point": {"latitude": o.lat, "longitude": o.lng}}
+                        for o in origins],
+            "destinations": [{"point": {"latitude": d.lat, "longitude": d.lng}}
+                             for d in destinations],
+        }
+        params = {"key": self._key, "routeType": "fastest", "traffic": "live"}
+        if profile == "quiet":
+            params["avoid"] = "motorways"
+
+        grid: List[List[Optional[float]]] = [
+            [None] * len(destinations) for _ in origins
+        ]
+        try:
+            resp = await self._client.post(
+                "https://api.tomtom.com/routing/matrix/2", params=params, json=body,
+            )
+        except httpx.HTTPError as e:
+            log.warning("TomTom matrix transport error: %s", type(e).__name__)
+            return grid
+
+        if resp.status_code >= 400:
+            log.warning("TomTom matrix HTTP %s: %.160s", resp.status_code, resp.text)
+            return grid
+
+        try:
+            data = resp.json()
+        except ValueError:
+            log.warning("TomTom matrix returned non-JSON")
+            return grid
+
+        for cell in data.get("data", []):
+            i = cell.get("originIndex")
+            j = cell.get("destinationIndex")
+            summary = cell.get("routeSummary") or {}
+            secs = summary.get("travelTimeInSeconds")
+            if i is None or j is None or secs is None:
+                continue
+            if 0 <= i < len(origins) and 0 <= j < len(destinations):
+                grid[i][j] = round(secs / 60.0, 1)
+        return grid
 
 
 def _has_uturn(route: dict) -> bool:
