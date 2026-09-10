@@ -8,6 +8,9 @@ interface Props {
   size?: number;
   /** Decorative ring only, used as the app's signature motif. */
   ring?: boolean;
+  /** Destination mode: the drive ends somewhere else, so both ends are shown
+   *  and they need telling apart. */
+  showFinish?: boolean;
 }
 
 // Draws a small outline of the loop. When the backend supplies the real road
@@ -20,6 +23,7 @@ export function LoopMark({
   geometry,
   size = 64,
   ring = false,
+  showFinish = false,
 }: Props) {
   const pts: Coord[] =
     geometry && geometry.length >= 3
@@ -55,10 +59,13 @@ export function LoopMark({
     y: offY + ((p.y - minY) / span) * inner,
   }));
 
-  const d =
-    proj
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-      .join(" ") + " Z";
+  const path = proj
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(" ");
+  // Only a round trip closes. Closing an A-to-B path would draw a leg back to
+  // the start that nobody drives.
+  const d = showFinish ? path : `${path} Z`;
+  const last = proj[proj.length - 1];
 
   return (
     <svg
@@ -84,7 +91,7 @@ export function LoopMark({
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      {/* start / finish marker — red so the loop's home point is obvious */}
+      {/* start marker — red so the loop's home point is obvious */}
       <circle cx={proj[0].x} cy={proj[0].y} r="3.5" fill="var(--route-start)" />
       <circle
         cx={proj[0].x}
@@ -94,6 +101,17 @@ export function LoopMark({
         stroke="var(--ground)"
         strokeWidth="1"
       />
+      {/* finish marker — hollow, so start and destination are never confused */}
+      {showFinish && (
+        <circle
+          cx={last.x}
+          cy={last.y}
+          r="3.5"
+          fill="var(--ground)"
+          stroke="var(--accent)"
+          strokeWidth="2"
+        />
+      )}
     </svg>
   );
 }

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from .geometry import haversine_km
+from .geometry import haversine_km, initial_bearing
 from .models import Coord, RoadMix
 from .router import EvaluatedRoute
 
@@ -35,19 +35,21 @@ def _self_overlap_ratio(geometry: List[Coord]) -> float:
 
 
 def _passes_near_finish_early(geometry: List[Coord], finish: Coord) -> bool:
-    """True if the route comes within 300 m of the finish before the final
-    fifth of the journey — a loop that 'arrives home' too soon."""
-def _passes_near_finish_early(geometry: List[Coord], finish: Coord) -> bool:
-    """True only if the route passes near the finish in the *middle* of the
-    journey — a genuine premature return.
+    """Return True when the route passes near the finish too early in the trip.
 
-    Important: for a loop, start and finish are usually the same point (Home),
-    so the route legitimately begins AND ends near the finish. We must ignore
-    those. We only inspect the middle band (20%-80% of the route); a pass near
-    the finish there means the loop doubles back home too soon.
+    This is a heuristic for loops that double back home prematurely. For a loop,
+    start and finish are usually the same location, so the route legitimately
+    begins and ends near the goal. We therefore inspect only the middle band
+    (20%-80% of the route) and ignore the departure/arrival legs.
     """
     n = len(geometry)
     if n < 12:
+        return False
+    # A short loop never gets far from home, so "passes within 300 m of the
+    # finish" is what it looks like when it is working, not a fault. Without
+    # this exemption every 5-10 minute loop is rejected on principle.
+    reach_km = max(haversine_km(pt, finish) for pt in geometry)
+    if reach_km < 2.0:
         return False
     lo = int(n * 0.20)   # skip the departure away from Home
     hi = int(n * 0.80)   # skip the final approach back to Home
@@ -57,13 +59,81 @@ def _passes_near_finish_early(geometry: List[Coord], finish: Coord) -> bool:
     return False
 
 
+# How sharply the route has to double back at a waypoint before we call it a
+# turn-around rather than a bend. 150 degrees is well past any real junction.
+TURNAROUND_ANGLE_DEG = 150.0
+# How far either side of the waypoint to measure the approach and departure.
+# Short enough to ignore the wider shape of the loop, long enough to survive
+# the clustered points TomTom emits around a junction.
+TURNAROUND_WINDOW_KM = 0.2
+
+
+def _walk_from(geometry: List[Coord], idx: int, step: int,
+               distance_km: float) -> Optional[Coord]:
+    """Follow the path from geometry[idx] until `distance_km` has been covered.
+
+    `step` is +1 to walk forwards, -1 to walk back. Returns None when the path
+    ends first, which means there is not enough road either side to judge.
+    """
+    travelled = 0.0
+    i = idx
+    while 0 <= i + step < len(geometry):
+        travelled += haversine_km(geometry[i], geometry[i + step])
+        i += step
+        if travelled >= distance_km:
+            return geometry[i]
+    return None
+
+
+def _nearest_index(geometry: List[Coord], point: Coord) -> int:
+    return min(range(len(geometry)),
+               key=lambda i: haversine_km(geometry[i], point))
+
+
+def turnaround_waypoints(route: EvaluatedRoute) -> int:
+    """Count waypoints the route has to double back at.
+
+    This is the three-point-turn / dead-end-spur detector. The global overlap
+    ratio cannot see these: a 200 m spur off a 12 km loop is a rounding error
+    by that measure, but it is the part of the drive that wakes the baby.
+
+    Works on the returned polyline, so it costs nothing extra.
+    """
+    geometry = route.geometry
+    if len(geometry) < 6 or not route.anchors:
+        return 0
+    count = 0
+    for anchor in route.anchors:
+        idx = _nearest_index(geometry, anchor)
+        before = _walk_from(geometry, idx, -1, TURNAROUND_WINDOW_KM)
+        after = _walk_from(geometry, idx, +1, TURNAROUND_WINDOW_KM)
+        if before is None or after is None:
+            continue
+        arriving = initial_bearing(before, geometry[idx])
+        leaving = initial_bearing(geometry[idx], after)
+        turn = abs(((leaving - arriving + 180) % 360) - 180)
+        if turn >= TURNAROUND_ANGLE_DEG:
+            count += 1
+    return count
+
+
+def turnaround_count(route: EvaluatedRoute) -> int:
+    """Total turn-arounds on this route, from both detectors.
+
+    NOT part of validation, deliberately. Measured against TomTom, every single
+    generated loop contains at least one - 24 out of 24 across dense, suburban
+    and rural starts. Rejecting on it would reject everything, so it ranks
+    routes instead of filtering them. See the note in generator.py about why
+    hard waypoints cause this.
+    """
+    return (1 if route.has_uturn else 0) + turnaround_waypoints(route)
+
+
 def rejection_reason(route: EvaluatedRoute, finish: Coord) -> Optional[str]:
     """Return why a route is invalid, or None if it passes. Used for logging
     so empty results are diagnosable from the Render logs."""
     if route.minutes <= 0 or route.distance_km <= 0:
         return "no_duration"
-    if route.has_uturn:
-        return "uturn"
     if _self_overlap_ratio(route.geometry) > 0.35:
         return "overlap"
     if _passes_near_finish_early(route.geometry, finish):
@@ -90,22 +160,34 @@ def _road_mix_match(mix: RoadMix, profile: str) -> float:
 
 
 # Weights from the project bible (illustrative; tune from ride data).
-W_DURATION = 0.35
+# Duration dominates: the whole promise of the app is "about N minutes", so a
+# prettier loop of the wrong length must never outrank a plainer one that
+# lands on time. Smoothness is second because a three-point turn is the thing
+# most likely to wake the baby, which is the only failure that really counts.
+W_DURATION = 0.50
+W_SMOOTH = 0.20
 W_LOOP = 0.20
-W_PROFILE = 0.15
-W_PLACEHOLDER = 0.30   # stop-start + resilience + smoothness + confidence
+W_PROFILE = 0.10
+
+# Each turn-around costs half the smoothness score, so one is a real penalty
+# and two is close to total.
+TURNAROUND_COST = 0.5
+
+
+def _smoothness(route: EvaluatedRoute) -> float:
+    """1.0 = never asks the driver to double back."""
+    return max(0.0, 1.0 - TURNAROUND_COST * turnaround_count(route))
 
 
 def score_route(route: EvaluatedRoute, target_minutes: int, profile: str) -> float:
     duration_score = max(0.0, 1.0 - abs(route.minutes - target_minutes) / target_minutes)
     loop_score = 1.0 - min(1.0, _self_overlap_ratio(route.geometry))
     profile_score = _road_mix_match(route.road_mix, profile)
-    placeholder = 0.7   # neutral until real smoothness signals exist
     return round(
         W_DURATION * duration_score
+        + W_SMOOTH * _smoothness(route)
         + W_LOOP * loop_score
-        + W_PROFILE * profile_score
-        + W_PLACEHOLDER * placeholder,
+        + W_PROFILE * profile_score,
         4,
     )
 

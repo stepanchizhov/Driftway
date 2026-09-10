@@ -826,3 +826,258 @@ body {
   transform: scale(0.97);
   border-color: var(--accent);
 }
+
+/* --- endpoints: route mode, place search -------------------- */
+
+.endpoints {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mode-note {
+  margin: -4px 0 0;
+  font-size: 0.86rem;
+  color: var(--ink-dim);
+}
+
+.ps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ps-legend {
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.ps-chosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+
+.ps-chosen-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ps-chosen-label {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ps-chosen-detail {
+  font-size: 0.84rem;
+  color: var(--ink-dim);
+  overflow-wrap: anywhere;
+}
+
+.ps-change {
+  flex: none;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.86rem;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.ps-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ps-shortcut {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 7px 13px;
+  cursor: pointer;
+}
+
+.ps-shortcut:active { background: var(--line); }
+
+.ps-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font: inherit;
+  padding: 12px 14px;
+}
+
+.ps-input::placeholder { color: var(--ink-dim); }
+
+.ps-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.ps-result {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  background: var(--surface);
+  border: none;
+  color: var(--ink);
+  font: inherit;
+  padding: 11px 14px;
+  cursor: pointer;
+}
+
+.ps-result:active { background: var(--surface-2); }
+
+.ps-result-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ps-result-label {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ps-kind {
+  flex: none;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.ps-result-detail {
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+  overflow-wrap: anywhere;
+}
+
+.ps-note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+
+.ps-err { color: var(--danger); }
+
+.ps-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--warn);
+}
+
+/* --- results: baseline, notices, caveats -------------------- */
+
+.results-baseline {
+  margin: -6px 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-dim);
+}
+
+.results-notice {
+  margin: 0;
+  background: var(--surface);
+  border-left: 3px solid var(--warn);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 11px 14px;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+/* A demo result is a different kind of claim from a caveat, so it gets a
+   different colour rather than a louder version of the same one. */
+.results-notice-demo {
+  border-left-color: var(--danger);
+}
+
+.card-caveat {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--warn);
+}
+
+.tag-demo {
+  background: rgba(232, 144, 144, 0.16);
+  color: var(--danger);
+}
+
+/* Not a button: a simulated route has nowhere to go. Styled as a disabled
+   slab so it reads as unavailable rather than merely unstyled. */
+.btn-start-off {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-2);
+  color: var(--ink-dim);
+  border: 1px dashed var(--line);
+  cursor: not-allowed;
+}
+
+/* --- delayed arrival: target switch ------------------------- */
+
+.quick-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* A switch, not a menu: both options are on screen at once, so choosing
+   never costs a navigation step during a brief stop. */
+.quick-target {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 0.84rem;
+  padding: 5px 11px;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.quick-target-on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Safety line on the in-car fast lane. Legible but calm: this reminds, it
+   does not scold, and it never blocks the action beneath it. */
+.quick-safety {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+}

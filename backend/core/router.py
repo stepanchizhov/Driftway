@@ -152,6 +152,10 @@ class TomTomRouter:
             "travelMode": _TOMTOM_TRAVEL_MODE,
             "routeType": "fastest",
             "computeTravelTimeFor": "all",
+            # Guidance rides along in the same request (no extra quota) and is
+            # the only reliable way to know the driver would be asked to turn
+            # around - which, with a sleeping baby aboard, is the whole point.
+            "instructionsType": "coded",
         }
         # Nudge the engine toward / away from motorways by profile.
         if profile == "quiet":
@@ -214,8 +218,20 @@ class TomTomRouter:
             distance_km=round(distance_km, 1),
             road_mix=_infer_mix(profile),   # coarse for alpha; see note above
             geometry=geometry,
+            has_uturn=_has_uturn(routes[0]),
             raw=summary,
         )
+
+
+def _has_uturn(route: dict) -> bool:
+    """True when the guidance asks the driver to turn around.
+
+    TomTom spells these MAKE_UTURN / TRY_MAKE_UTURN depending on how confident
+    it is that the manoeuvre is legal, so match on the stem rather than the
+    exact codes.
+    """
+    instructions = (route.get("guidance") or {}).get("instructions") or []
+    return any("UTURN" in (i.get("maneuver") or "") for i in instructions)
 
 
 def _infer_mix(profile: str) -> RoadMix:
@@ -229,5 +245,14 @@ def _infer_mix(profile: str) -> RoadMix:
 def get_router() -> Router:
     provider = os.getenv("ROUTING_PROVIDER", "mock").lower()
     if provider == "tomtom":
-        return TomTomRouter(api_key=os.getenv("TOMTOM_API_KEY", ""))
+        key = os.getenv("TOMTOM_API_KEY", "").strip()
+        if not key:
+            # Misconfiguration should degrade, not 500 on every request. The
+            # alpha is meant to run end-to-end on a laptop with no key at all.
+            log.warning(
+                "ROUTING_PROVIDER=tomtom but TOMTOM_API_KEY is empty; "
+                "using simulated routing instead"
+            )
+            return MockRouter()
+        return TomTomRouter(api_key=key)
     return MockRouter()

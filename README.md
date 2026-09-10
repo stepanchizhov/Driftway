@@ -1,7 +1,17 @@
 # Driftway
 
-Duration-first circular route planner for parents whose baby sleeps in the car.
-Pick how long you want to drive; get three loops that bring you home.
+Duration-first route planner for parents whose baby sleeps in the car.
+
+Two modes:
+
+- **Round trip** — pick how long you want to drive; get loops that bring you
+  back exactly where you started.
+- **Go somewhere** — pick a start, a destination and a total journey time; get
+  routes that take about that long and still end where you asked. "The pool is
+  25 minutes from home, but I want a 60-minute drive."
+
+Both accept addresses, UK postcodes and named places, so a drive can be planned
+before setting off.
 
 This repo has two parts:
 

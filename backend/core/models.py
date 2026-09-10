@@ -8,7 +8,7 @@ frontend PWA and the backend. Keep them stable; the frontend depends on them.
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -32,6 +32,11 @@ class Coord(BaseModel):
     lng: float = Field(..., ge=-180, le=180)
 
 
+class RouteMode(str, Enum):
+    LOOP = "loop"                # start and finish are the same place
+    DESTINATION = "destination"  # "go somewhere", taking about N minutes in total
+
+
 class GenerateRequest(BaseModel):
     start: Coord
     finish: Optional[Coord] = None          # defaults to start if omitted
@@ -39,6 +44,11 @@ class GenerateRequest(BaseModel):
     tolerance_minutes: int = Field(10, ge=1, le=30)
     road_profile: RoadProfile = RoadProfile.MIXED
     direction: Direction = Direction.SURPRISE
+    # Optional and advisory. The server still decides from the coordinates,
+    # because a "destination" 20 m from the start is a loop whatever the
+    # client calls it. Sending it lets the client's intent appear in the logs
+    # when the two disagree.
+    mode: Optional[RouteMode] = None
 
 
 class RoadMix(BaseModel):
@@ -58,8 +68,39 @@ class RouteOption(BaseModel):
     delta_minutes: float                # predicted - target (can be negative)
     waypoints: List[Coord]              # intermediate anchors only (max 3)
     geometry: List[Coord] = []          # downsampled real road polyline (for preview)
-    maps_url: str
-    confidence: str = "medium"          # low | medium | high (placeholder)
+    maps_url: str                       # empty string when simulated - see below
+    confidence: str = "medium"          # low | medium | high
+
+    # Destination mode: how much longer than driving straight there.
+    extra_minutes: Optional[float] = None
+    # True when this is the plain quickest route, offered because the target
+    # was at or below the direct drive and padding was impossible.
+    is_direct: bool = False
+    # True when the geometry and duration came from the simulator, not a live
+    # provider. Simulated routes carry no maps_url: handing invented geometry
+    # to a navigation app would present a guess as a driveable route.
+    simulated: bool = False
+    # Set when the route was returned despite missing a quality preference,
+    # e.g. "outside your tolerance" or "doubles back once".
+    caveat: Optional[str] = None
+
+
+class Place(BaseModel):
+    """A resolved location the user picked from search."""
+    id: str
+    label: str                  # primary line, e.g. "Windsor Leisure Centre"
+    detail: str                 # secondary line, the fuller address
+    coord: Coord
+    kind: str                   # postcode | postcode_area | address | street | poi | place
+    # True when the point is an area centroid rather than a precise spot, so
+    # the UI can invite the user to refine it.
+    approximate: bool = False
+
+
+class SearchResponse(BaseModel):
+    query: str
+    places: List[Place]
+    provider: str
 
 
 class GenerateResponse(BaseModel):
@@ -68,6 +109,16 @@ class GenerateResponse(BaseModel):
     tolerance_minutes: int
     generated_at: str
     provider: str
+    # Which geometry problem was actually solved.
+    mode: RouteMode = RouteMode.LOOP
+    # Destination mode only: the quickest drive between the two points under
+    # the same road preference. The floor a padded route cannot go below.
+    direct_minutes: Optional[float] = None
+    # True when every route came from the simulator.
+    simulated: bool = False
+    # Plain-language explanation when the answer is not what was asked for:
+    # target below the direct drive, nothing suitable found, fewer than three.
+    notice: Optional[str] = None
     candidates_evaluated: int
 
 

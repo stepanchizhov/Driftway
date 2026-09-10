@@ -22,6 +22,28 @@ curl -X POST localhost:8000/api/generate -H "Content-Type: application/json" \
   -d '{"start":{"lat":53.279,"lng":-2.897},"target_minutes":30,"road_profile":"mixed"}'
 ```
 
+## Route modes
+
+Two shapes of request, both through `POST /api/generate`:
+
+- **Round trip** — `finish` equals `start` (or is omitted). Returns loops.
+- **Go somewhere** — `finish` is a different place. `target_minutes` is the
+  **total** journey time, not extra time on top of the direct route. The direct
+  drive is measured first and acts as a floor: ask for less than it takes and
+  the response explains why and returns the direct route with `is_direct: true`.
+
+The server decides the mode from the coordinates; the optional `mode` field in
+the request is advisory and only appears in the logs when the two disagree.
+
+See `docs/ROUTE_MODES.md` for the full behaviour.
+
+## Address search
+
+`GET /api/search?q=...&lat=...&lng=...` proxies TomTom Fuzzy Search so the API
+key stays on the server. Set `SEARCH_PROVIDER` to override `ROUTING_PROVIDER`
+for search alone. With no key it falls back to a handful of built-in sample
+places so the picker still works offline.
+
 ## Switch to real TomTom routing
 
 1. Get a free key at https://developer.tomtom.com (Freemium: 2,500 free
@@ -32,6 +54,11 @@ curl -X POST localhost:8000/api/generate -H "Content-Type: application/json" \
    TOMTOM_API_KEY=your_key_here
    ```
 3. Restart. No code changes needed.
+
+**Note:** with `ROUTING_PROVIDER=mock` every route is marked `simulated` and
+carries an empty `maps_url` — simulated geometry is never handed to a
+navigation app. The pipeline runs end to end, but you need a real key to
+exercise the Google Maps export.
 
 ## Deploy to Render
 

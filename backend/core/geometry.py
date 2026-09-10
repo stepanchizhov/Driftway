@@ -86,8 +86,11 @@ PROFILE_SPEED_KPH = {
 
 # Fraction of "ideal straight-line distance" that becomes anchor radius.
 # A loop's road distance is much larger than the start->anchor radius, so
-# this factor is small. Seed value only; the rescale step does the real work.
-LOOP_RADIUS_FACTOR = 0.28
+# this factor is small. Seed value only; the refine step does the real work.
+# Measured against TomTom, 0.28 seeded loops roughly 3x too long, which cost
+# the refiner passes it needed for accuracy. Starting low and growing is also
+# cheaper: short loops fail to route far less often than sprawling ones.
+LOOP_RADIUS_FACTOR = 0.10
 
 
 def estimate_radius_km(target_minutes: int, profile: str) -> float:
@@ -140,3 +143,61 @@ def initial_bearing(a: Coord, b: Coord) -> float:
     y = math.sin(dlng) * math.cos(lat2)
     x = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlng)
     return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+# --------------------------------------------------------------------------
+# Projecting points onto a driven path
+# --------------------------------------------------------------------------
+
+def _local_xy(origin: Coord, p: Coord) -> tuple:
+    """Point `p` in km east/north of `origin`.
+
+    An equirectangular projection centred on the point we care about. Over the
+    few hundred metres involved in snapping, the distortion is millimetres.
+    """
+    lat0 = math.radians(origin.lat)
+    x = math.radians(p.lng - origin.lng) * math.cos(lat0) * EARTH_RADIUS_KM
+    y = math.radians(p.lat - origin.lat) * EARTH_RADIUS_KM
+    return x, y
+
+
+def _from_local_xy(origin: Coord, x: float, y: float) -> Coord:
+    lat0 = math.radians(origin.lat)
+    lat = origin.lat + math.degrees(y / EARTH_RADIUS_KM)
+    lng = origin.lng + math.degrees(x / (EARTH_RADIUS_KM * math.cos(lat0)))
+    return Coord(lat=lat, lng=lng)
+
+
+def nearest_point_on_path(point: Coord, path: List[Coord]) -> Coord:
+    """The closest point to `point` that lies on the polyline `path`.
+
+    Used to move a candidate anchor from wherever the geometry put it - a
+    field, the far bank of a river, the wrong deck of a flyover - onto the
+    road the car is actually going to drive. The handoff to Google then names
+    a place on the route rather than a place near it.
+    """
+    if not path:
+        return point
+    if len(path) == 1:
+        return path[0]
+
+    best_xy = None
+    best_d2 = float("inf")
+    for a, b in zip(path, path[1:]):
+        ax, ay = _local_xy(point, a)
+        bx, by = _local_xy(point, b)
+        dx, dy = bx - ax, by - ay
+        seg_len2 = dx * dx + dy * dy
+        if seg_len2 <= 1e-12:
+            t = 0.0
+        else:
+            # `point` sits at the origin, so the projection parameter is
+            # -(A . AB) / |AB|^2, clamped to stay on the segment.
+            t = max(0.0, min(1.0, -(ax * dx + ay * dy) / seg_len2))
+        px, py = ax + t * dx, ay + t * dy
+        d2 = px * px + py * py
+        if d2 < best_d2:
+            best_d2 = d2
+            best_xy = (px, py)
+
+    return _from_local_xy(point, best_xy[0], best_xy[1])

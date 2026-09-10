@@ -13,6 +13,8 @@ interface Props {
   onSave?: (route: RouteOption) => void;
   saved?: boolean;
   units?: Units;
+  /** Destination mode shows time against the direct drive, not a loop delta. */
+  destination?: boolean;
 }
 
 function deltaLabel(delta: number): { text: string; tone: string } {
@@ -22,10 +24,20 @@ function deltaLabel(delta: number): { text: string; tone: string } {
   return { text: `${Math.abs(rounded)} min under`, tone: "neutral" };
 }
 
-export function RouteCard({ route, start, rank, onStart, started, onSave, saved, units = "km" }: Props) {
+export function RouteCard({
+  route, start, rank, onStart, started, onSave, saved,
+  units = "km", destination = false,
+}: Props) {
   const minutes = Math.round(route.predicted_minutes);
   const distance = formatDistance(route.distance_km, units);
   const delta = deltaLabel(route.delta_minutes);
+  // A simulated route is a demo of what the app would do. It has no real
+  // geometry, so there is nothing to hand to a navigation app.
+  const navigable = !route.simulated && !!route.maps_url;
+  const extra =
+    destination && route.extra_minutes != null
+      ? Math.round(route.extra_minutes)
+      : null;
 
   return (
     <article className={`card${started ? " card-started" : ""}`}>
@@ -36,7 +48,15 @@ export function RouteCard({ route, start, rank, onStart, started, onSave, saved,
             <span className="card-min-unit">min</span>
           </div>
           <div className="card-meta">
-            <span className={`tag tag-${delta.tone}`}>{delta.text}</span>
+            {route.is_direct ? (
+              <span className="tag tag-neutral">quickest way</span>
+            ) : (
+              <span className={`tag tag-${delta.tone}`}>{delta.text}</span>
+            )}
+            {extra != null && extra > 0 && (
+              <span className="tag tag-neutral">+{extra} min vs direct</span>
+            )}
+            {route.simulated && <span className="tag tag-demo">demo only</span>}
             <span className="card-distance">{distance}</span>
           </div>
         </div>
@@ -57,16 +77,26 @@ export function RouteCard({ route, start, rank, onStart, started, onSave, saved,
             geometry={route.geometry}
             size={72}
             ring
+            showFinish={destination}
           />
         </div>
       </div>
 
       <p className="card-character">{route.character}</p>
 
-      <button className="btn-start" onClick={() => onStart(route)}>
-        {started ? "Reopen in Google Maps" : "Start in Google Maps"}
-        <span className="btn-start-rank">Option {rank}</span>
-      </button>
+      {route.caveat && <p className="card-caveat">Note: {route.caveat}</p>}
+
+      {navigable ? (
+        <button className="btn-start" onClick={() => onStart(route)}>
+          {started ? "Reopen in Google Maps" : "Start in Google Maps"}
+          <span className="btn-start-rank">Option {rank}</span>
+        </button>
+      ) : (
+        <div className="btn-start btn-start-off" aria-disabled="true">
+          Simulated route — not drivable
+          <span className="btn-start-rank">Demo {rank}</span>
+        </div>
+      )}
     </article>
   );
 }
