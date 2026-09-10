@@ -62,9 +62,22 @@ exercise the Google Maps export.
 
 ## Deploy to Render
 
-Push to GitHub, then in Render: **New > Blueprint** and select the repo
-(uses `render.yaml`). Set `TOMTOM_API_KEY` in the dashboard, and update
-`ALLOWED_ORIGINS` to your PWA's URL once the frontend is deployed.
+Full step-by-step: **`docs/DEPLOY.md`**. `render.yaml` is the equivalent
+blueprint.
+
+Three things bite most often:
+
+- `ROUTING_PROVIDER` must be `tomtom` in production. On `mock` every route is
+  a simulated demo with no Google Maps link.
+- `ALLOWED_ORIGINS` must contain the deployed frontend's exact origin.
+- `VITE_API_BASE` must be set on the static site *before* it builds — Vite
+  compiles it into the bundle.
+
+Free Postgres expires 30 days after creation. When it does, either repoint
+`DATABASE_URL` at a new instance or delete the variable: with no
+`DATABASE_URL` the API falls back to SQLite and keeps serving routes and
+search. It will not crash-loop on an unreachable database - `/api/health`
+reports `storage` separately from `status`.
 
 ## Structure
 

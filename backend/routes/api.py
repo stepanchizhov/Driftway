@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from core.db import Favourite, Feedback, get_session
+from core.db import Favourite, Feedback, get_session, storage_available
 from core.generator import generate_routes
 from core.models import (
     Coord,
@@ -24,6 +24,19 @@ from core.search import SearchUnavailable, get_search
 log = logging.getLogger("driftway")
 
 router = APIRouter()
+
+
+def _require_storage() -> None:
+    """Guard the endpoints that genuinely need a database.
+
+    503, not 500: the API is healthy, storage is not, and the client should be
+    told the difference so it can degrade instead of showing a crash.
+    """
+    if not storage_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Saving is unavailable right now. Routes still work.",
+        )
 
 
 @router.post("/generate", response_model=GenerateResponse)
@@ -70,6 +83,7 @@ async def search(
 @router.post("/feedback")
 def feedback(fb: FeedbackRequest, session: Session = Depends(get_session)):
     # Persist to the database (SQLite locally, Postgres on Render).
+    _require_storage()
     row = Feedback(
         owner=fb.owner,
         route_id=fb.route_id,
@@ -87,7 +101,15 @@ def feedback(fb: FeedbackRequest, session: Session = Depends(get_session)):
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "provider": get_router().name}
+    # Storage is reported separately from overall health on purpose: the API
+    # is genuinely usable without it, and a crash-looping service tells you
+    # far less than one that says which part is down.
+    return {
+        "status": "ok",
+        "provider": get_router().name,
+        "search": get_search().name,
+        "storage": "ok" if storage_available() else "unavailable",
+    }
 
 
 def _fav_out(f: Favourite) -> FavouriteOut:
@@ -106,6 +128,7 @@ def _fav_out(f: Favourite) -> FavouriteOut:
 
 @router.post("/favourites", response_model=FavouriteOut)
 def create_favourite(fav: FavouriteCreate, session: Session = Depends(get_session)):
+    _require_storage()
     row = Favourite(
         owner=fav.owner,
         label=fav.label,
@@ -124,6 +147,7 @@ def create_favourite(fav: FavouriteCreate, session: Session = Depends(get_sessio
 
 @router.get("/favourites", response_model=list[FavouriteOut])
 def list_favourites(owner: str, session: Session = Depends(get_session)):
+    _require_storage()
     rows = (
         session.query(Favourite)
         .filter(Favourite.owner == owner)
@@ -137,6 +161,7 @@ def list_favourites(owner: str, session: Session = Depends(get_session)):
 def delete_favourite(
     fav_id: str, owner: str, session: Session = Depends(get_session)
 ):
+    _require_storage()
     row = (
         session.query(Favourite)
         .filter(Favourite.id == fav_id, Favourite.owner == owner)

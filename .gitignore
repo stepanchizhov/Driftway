@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local databases
+*.db
+
+# OS
+Thumbs.db
+.DS_Store

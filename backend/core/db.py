@@ -13,9 +13,12 @@ tool (Alembic) is a LATER concern, fine to skip while the schema is young.
 
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
+
+log = logging.getLogger("driftway")
 
 from sqlalchemy import Boolean, DateTime, Float, String, Text, create_engine
 from sqlalchemy.orm import (
@@ -49,12 +52,33 @@ IS_SQLITE = DATABASE_URL.startswith("sqlite")
 # endpoints). pool_pre_ping quietly reconnects dropped Postgres connections,
 # which matters on Render where idle connections get closed.
 _connect_args = {"check_same_thread": False} if IS_SQLITE else {}
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-    connect_args=_connect_args,
-    future=True,
-)
+
+# create_engine does not connect - it only builds the engine and imports the
+# driver - but it still raises if the URL is malformed or the driver is
+# missing, and this runs at import time. Falling back to SQLite keeps the API
+# importable so routing and search survive a storage misconfiguration.
+try:
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        connect_args=_connect_args,
+        future=True,
+    )
+except Exception as e:  # noqa: BLE001 - bad URL, missing driver, anything
+    log.error(
+        "could not build a database engine for the configured DATABASE_URL "
+        "(%s: %s); falling back to a local SQLite file",
+        type(e).__name__,
+        e,
+    )
+    DATABASE_URL = "sqlite:///./driftway.db"
+    IS_SQLITE = True
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        connect_args={"check_same_thread": False},
+        future=True,
+    )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
@@ -125,9 +149,39 @@ class Favourite(Base):
 
 # ---------------------------------------------------------------- lifecycle
 
+# Whether storage answered at startup. Favourites and feedback need it;
+# routing and search do not.
+_storage_ready = False
+
+
+def storage_available() -> bool:
+    return _storage_ready
+
+
 def init_db() -> None:
-    """Create tables if they don't exist. Safe to call on every startup."""
-    Base.metadata.create_all(engine)
+    """Create tables if they don't exist. Safe to call on every startup.
+
+    Never raises. A database that is unreachable - expired free instance,
+    wrong region, DNS not resolving - must not take the whole API down with
+    it. The project bible is explicit that loops, detours and the drive home
+    work with zero stored travel data; only the convenience features need
+    storage. Crashing the process on a storage fault would break the core
+    promise to protect a feature nobody is using at that moment.
+    """
+    global _storage_ready
+    try:
+        Base.metadata.create_all(engine)
+        _storage_ready = True
+    except Exception as e:  # noqa: BLE001 - any driver/network fault counts
+        _storage_ready = False
+        log.error(
+            "storage unavailable (%s: %s). Routing and search will work; "
+            "favourites and feedback are disabled until the database is "
+            "reachable. Check DATABASE_URL and that the database still exists "
+            "- Render free Postgres instances expire.",
+            type(e).__name__,
+            e,
+        )
 
 
 def get_session():

@@ -1,18 +1,64 @@
-# Render Blueprint for the Driftway backend.
-# In the Render dashboard: New > Blueprint, point it at this repo.
+# Render Blueprint for Driftway.
+#
+# Reference configuration. If you already have services in the dashboard,
+# prefer editing them there - applying a blueprint over existing services can
+# create duplicates. See docs/DEPLOY.md for the click-by-click version.
+#
+# The database and both services must sit in the SAME REGION, or the internal
+# hostname will not resolve and the API cannot reach Postgres.
+
+databases:
+  - name: driftway-db
+    plan: free            # expires 30 days after creation - see docs/DEPLOY.md
+    region: oregon
+
 services:
+  # ---------------------------------------------------------------- backend
   - type: web
-    name: driftway-api
+    name: Driftway
     runtime: python
+    region: oregon
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
+
+      # Wired automatically so the URL can never drift from the database.
+      # If this database is ever deleted, remove the variable rather than
+      # leaving it pointing at a dead host: with no DATABASE_URL the API
+      # falls back to local SQLite and still serves routes and search.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: driftway-db
+          property: connectionString
+
+      # "mock" means every route is returned as a SIMULATED demo with no
+      # Google Maps link. Correct for a keyless environment, useless in
+      # production - keep this as "tomtom" on any deployed service.
       - key: ROUTING_PROVIDER
-        value: mock            # change to "tomtom" once you add the key
+        value: tomtom
+
       - key: TOMTOM_API_KEY
-        sync: false            # set this in the dashboard, never commit it
+        sync: false            # set in the dashboard, never commit it
+
+      # Must list the deployed frontend's origin or the browser blocks every
+      # call. Update after the static site's URL is known.
       - key: ALLOWED_ORIGINS
-        value: http://localhost:5173
+        sync: false
+
+  # --------------------------------------------------------------- frontend
+  - type: web
+    name: Driftway-Front
+    runtime: static
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      # Without this the built bundle calls same-origin /api, which on a
+      # static site is nothing at all. There is no dev proxy in production.
+      - key: VITE_API_BASE
+        sync: false            # set to the backend's URL, no trailing slash
