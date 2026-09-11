@@ -49,6 +49,9 @@ class GenerateRequest(BaseModel):
     # client calls it. Sending it lets the client's intent appear in the logs
     # when the two disagree.
     mode: Optional[RouteMode] = None
+    # Which navigation app the parent prefers. Advisory: a preference is never
+    # honoured at the cost of dropping the route's shaping waypoints.
+    preferred_navigation: Optional[str] = None
 
 
 class RoadMix(BaseModel):
@@ -56,6 +59,22 @@ class RoadMix(BaseModel):
     primary: float = 0.0      # A-roads / major
     secondary: float = 0.0    # B-roads
     residential: float = 0.0
+
+
+class NavigationOption(BaseModel):
+    """One navigation app, and whether it can carry this particular route."""
+
+    provider_id: str
+    label: str
+    url: str
+    # False when the app would drop the shaping waypoints and drive something
+    # different. Never hidden from the client - see navigation.py.
+    preserves_route: bool = True
+    dropped_waypoints: int = 0
+    # Empty means "anywhere"; otherwise the platforms it makes sense on.
+    platforms: List[str] = []
+    # Plain-language explanation when the route would not survive.
+    notice: Optional[str] = None
 
 
 class RouteOption(BaseModel):
@@ -83,6 +102,11 @@ class RouteOption(BaseModel):
     # Set when the route was returned despite missing a quality preference,
     # e.g. "outside your tolerance" or "doubles back once".
     caveat: Optional[str] = None
+
+    # Every app that could drive this, best first. Empty for a simulated
+    # route, which has nothing real to navigate. `maps_url` above remains the
+    # Google Maps link so existing clients keep working unchanged.
+    navigation: List[NavigationOption] = []
 
 
 class Place(BaseModel):

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Coord } from "../types";
+import { isRecentEnough } from "../lib/stillAsleepConfig";
 
 /**
  * The last destination the parent looked at, held on the device.
@@ -27,15 +28,14 @@ const KEY = "driftway.recentDestination.v1";
 /**
  * How long a remembered destination stays on offer.
  *
- * HYPOTHESIS. Long enough to cover a routine ("swimming on Tuesdays"), short
- * enough that the app is not still suggesting a holiday cottage in March.
- * Tune from real use.
+ * The window lives in lib/stillAsleepConfig so it can be tuned without
+ * touching this hook. It was seven days; Bible v0.4 supersedes that with
+ * roughly six hours, because Still Asleep is about the outing you are
+ * currently on, not somewhere you looked at last week.
  */
-export const RECENT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-
 export function isFresh(dest: RecentDestination | null, now = Date.now()): boolean {
   if (!dest) return false;
-  return now - dest.savedAt <= RECENT_MAX_AGE_MS;
+  return isRecentEnough(dest.savedAt, { now });
 }
 
 function load(): RecentDestination | null {

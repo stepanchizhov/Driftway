@@ -3,6 +3,7 @@ import type {
   Coord,
   Direction,
   GenerateResponse,
+  NavigationOption,
   RoadProfile,
   RouteMode,
   RouteOption,
@@ -17,15 +18,31 @@ import { ChipGroup } from "./components/ChipGroup";
 import { RouteCard } from "./components/RouteCard";
 import { SafetyNote } from "./components/SafetyNote";
 import { Feedback } from "./components/Feedback";
-import { QuickDrive } from "./components/QuickDrive";
-import type { QuickTarget } from "./components/QuickDrive";
 import { Favourites } from "./components/Favourites";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { PlaceSearch } from "./components/PlaceSearch";
 import { MeetHalfway } from "./meetup/MeetHalfway";
+import { StillAsleep } from "./components/StillAsleep";
+import { useStillAsleepTargets } from "./hooks/useStillAsleepTargets";
 import { meetHalfwayEnabled } from "./meetup/api";
 import type { Endpoint } from "./components/PlaceSearch";
 
+/**
+ * Three top-level jobs, per Bible v0.4 section 6. Still Asleep lands first
+ * because it is the most time-sensitive: a parent reaching for the phone with
+ * a sleeping child should not have to navigate to the urgent thing.
+ *
+ * Round trip and Go somewhere deliberately do NOT get their own tabs. They are
+ * different route primitives but share controls and mental context, so they
+ * stay as a segmented choice inside Plan a drive.
+ */
+type Tab = "stillasleep" | "plan" | "meetup";
+
+/**
+ * Where the Plan tab is in its own flow, plus the two secondary surfaces.
+ * Saved places and Settings are secondary actions rather than top-level
+ * destinations, so they overlay whichever tab is open.
+ */
 type Screen =
   | { name: "plan" }
   | { name: "loading" }
@@ -38,8 +55,7 @@ type Screen =
       toLabel: string;
     }
   | { name: "favourites" }
-  | { name: "settings" }
-  | { name: "meethalfway" };
+  | { name: "settings" };
 
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60, 90];
 
@@ -65,15 +81,16 @@ const DIRECTION_OPTS: { value: Direction; label: string }[] = [
 export default function App() {
   const { state: geo, locate } = useGeolocation();
   const { settings, update } = useSettings();
-  const { defaultPlace, saveHome } = usePlaces();
+  const { places, defaultPlace, saveHome } = usePlaces();
   const { recent, remember } = useRecentDestination();
   const owner = useOwner();
 
-  // A meetup link should open the meetup, not the planner. Checked once, from
-  // the URL, before anything else renders.
-  const [screen, setScreen] = useState<Screen>(() =>
-    hasMeetupLink() ? { name: "meethalfway" } : { name: "plan" },
+  // A meetup link opens the meetup directly. Checked once, from the URL,
+  // before anything renders, so a shared link never lands on the wrong job.
+  const [tab, setTab] = useState<Tab>(() =>
+    hasMeetupLink() ? "meetup" : "stillasleep",
   );
+  const [screen, setScreen] = useState<Screen>({ name: "plan" });
   const [meetupAvailable, setMeetupAvailable] = useState(false);
   const [mode, setMode] = useState<RouteMode>("loop");
   const [duration, setDuration] = useState<number>(settings.lastDuration);
@@ -120,34 +137,9 @@ export default function App() {
     }
   }, [toEndpoint?.coord.lat, toEndpoint?.coord.lng, toEndpoint?.label, remember]);
 
-  // One-tap destinations: the place they last chose, then Home. Most specific
-  // intent first, and never the same place listed twice.
-  const quickTargets: QuickTarget[] = useMemo(() => {
-    const out: QuickTarget[] = [];
-    if (recent) {
-      out.push({
-        id: "recent",
-        label: recent.label,
-        coord: { lat: recent.lat, lng: recent.lng },
-        kind: "recent",
-      });
-    }
-    if (defaultPlace) {
-      const sameAsRecent =
-        recent &&
-        Math.abs(recent.lat - defaultPlace.lat) < 1e-6 &&
-        Math.abs(recent.lng - defaultPlace.lng) < 1e-6;
-      if (!sameAsRecent) {
-        out.push({
-          id: "home",
-          label: defaultPlace.label || "Home",
-          coord: { lat: defaultPlace.lat, lng: defaultPlace.lng },
-          kind: "home",
-        });
-      }
-    }
-    return out;
-  }, [recent?.lat, recent?.lng, recent?.label, defaultPlace]);
+  // Saved places first, a genuinely recent search appended - never the
+  // other way round. See useStillAsleepTargets.
+  const stillAsleepTargets = useStillAsleepTargets(places, recent);
 
   const currentEndpoint: Endpoint | null = useMemo(
     () =>
@@ -216,6 +208,7 @@ export default function App() {
         road_profile: profile,
         direction,
         mode,
+        preferred_navigation: settings.preferredNavigation,
       });
       setScreen({
         name: "results",
@@ -245,13 +238,16 @@ export default function App() {
     void runGenerate(screen.data.target_minutes + extraMinutes);
   }
 
-  function onStartRoute(route: RouteOption) {
+  function onStartRoute(route: RouteOption, via?: NavigationOption) {
     // A simulated route has no maps_url and must never reach a navigation app.
     if (!route.maps_url) return;
+    // Prefer the option the card resolved: it already accounts for whether the
+    // parent's chosen app can carry this route's shaping points.
+    const url = via?.url ?? route.maps_url;
     // Open Google Maps (new tab / the Maps app on a phone) but STAY on the
     // results screen so the other two routes remain available to compare.
     // The inline feedback prompt appears under the chosen route.
-    window.open(route.maps_url, "_blank", "noopener");
+    window.open(url, "_blank", "noopener");
     setStartedId(route.id);
   }
 
@@ -274,22 +270,20 @@ export default function App() {
     if (geo.status === "ready") saveHome(geo.coord);
   }
 
+  const isSecondary = screen.name === "favourites" || screen.name === "settings";
+
   return (
-    <div className="app">
+    <div className={`app${isSecondary ? "" : " app-tabbed"}`}>
       <header className="masthead">
         <div className="wordmark">
           <span className="wordmark-drift">drift</span>
           <span className="wordmark-way">way</span>
         </div>
-        {screen.name !== "plan" && (
-          <button
-            className="btn-back"
-            onClick={() => setScreen({ name: "plan" })}
-          >
-            ← Plan
+        {isSecondary ? (
+          <button className="btn-back" onClick={() => setScreen({ name: "plan" })}>
+            ← Back
           </button>
-        )}
-        {screen.name === "plan" && (
+        ) : (
           <div className="masthead-actions">
             <button
               className="btn-back"
@@ -308,7 +302,18 @@ export default function App() {
         )}
       </header>
 
-      {screen.name === "plan" && (
+      {tab === "stillasleep" && !isSecondary && (
+        <StillAsleep
+          current={liveCoord}
+          targets={stillAsleepTargets}
+          profile={settings.quickDriveProfile}
+          tolerance={tolerance}
+          onOpenPreferences={() => setScreen({ name: "settings" })}
+          onRetryLocation={locate}
+        />
+      )}
+
+      {tab === "plan" && screen.name === "plan" && (
         <main className="plan">
           <p className="tagline">
             Pick how long you want to drive. We'll make a smooth loop and bring
@@ -367,12 +372,6 @@ export default function App() {
             </p>
           )}
 
-          <QuickDrive
-            current={liveCoord}
-            targets={quickTargets}
-            profile={settings.quickDriveProfile}
-          />
-
           <div className="duration-hero">
             <div className="duration-ring">
               <span className="duration-num">{duration}</span>
@@ -426,27 +425,18 @@ export default function App() {
             {generateLabel(mode, start, toEndpoint)}
           </button>
 
-          {meetupAvailable && (
-            <button
-              className="btn-secondary"
-              onClick={() => setScreen({ name: "meethalfway" })}
-            >
-              Meet another parent halfway
-            </button>
-          )}
-
           <SafetyNote />
         </main>
       )}
 
-      {screen.name === "loading" && (
+      {tab === "plan" && screen.name === "loading" && (
         <main className="loading">
           <div className="loading-ring" />
           <p>Shaping {duration}-minute loops…</p>
         </main>
       )}
 
-      {screen.name === "results" && (
+      {tab === "plan" && screen.name === "results" && (
         <main className="results">
           <p className="results-head">
             {resultsHeadline(screen.data, screen.fromLabel, screen.toLabel)}
@@ -480,6 +470,7 @@ export default function App() {
                 saved={savedIds.has(r.id)}
                 units={settings.units}
                 destination={screen.data.mode === "destination"}
+                preferredNavigation={settings.preferredNavigation}
               />
               {startedId === r.id && (
                 <Feedback
@@ -521,7 +512,24 @@ export default function App() {
         <SettingsScreen settings={settings} update={update} />
       )}
 
-      {screen.name === "meethalfway" && (
+      {/* Persistent job switcher. Hidden on the secondary surfaces so their
+          own Back control is unambiguous. */}
+      {!isSecondary && (
+        <nav className="tabbar" aria-label="Main">
+          <TabButton
+            id="stillasleep"
+            label="Still asleep"
+            active={tab}
+            onSelect={setTab}
+          />
+          <TabButton id="plan" label="Plan a drive" active={tab} onSelect={setTab} />
+          {meetupAvailable && (
+            <TabButton id="meetup" label="Meet up" active={tab} onSelect={setTab} />
+          )}
+        </nav>
+      )}
+
+      {tab === "meetup" && !isSecondary && (
         <MeetHalfway
           currentLocation={liveCoord}
           home={homeEndpoint}
@@ -529,11 +537,34 @@ export default function App() {
             // Clear the meetup query string so a reload does not bounce
             // straight back into it.
             window.history.replaceState(null, "", window.location.pathname);
-            setScreen({ name: "plan" });
+            setTab("stillasleep");
           }}
         />
       )}
     </div>
+  );
+}
+
+function TabButton({
+  id,
+  label,
+  active,
+  onSelect,
+}: {
+  id: Tab;
+  label: string;
+  active: Tab;
+  onSelect: (t: Tab) => void;
+}) {
+  const on = id === active;
+  return (
+    <button
+      className={`tabbtn${on ? " tabbtn-on" : ""}`}
+      aria-current={on ? "page" : undefined}
+      onClick={() => onSelect(id)}
+    >
+      {label}
+    </button>
   );
 }
 

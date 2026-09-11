@@ -41,10 +41,12 @@ from .detour import (
     estimate_bulge_km,
     rescale_detour,
 )
+from .navigation import build_options
 from .models import (
     Coord,
     GenerateRequest,
     GenerateResponse,
+    NavigationOption,
     RouteMode,
     RouteOption,
 )
@@ -296,7 +298,8 @@ _DEMOTE = {"high": "medium", "medium": "low", "low": "low"}
 def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
                   req: GenerateRequest, profile: str, simulated: bool,
                   direct: Optional[EvaluatedRoute],
-                  is_direct: bool = False) -> RouteOption:
+                  is_direct: bool = False,
+                  preferred_nav: Optional[str] = None) -> RouteOption:
     """Turn an evaluated route into the shape the app renders."""
     # Duration accuracy sets the confidence, since that is the promise on the
     # button. Tripping a quality rule costs one step rather than forcing "low":
@@ -331,6 +334,12 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         # the fallback is triggered.
         maps_url="" if simulated else google_maps_url(start, finish, anchors),
         confidence=confidence,
+        navigation=build_options(
+            start, finish, anchors,
+            is_loop=haversine_km(start, finish) < 0.1,
+            simulated=simulated,
+            preferred_id=preferred_nav,
+        ),
         extra_minutes=extra,
         is_direct=is_direct,
         simulated=simulated,
@@ -366,7 +375,8 @@ def _direct_only_response(req: GenerateRequest, start: Coord, finish: Coord,
     is nothing to pad. Say the real number and offer that route.
     """
     option = _build_option(direct, start, finish, req, req.road_profile.value,
-                           simulated=False, direct=direct, is_direct=True)
+                           simulated=False, direct=direct, is_direct=True,
+                           preferred_nav=req.preferred_navigation)
     return GenerateResponse(
         routes=[option],
         target_minutes=req.target_minutes,
@@ -501,7 +511,8 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
     )
 
     options = [
-        _build_option(ev, start, finish, req, profile, simulated, direct)
+        _build_option(ev, start, finish, req, profile, simulated, direct,
+                      preferred_nav=req.preferred_navigation)
         for ev in top
     ]
 

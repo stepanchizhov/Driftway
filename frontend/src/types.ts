@@ -48,6 +48,8 @@ export interface GenerateRequest {
   road_profile: RoadProfile;
   direction: Direction;
   mode?: RouteMode;
+  /** Advisory: never honoured at the cost of the route's shaping points. */
+  preferred_navigation?: string | null;
 }
 
 export interface RoadMix {
@@ -55,6 +57,19 @@ export interface RoadMix {
   primary: number;
   secondary: number;
   residential: number;
+}
+
+/** One navigation app, and whether it can carry this particular route. */
+export interface NavigationOption {
+  provider_id: string;
+  label: string;
+  url: string;
+  /** False when the app would drop the shaping waypoints. */
+  preserves_route: boolean;
+  dropped_waypoints: number;
+  /** Empty means anywhere; otherwise the platforms it suits. */
+  platforms: string[];
+  notice?: string | null;
 }
 
 export interface RouteOption {
@@ -78,6 +93,8 @@ export interface RouteOption {
   simulated: boolean;
   /** Which quality preference this route misses, if any. */
   caveat?: string | null;
+  /** Apps that could drive this, best first. Empty when simulated. */
+  navigation: NavigationOption[];
 }
 
 export interface GenerateResponse {

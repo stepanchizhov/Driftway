@@ -1421,3 +1421,238 @@ body {
 }
 
 .mhc-choose:active { background: var(--accent-press); }
+
+/* ============================================================
+   Three-job shell — Still asleep / Plan a drive / Meet up.
+   Bottom navigation because these are peer jobs reached
+   one-handed, not a hierarchy to drill into.
+   ============================================================ */
+
+/* Room for the fixed bar, plus the phone's own home indicator. */
+.app-tabbed {
+  padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+}
+
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 2px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+}
+
+.tabbtn {
+  flex: 1 1 0;
+  background: none;
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 0.8rem;
+  /* Comfortably past the 44px minimum: this is tapped one-handed, often in
+     a hurry, sometimes in the dark. */
+  padding: 12px 6px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.tabbtn-on {
+  background: var(--surface-2);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- Still asleep: the urgent surface ------------------------ */
+
+.sa {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 8px;
+}
+
+.sa-head { display: flex; flex-direction: column; gap: 4px; }
+
+.sa-title {
+  font-family: var(--display);
+  font-size: 1.7rem;
+  margin: 0;
+}
+
+.sa-sub { margin: 0; color: var(--ink-dim); font-size: 0.95rem; }
+
+.sa-safety {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-dim);
+  border-left: 2px solid var(--line);
+  padding-left: 10px;
+}
+
+.sa-block { display: flex; flex-direction: column; gap: 10px; }
+
+.sa-legend {
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.sa-targets { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.sa-target {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font: inherit;
+  padding: 12px 15px;
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.sa-target-on { border-color: var(--accent); color: var(--accent); }
+.sa-target-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* A recent search is marked so it is never mistaken for a place the parent
+   deliberately saved. */
+.sa-target-kind {
+  flex: none;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.sa-choose {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 4px 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sa-chosen {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.92rem;
+}
+
+.sa-durations { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.sa-duration {
+  flex: 1 1 70px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 1.3rem;
+  padding: 12px 8px;
+  cursor: pointer;
+}
+
+.sa-duration-on { border-color: var(--accent); color: var(--accent); }
+
+.sa-duration-unit {
+  font-family: var(--body);
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}
+
+.sa-duration-on .sa-duration-unit { color: var(--accent); }
+
+.sa-hint { margin: 0; font-size: 0.82rem; color: var(--ink-dim); }
+
+.sa-note {
+  margin: 0;
+  font-size: 0.88rem;
+  border-left: 3px solid var(--accent);
+  padding-left: 11px;
+}
+
+.sa-error {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--danger);
+  border-left: 3px solid var(--danger);
+  padding-left: 11px;
+}
+
+/* Advanced controls live behind this, rather than crowding the urgent view. */
+.sa-prefs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 12px 15px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.sa-prefs-now { color: var(--ink); }
+
+/* --- settings: navigation app + shared option rows ----------- */
+
+.set-block { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+
+.set-legend {
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.set-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.set-opt {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.set-opt-on { border-color: var(--accent); color: var(--accent); }
+
+.set-hint { margin: 0; font-size: 0.82rem; color: var(--ink-dim); }
+
+/* Shown when the parent's chosen app cannot carry this particular route.
+   Amber rather than red: it is a limitation to work around, not a fault. */
+.card-nav-notice {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--warn);
+  border-left: 2px solid var(--warn);
+  padding-left: 10px;
+}

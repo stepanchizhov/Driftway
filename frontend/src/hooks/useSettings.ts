@@ -8,6 +8,8 @@ import type { Coord, RoadProfile } from "../types";
 export type Units = "km" | "mi";
 
 export interface Settings {
+  /** Navigation app to prefer when it can carry the route. */
+  preferredNavigation: string;
   home: Coord | null;          // legacy; places now live in usePlaces
   lastDuration: number;
   lastProfile: RoadProfile;
@@ -17,6 +19,7 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
+  preferredNavigation: "google_maps",
   home: null,
   lastDuration: 30,
   lastProfile: "mixed",

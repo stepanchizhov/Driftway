@@ -16,6 +16,12 @@ const PROFILE_OPTS: { value: RoadProfile; label: string }[] = [
 // Settings + a short About/roadmap section. Kept on one screen so it's easy to
 // reach and not over-built. Light/dark theme is deliberately deferred to a
 // later version (the app is designed for the night-drive dark mood).
+const NAV_APPS = [
+  { id: "google_maps", label: "Google Maps" },
+  { id: "waze", label: "Waze" },
+  { id: "apple_maps", label: "Apple Maps" },
+];
+
 export function SettingsScreen({ settings, update }: Props) {
   return (
     <main className="settings">
@@ -73,6 +79,29 @@ export function SettingsScreen({ settings, update }: Props) {
           get better.
         </p>
       </div>
+
+      <section className="set-block">
+        <span className="set-legend">Navigation app</span>
+        <div className="set-row">
+          {NAV_APPS.map((app) => (
+            <button
+              key={app.id}
+              className={`set-opt${
+                settings.preferredNavigation === app.id ? " set-opt-on" : ""
+              }`}
+              aria-pressed={settings.preferredNavigation === app.id}
+              onClick={() => update({ preferredNavigation: app.id })}
+            >
+              {app.label}
+            </button>
+          ))}
+        </div>
+        <p className="set-hint">
+          Used when it can follow the whole route. Shaped nap routes need
+          waypoints, which only Google Maps accepts from a link — we&rsquo;ll
+          say so rather than quietly drive you somewhere shorter.
+        </p>
+      </section>
     </main>
   );
 }

@@ -1,4 +1,4 @@
-import type { Coord, RouteOption } from "../types";
+import type { Coord, NavigationOption, RouteOption } from "../types";
 import type { Units } from "../hooks/useSettings";
 import { formatDistance } from "../lib/units";
 import { LoopMark } from "./LoopMark";
@@ -8,13 +8,16 @@ interface Props {
   start: Coord;
   rank: number;
   targetMinutes: number;
-  onStart: (route: RouteOption) => void;
+  onStart: (route: RouteOption, via?: NavigationOption) => void;
   started?: boolean;
   onSave?: (route: RouteOption) => void;
   saved?: boolean;
   units?: Units;
   /** Destination mode shows time against the direct drive, not a loop delta. */
   destination?: boolean;
+  /** The parent's chosen navigation app, honoured only when it can carry
+   *  the route intact. */
+  preferredNavigation?: string;
 }
 
 function deltaLabel(delta: number): { text: string; tone: string } {
@@ -26,7 +29,7 @@ function deltaLabel(delta: number): { text: string; tone: string } {
 
 export function RouteCard({
   route, start, rank, onStart, started, onSave, saved,
-  units = "km", destination = false,
+  units = "km", destination = false, preferredNavigation = "google_maps",
 }: Props) {
   const minutes = Math.round(route.predicted_minutes);
   const distance = formatDistance(route.distance_km, units);
@@ -34,6 +37,20 @@ export function RouteCard({
   // A simulated route is a demo of what the app would do. It has no real
   // geometry, so there is nothing to hand to a navigation app.
   const navigable = !route.simulated && !!route.maps_url;
+
+  // The backend orders these best-first and never lets a preference outrank
+  // keeping the route intact, so the head of the list is the faithful drive.
+  const options: NavigationOption[] = route.navigation ?? [];
+  const chosen =
+    options.find((o) => o.provider_id === preferredNavigation && o.preserves_route) ??
+    options.find((o) => o.preserves_route) ??
+    options[0];
+  // Only worth mentioning when the parent asked for an app that cannot cope.
+  const preferredOption = options.find((o) => o.provider_id === preferredNavigation);
+  const swapNotice =
+    preferredOption && !preferredOption.preserves_route && chosen
+      ? preferredOption.notice
+      : null;
   const extra =
     destination && route.extra_minutes != null
       ? Math.round(route.extra_minutes)
@@ -86,9 +103,12 @@ export function RouteCard({
 
       {route.caveat && <p className="card-caveat">Note: {route.caveat}</p>}
 
+      {swapNotice && <p className="card-nav-notice">{swapNotice}</p>}
+
       {navigable ? (
-        <button className="btn-start" onClick={() => onStart(route)}>
-          {started ? "Reopen in Google Maps" : "Start in Google Maps"}
+        <button className="btn-start" onClick={() => onStart(route, chosen)}>
+          {started ? "Reopen in " : "Start in "}
+          {chosen?.label ?? "Google Maps"}
           <span className="btn-start-rank">Option {rank}</span>
         </button>
       ) : (
