@@ -67,9 +67,11 @@ class NavigationOption(BaseModel):
     provider_id: str
     label: str
     url: str
-    # False when the app would drop the shaping waypoints and drive something
-    # different. Never hidden from the client - see navigation.py.
-    preserves_route: bool = True
+    # True when the app can carry this route's shaping waypoints. NOT a claim
+    # that it reproduces our path or our duration - every provider recalculates
+    # between the points it is given. What survives is the shaping, which is
+    # what makes the drive the right length.
+    keeps_waypoints: bool = True
     dropped_waypoints: int = 0
     # Empty means "anywhere"; otherwise the platforms it makes sense on.
     platforms: List[str] = []

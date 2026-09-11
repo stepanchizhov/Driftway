@@ -39,16 +39,17 @@ export function RouteCard({
   const navigable = !route.simulated && !!route.maps_url;
 
   // The backend orders these best-first and never lets a preference outrank
-  // keeping the route intact, so the head of the list is the faithful drive.
+  // carrying the shaping points, so the head of the list is the drive that is
+  // still the right length.
   const options: NavigationOption[] = route.navigation ?? [];
   const chosen =
-    options.find((o) => o.provider_id === preferredNavigation && o.preserves_route) ??
-    options.find((o) => o.preserves_route) ??
+    options.find((o) => o.provider_id === preferredNavigation && o.keeps_waypoints) ??
+    options.find((o) => o.keeps_waypoints) ??
     options[0];
   // Only worth mentioning when the parent asked for an app that cannot cope.
   const preferredOption = options.find((o) => o.provider_id === preferredNavigation);
   const swapNotice =
-    preferredOption && !preferredOption.preserves_route && chosen
+    preferredOption && !preferredOption.keeps_waypoints && chosen
       ? preferredOption.notice
       : null;
   const extra =

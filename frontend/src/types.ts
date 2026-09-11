@@ -64,8 +64,9 @@ export interface NavigationOption {
   provider_id: string;
   label: string;
   url: string;
-  /** False when the app would drop the shaping waypoints. */
-  preserves_route: boolean;
+  /** True when the app can carry the shaping waypoints. Not a claim that it
+   *  reproduces our path or duration - every app recalculates between them. */
+  keeps_waypoints: boolean;
   dropped_waypoints: number;
   /** Empty means anywhere; otherwise the platforms it suits. */
   platforms: string[];

@@ -58,28 +58,31 @@ class ShapedRouteTests(unittest.TestCase):
     def test_a_destination_only_app_is_offered_but_marked_not_faithful(self):
         options = _by_id(build_options(START, FINISH, SHAPING, is_loop=False))
 
-        self.assertTrue(options["google_maps"].preserves_route)
-        self.assertFalse(options["waze"].preserves_route)
+        self.assertTrue(options["google_maps"].keeps_waypoints)
+        self.assertFalse(options["waze"].keeps_waypoints)
         self.assertEqual(options["waze"].dropped_waypoints, 2)
 
     def test_the_notice_names_both_the_limitation_and_the_way_out(self):
         waze = _by_id(build_options(START, FINISH, SHAPING, is_loop=False))["waze"]
         self.assertIsNotNone(waze.notice)
-        self.assertIn("cannot follow this shaped route", waze.notice)
+        # Precise about what is actually lost. No provider reproduces our path
+        # or duration; what Waze cannot carry is the shaping.
+        self.assertIn("shaping", waze.notice)
         self.assertIn("Google Maps", waze.notice)
+        self.assertNotIn("follow this shaped route", waze.notice)
 
     def test_a_faithful_app_is_offered_first(self):
         options = build_options(START, FINISH, SHAPING, is_loop=False)
-        self.assertTrue(options[0].preserves_route)
+        self.assertTrue(options[0].keeps_waypoints)
         self.assertEqual(options[0].provider_id, "google_maps")
 
-    def test_a_preference_never_outranks_keeping_the_route_intact(self):
-        """Preferring Waze must not put a route-destroying option first."""
+    def test_a_preference_never_outranks_carrying_the_shaping_points(self):
+        """Preferring Waze must not put a shaping-destroying option first."""
         options = build_options(
             START, FINISH, SHAPING, is_loop=False, preferred_id="waze",
         )
         self.assertEqual(options[0].provider_id, "google_maps")
-        self.assertTrue(options[0].preserves_route)
+        self.assertTrue(options[0].keeps_waypoints)
 
     def test_waypoints_are_never_silently_dropped_from_the_url(self):
         google = _by_id(build_options(START, FINISH, SHAPING, is_loop=False))["google_maps"]
@@ -109,7 +112,7 @@ class PlainDestinationTests(unittest.TestCase):
     def test_every_provider_is_offered_and_faithful(self):
         options = build_options(START, FINISH, [], is_loop=False)
         self.assertEqual(len(options), 3)
-        self.assertTrue(all(o.preserves_route for o in options))
+        self.assertTrue(all(o.keeps_waypoints for o in options))
         self.assertTrue(all(o.notice is None for o in options))
 
     def test_a_preference_is_honoured_when_nothing_is_at_stake(self):

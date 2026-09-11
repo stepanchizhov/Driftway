@@ -8,7 +8,12 @@ shaping that made it the right length. For a parent whose child is asleep,
 "quietly a different drive" is the worst possible failure.
 
 So a provider is described by what it can *represent*, and a route is only
-offered to a provider that can carry it. Where it cannot, that is stated
+offered to a provider that can carry its shaping points.
+
+Note the limit of the guarantee: no provider reproduces our path or our
+duration. Every one of them recalculates between the points it is handed. What
+the capability model protects is the shaping - the waypoints that make the
+drive the right length - not the polyline. Where it cannot, that is stated
 plainly and a compatible app is named. Provider incompatibility is a normal
 product state, not an error.
 
@@ -177,18 +182,20 @@ def build_options(
 
         notice = None
         if not preserves:
+            # Precise about what is lost: the shaping points, not "the route".
+            # Even Google Maps recalculates its own path between them.
+            dropped_word = "stop" if needed == 1 else "stops"
             notice = (
                 f"{provider.label} can navigate to the destination, but it "
-                f"cannot follow this shaped route. The drive would be "
-                f"{'shorter and' if not is_loop else ''} different. "
-                f"{GOOGLE_MAPS.label} keeps it intact."
-            ).replace("  ", " ")
+                f"cannot carry the {needed} shaping {dropped_word} that make "
+                f"this drive the right length. {GOOGLE_MAPS.label} can."
+            )
 
         options.append(NavigationOption(
             provider_id=provider.id,
             label=provider.label,
             url=_URL_BUILDERS[provider.id](start, finish, waypoints),
-            preserves_route=preserves,
+            keeps_waypoints=preserves,
             dropped_waypoints=dropped,
             platforms=sorted(provider.platforms),
             notice=notice,
@@ -198,8 +205,8 @@ def build_options(
     # one that can, so the default tap is always the faithful drive.
     def rank(o: NavigationOption) -> tuple:
         return (
-            0 if (o.provider_id == preferred_id and o.preserves_route) else 1,
-            0 if o.preserves_route else 1,
+            0 if (o.provider_id == preferred_id and o.keeps_waypoints) else 1,
+            0 if o.keeps_waypoints else 1,
             0 if o.provider_id == DEFAULT_PROVIDER_ID else 1,
         )
 
