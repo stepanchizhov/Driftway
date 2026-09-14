@@ -18,7 +18,19 @@ from core.models import (
     GenerateResponse,
     SearchResponse,
 )
-from core.config import meet_halfway_enabled
+from core.config import meet_halfway_enabled, registration_mode
+from core.identity import is_configured as identity_configured
+
+
+def _pending_schema() -> list:
+    """Outstanding migration steps, or [] when up to date."""
+    if not storage_available():
+        return []
+    try:
+        from core.migrations import pending_steps
+        return pending_steps()
+    except Exception:  # noqa: BLE001
+        return []
 from core.router import get_router
 from core.search import SearchUnavailable, get_search
 
@@ -110,6 +122,19 @@ async def health():
         "provider": get_router().name,
         "search": get_search().name,
         "storage": "ok" if storage_available() else "unavailable",
+        # Non-empty means a schema step has not been applied, so some feature
+        # will fail even though storage itself answers. Reported separately
+        # for the same reason storage is: a partial failure that looks healthy
+        # is the hardest kind to diagnose.
+        "schema_pending": _pending_schema(),
+        # "auth0" once a tenant is configured, "staging" while the temporary
+        # session mechanism is the only way in. Never let this read "auth0"
+        # without a real tenant behind it - that is the misreport the whole
+        # Phase A gate exists to prevent.
+        "identity": "auth0" if identity_configured() else "staging",
+        # So the sign-in screen can ask for an invitation only when one is
+        # actually required, rather than guessing.
+        "registration": registration_mode().value,
         # The client uses this to decide whether to offer the staging entry
         # point at all, rather than showing a button that 404s.
         "meet_halfway": meet_halfway_enabled(),

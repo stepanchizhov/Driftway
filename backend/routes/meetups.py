@@ -26,7 +26,16 @@ from sqlalchemy.orm import Session
 
 log = logging.getLogger("driftway")
 
+from core.identity import (
+    IdentityError,
+    account_for_identity,
+    is_configured as identity_configured,
+    link_identity,
+    verify_access_token,
+)
+from core.retention import erase_account, export_account
 from core.accounts import (
+    disable_account,
     InviteError,
     SESSION_COOKIE,
     UserAccount,
@@ -50,6 +59,7 @@ from core.config import (
 )
 from core.db import get_session, storage_available
 from core.meetup_schemas import (
+    AcceptInviteRequest,
     AccountPublic,
     AddVenueRequest,
     BetaInvitePublic,
@@ -163,26 +173,71 @@ def revoke_beta_invite(
     return {"ok": True}
 
 
+@router.post("/admin/accounts/{user_id}/disable")
+def admin_disable_account(
+    user_id: str,
+    _: None = Depends(_require_admin),
+    session: Session = Depends(get_session),
+):
+    """Disable an account and end its sessions.
+
+    The minimum operation needed to stop a tester's access, per the Phase A
+    requirement for a protected administrative path. It does not delete their
+    meetup participation: removing that would silently rewrite other people's
+    plans. Deletion and anonymisation are separate and deliberate.
+    """
+    _require_storage()
+    if not disable_account(session, user_id):
+        raise HTTPException(status_code=404, detail="No such account.")
+    return {"ok": True, "user_id": user_id, "status": "disabled"}
+
+
 @router.post("/auth/accept-beta-invite", response_model=AccountPublic)
 def accept_beta_invite(
     request: Request,
     response: Response,
-    invite_token: str,
-    email: Optional[str] = None,
-    display_name: Optional[str] = None,
+    body: AcceptInviteRequest,
     session: Session = Depends(get_session),
 ):
     """Exchange an invite for an account. The registration mode is enforced
-    here, server-side, not by hiding a button."""
+    here, server-side, not by hiding a button.
+
+    POST with the token in the body, so that neither a link preview nor an
+    unauthenticated GET can consume an invitation, and the raw token never
+    reaches an access log.
+    """
     _require_storage()
     if registration_mode() is RegistrationMode.CLOSED:
         raise HTTPException(status_code=403, detail="Account creation is closed.")
+    # With a provider configured, admission needs BOTH the invitation and a
+    # verified identity: the invite says who may join, the token says who is
+    # actually here. Either alone is not enough.
+    identity = None
+    if identity_configured():
+        try:
+            identity = verify_access_token(_bearer(request))
+        except IdentityError as e:
+            raise HTTPException(status_code=401, detail=str(e))
+
     try:
         account = accept_invite(
-            session, invite_token, email=email, display_name=display_name
+            session, body.invite_token,
+            email=(identity.email if identity else body.email),
+            display_name=body.display_name,
         )
+        if identity is not None:
+            link_identity(account, identity)
+            session.commit()
+    except IdentityError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     except InviteError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    if identity_configured():
+        # A real provider is in play; the temporary cookie must not be minted
+        # alongside it, or there would be two ways in and only one of them
+        # verified.
+        return _account_public(account)
 
     raw = open_session(session, account.id)
     # Secure is required in production but makes the cookie unusable over plain
@@ -196,6 +251,100 @@ def accept_beta_invite(
         max_age=60 * 60 * 24 * 30,
     )
     return _account_public(account)
+
+
+def _bearer(request: Request) -> str:
+    header = request.headers.get("authorization") or ""
+    if not header.lower().startswith("bearer "):
+        return ""
+    return header[7:].strip()
+
+
+def _current_account(request: Request, session: Session, cookie: Optional[str]):
+    """The signed-in account, by whichever mechanism this deployment uses.
+
+    A verified Auth0 token wins when one is present. The staging cookie is only
+    consulted while no provider is configured, so a configured deployment
+    cannot be entered through the temporary door.
+    """
+    token = _bearer(request)
+    if token and identity_configured():
+        try:
+            identity = verify_access_token(token)
+        except IdentityError:
+            return None
+        return account_for_identity(session, identity)
+    if identity_configured():
+        return None
+    return account_for_session(session, cookie)
+
+
+@router.post("/auth/session", response_model=AccountPublic)
+def exchange_token(
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Confirm who an Auth0 access token belongs to.
+
+    Does not create accounts. Admission is granted by redeeming an invitation,
+    not by turning up with a valid sign-in - otherwise anyone who can sign in
+    to Auth0 has an account here, and invite_only means nothing.
+    """
+    _require_storage()
+    if not identity_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Sign-in is not configured on this deployment.",
+        )
+    try:
+        identity = verify_access_token(_bearer(request))
+    except IdentityError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    account = account_for_identity(session, identity)
+    if account is None:
+        raise HTTPException(
+            status_code=403,
+            detail="You need an invitation before you can use an account here.",
+        )
+    return _account_public(account)
+
+
+@router.get("/account/export")
+def export_my_data(
+    request: Request,
+    driftway_staging_session: Optional[str] = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    """Everything held about you, as JSON.
+
+    Includes your own exact starting points: they are yours, and the fact that
+    they are sensitive is the reason you are entitled to see them, not a reason
+    to withhold them. Other participants' origins are not included - those are
+    not yours to receive.
+    """
+    _require_storage()
+    account = _current_account(request, session, driftway_staging_session)
+    if account is None:
+        raise HTTPException(status_code=401, detail="Sign in first.")
+    return export_account(session, account.id)
+
+
+@router.delete("/account")
+def erase_my_account(
+    request: Request,
+    response: Response,
+    driftway_staging_session: Optional[str] = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    """Delete your account and everything linked to it. Not reversible."""
+    _require_storage()
+    account = _current_account(request, session, driftway_staging_session)
+    if account is None:
+        raise HTTPException(status_code=401, detail="Sign in first.")
+    removed = erase_account(session, account.id)
+    response.delete_cookie(SESSION_COOKIE)
+    return {"ok": True, "removed": removed}
 
 
 @router.get("/auth/me", response_model=Optional[AccountPublic])

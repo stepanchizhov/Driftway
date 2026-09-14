@@ -169,16 +169,27 @@ again — only its hash is stored. Listing invites shows status, never tokens.
 
 To revoke: `POST /api/admin/beta-invites/{id}/revoke` with the same header.
 
-### A note on schema changes
+### Schema changes
 
-There is no migration tool. `init_db()` calls `create_all()`, which creates
-missing *tables* but never adds columns to existing ones. The meetup tables are
-created on first deploy and will be correct. **A later column addition will not
-appear**, and the endpoint using it will 500 with `no such column`.
+**This section previously told you to drop the meetup tables on a schema
+change. Do not do that.** It was safe only while those tables held nothing but
+throwaway test rows. Once a real tester has an account and an invitation,
+dropping them destroys exactly the records Phase A exists to protect.
 
-Until Alembic is adopted, a staging schema change means dropping the meetup
-tables and letting them rebuild. They hold only test data during the closed
-test; `feedback`, `favourites` and `saved_places` must be left alone.
+`create_all()` still adds missing *tables* but never missing *columns*. That is
+now handled by ordered, forward-only migration steps in
+`backend/core/migrations.py`, applied at startup. They are additive and
+idempotent, so redeploys and restarts are safe, and a failing step is logged
+loudly without taking routing or search down.
+
+To add a column, append a step to `STEPS` — never edit or reorder an applied
+one, because a database that has already run it will not run it again.
+
+`/api/health` reports `schema_pending`. Non-empty means a step has not been
+applied and some feature will fail even though storage answers.
+
+Rollback is "deploy the previous code": every step is additive, so older code
+still reads the older columns. See `docs/IDENTITY.md`.
 
 ---
 
@@ -199,6 +210,8 @@ Check all four:
   it is fixed.
 - `meet_halfway` — `true` only if you completed step 4a. The app hides the
   entry point when this is false.
+- `schema_pending` — must be `[]`. Anything listed means a migration step has
+  not been applied and the feature needing it will fail.
 
 **Search** — `https://driftway.onrender.com/api/search?q=SL4%201NJ` should
 return one Windsor result. This is the most reliable check that a deploy
@@ -234,8 +247,9 @@ backend. Check `/api/health`.
 **Minting an invite returns 503** — `ADMIN_API_TOKEN` is unset. That is the
 deliberate refusal, not a bug.
 
-**A meetup endpoint 500s with `no such column`** — a schema change landed
-without a migration. See the note in step 4a.
+**A meetup endpoint 500s with `no such column`** — a migration step is
+missing for that column. Check `schema_pending` on `/api/health` and add a step
+to `backend/core/migrations.py`. Do not drop the table.
 
 **The frontend won't build** — check Root Directory is `frontend` and Publish
 Directory is `dist`. If the build log shows TypeScript errors about `path` or

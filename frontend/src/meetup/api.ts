@@ -1,4 +1,5 @@
 import type { Coord, Place } from "../types";
+import { authFetch } from "../auth/authFetch";
 
 // Same base as the main API client: dev proxies /api, production uses
 // VITE_API_BASE.
@@ -82,7 +83,10 @@ export class MeetupError extends Error {}
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
+    // authFetch adds the bearer token when somebody is signed in and sends
+    // the request unchanged when nobody is. Every meetup endpoint goes
+    // through here, so that is the whole integration for this client.
+    res = await authFetch(`${API_BASE}${path}`, {
       headers: { "Content-Type": "application/json" },
       ...init,
     });

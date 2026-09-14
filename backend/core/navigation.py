@@ -1,7 +1,7 @@
 """
 Navigation handoff: which app can actually drive the route we built.
 
-NapLoop shapes a route with intermediate waypoints. Most navigation apps cannot
+Driftway shapes a route with intermediate waypoints. Most navigation apps cannot
 express that. Handing such a route to one of them does not fail loudly - it
 quietly becomes a different drive, straight to the destination, missing the
 shaping that made it the right length. For a parent whose child is asleep,

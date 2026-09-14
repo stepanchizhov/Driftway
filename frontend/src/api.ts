@@ -1,3 +1,4 @@
+import { authFetch } from "./auth/authFetch";
 import type {
   GenerateRequest,
   GenerateResponse,
@@ -121,7 +122,7 @@ export async function searchPlaces(
 
 export async function sendFeedback(fb: FeedbackRequest): Promise<void> {
   try {
-    await fetch(`${API_BASE}/api/feedback`, {
+    await authFetch(`${API_BASE}/api/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(fb),
@@ -132,7 +133,7 @@ export async function sendFeedback(fb: FeedbackRequest): Promise<void> {
 }
 
 export async function listFavourites(owner: string): Promise<Favourite[]> {
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE}/api/favourites?owner=${encodeURIComponent(owner)}`,
   );
   if (!res.ok) return [];
@@ -141,7 +142,7 @@ export async function listFavourites(owner: string): Promise<Favourite[]> {
 
 export async function saveFavourite(fav: FavouriteCreate): Promise<Favourite | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/favourites`, {
+    const res = await authFetch(`${API_BASE}/api/favourites`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(fav),
@@ -155,7 +156,7 @@ export async function saveFavourite(fav: FavouriteCreate): Promise<Favourite | n
 
 export async function deleteFavourite(id: string, owner: string): Promise<void> {
   try {
-    await fetch(
+    await authFetch(
       `${API_BASE}/api/favourites/${id}?owner=${encodeURIComponent(owner)}`,
       { method: "DELETE" },
     );

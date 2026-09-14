@@ -1656,3 +1656,98 @@ body {
   border-left: 2px solid var(--warn);
   padding-left: 10px;
 }
+
+/* --- account ------------------------------------------------- */
+/* Lives inside a .set-block on the Settings screen, so it inherits that
+   block's spacing and only needs its own controls. */
+
+.btn-primary {
+  margin-top: 10px;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: #2a1c0c;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+.btn-primary:active {
+  background: var(--accent-press);
+}
+.btn-primary:disabled {
+  background: var(--surface-2);
+  color: var(--ink-dim);
+  cursor: default;
+}
+
+/* Deliberately not red-filled. A filled danger button next to a quiet one is
+   easy to hit by reflex, and this one cannot be undone. */
+.btn-danger {
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid rgba(232, 144, 144, 0.45);
+  color: var(--danger);
+  border-radius: var(--r-sm);
+  padding: 7px 12px;
+  font-size: 14px;
+  font-family: var(--body);
+  cursor: pointer;
+}
+.btn-danger:active {
+  background: rgba(232, 144, 144, 0.1);
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.account-field {
+  display: block;
+  margin: 10px 0;
+}
+.account-field span {
+  display: block;
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin-bottom: 5px;
+}
+.account-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px; /* 16px stops iOS zooming the page on focus */
+}
+
+.account-who {
+  font-size: 15px;
+  margin: 2px 0 12px;
+}
+
+.account-error {
+  color: var(--danger);
+  font-size: 14px;
+  margin: 10px 0 0;
+}
+
+.account-confirm {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(232, 144, 144, 0.3);
+  border-radius: var(--r-sm);
+  background: rgba(232, 144, 144, 0.06);
+}
+.account-confirm p {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.account-confirm .btn-danger,
+.account-confirm .btn-quiet {
+  margin-right: 8px;
+}

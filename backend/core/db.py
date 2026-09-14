@@ -172,6 +172,12 @@ def init_db() -> None:
     try:
         Base.metadata.create_all(engine)
         _storage_ready = True
+        # create_all() adds missing tables but never missing columns, so an
+        # existing deployment needs the migration steps too. Imported here
+        # rather than at module scope to avoid a circular import: migrations
+        # needs Base and engine from this module.
+        from .migrations import run_migrations
+        run_migrations()
     except Exception as e:  # noqa: BLE001 - any driver/network fault counts
         _storage_ready = False
         log.error(

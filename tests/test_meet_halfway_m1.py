@@ -91,18 +91,21 @@ class MeetHalfwayTestCase(unittest.TestCase):
 class RegistrationGateTests(MeetHalfwayTestCase):
     def test_invite_only_rejects_account_creation_without_an_invite(self):
         r = self.client.post("/api/auth/accept-beta-invite",
-                             params={"invite_token": ""})
-        self.assertEqual(r.status_code, 400)
+                             json={"invite_token": ""})
+        # 422 since the token moved into a validated body: an empty token is
+        # now refused by schema validation before any invite lookup happens.
+        # Either way it is refused, which is what this test is about.
+        self.assertIn(r.status_code, (400, 422))
 
     def test_a_bogus_invite_token_is_rejected(self):
         r = self.client.post("/api/auth/accept-beta-invite",
-                             params={"invite_token": "not-a-real-token"})
+                             json={"invite_token": "not-a-real-token"})
         self.assertEqual(r.status_code, 400)
         self.assertIn("not valid", r.json()["detail"])
 
     def test_a_valid_invite_creates_exactly_one_account(self):
         invite = self._mint_invite()
-        r = self.client.post("/api/auth/accept-beta-invite", params={
+        r = self.client.post("/api/auth/accept-beta-invite", json={
             "invite_token": invite["invite_token"], "display_name": "Stepan",
         })
         self.assertEqual(r.status_code, 200, r.text)
@@ -110,7 +113,7 @@ class RegistrationGateTests(MeetHalfwayTestCase):
 
         # Second use of the same invite must fail.
         again = self.client.post("/api/auth/accept-beta-invite",
-                                 params={"invite_token": invite["invite_token"]})
+                                 json={"invite_token": invite["invite_token"]})
         self.assertEqual(again.status_code, 400)
         self.assertIn("already been used", again.json()["detail"])
 
@@ -122,7 +125,7 @@ class RegistrationGateTests(MeetHalfwayTestCase):
         )
         self.assertEqual(rv.status_code, 200)
         r = self.client.post("/api/auth/accept-beta-invite",
-                             params={"invite_token": invite["invite_token"]})
+                             json={"invite_token": invite["invite_token"]})
         self.assertEqual(r.status_code, 400)
         self.assertIn("revoked", r.json()["detail"])
 
@@ -132,7 +135,7 @@ class RegistrationGateTests(MeetHalfwayTestCase):
         invite = self._mint_invite()
         client, _ = _fresh_app(REGISTRATION_MODE="closed")
         r = client.post("/api/auth/accept-beta-invite",
-                        params={"invite_token": invite["invite_token"]})
+                        json={"invite_token": invite["invite_token"]})
         self.assertEqual(r.status_code, 403)
         client.close()
 
@@ -338,7 +341,7 @@ class GuestParticipationTests(MeetHalfwayTestCase):
 
     def test_an_account_email_never_reaches_a_meetup_payload(self):
         invite = self._mint_invite()
-        self.client.post("/api/auth/accept-beta-invite", params={
+        self.client.post("/api/auth/accept-beta-invite", json={
             "invite_token": invite["invite_token"],
             "email": "founder@example.com",
             "display_name": "Founder",
@@ -357,7 +360,7 @@ class GuestParticipationTests(MeetHalfwayTestCase):
 
     def test_the_signed_in_account_view_omits_the_email(self):
         invite = self._mint_invite()
-        self.client.post("/api/auth/accept-beta-invite", params={
+        self.client.post("/api/auth/accept-beta-invite", json={
             "invite_token": invite["invite_token"],
             "email": "founder@example.com",
         })

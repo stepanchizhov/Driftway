@@ -25,7 +25,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, String, select
+from sqlalchemy import Boolean, DateTime, String, select, update
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 log = logging.getLogger("driftway")
@@ -210,6 +210,25 @@ def accept_invite(
     if mode is RegistrationMode.INVITE_ONLY and not raw_token:
         raise InviteError("An invitation is required to create an account.")
 
+    if mode is RegistrationMode.OPEN and not raw_token:
+        # Open registration means exactly that: no invitation to look up, so
+        # the whole redemption path below is skipped rather than run against a
+        # token nobody supplied. Without this the mode was unusable - the
+        # lookup found no row and reported "that invitation is not valid" to
+        # someone who had correctly not presented one.
+        #
+        # An invite is still honoured in open mode when one IS presented, so
+        # links already sent out keep working the day the door opens.
+        account = UserAccount(
+            email=email,
+            display_name=display_name,
+            status="active",
+        )
+        session.add(account)
+        session.commit()
+        log.info("account created without invite (registration is open)")
+        return account
+
     row = session.execute(
         select(BetaAccessInvite).where(
             BetaAccessInvite.token_hash == hash_token(raw_token or "")
@@ -232,19 +251,59 @@ def accept_invite(
     if row.bound_email and email and row.bound_email.lower() != email.lower():
         raise InviteError("That invitation was issued for a different address.")
 
-    account = UserAccount(
-        email=email or row.bound_email,
+    # An invite bound to an address that already has an account is a person
+    # clicking their link twice, or a second link sent to the same tester. Give
+    # them the account they already have rather than a duplicate, and grant
+    # nothing extra.
+    #
+    # The binding is set by the founder when minting, which is why it is
+    # trustworthy enough to match on. A client-supplied `email` is NOT: an
+    # unverified address must never link to somebody else's account, so it is
+    # deliberately not used for this lookup.
+    existing = None
+    if row.bound_email:
+        existing = session.execute(
+            select(UserAccount).where(
+                UserAccount.email == row.bound_email,
+                UserAccount.status == "active",
+            )
+        ).scalars().first()
+
+    account = existing or UserAccount(
+        email=row.bound_email or email,
         display_name=display_name,
         status="active",
     )
-    session.add(account)
-    session.flush()  # assign the id before we reference it
+    if existing is None:
+        session.add(account)
+        session.flush()  # assign the id before we reference it
 
-    row.accepted_at = _now()
-    row.accepted_by_user_id = account.id
+    # Claim the invite with a conditional write rather than trusting the status
+    # check above. Two requests redeeming the same token can both pass that
+    # check before either commits; only one can win this UPDATE, because the
+    # database evaluates `accepted_at IS NULL` at write time.
+    claimed = session.execute(
+        update(BetaAccessInvite)
+        .where(
+            BetaAccessInvite.id == row.id,
+            BetaAccessInvite.accepted_at.is_(None),
+            BetaAccessInvite.revoked_at.is_(None),
+        )
+        .values(accepted_at=_now(), accepted_by_user_id=account.id)
+    ).rowcount
+
+    if claimed != 1:
+        # Someone else got there first. Roll back so the losing request does
+        # not leave a stranded account behind.
+        session.rollback()
+        raise InviteError("That invitation has already been used.")
+
     session.commit()
     session.refresh(account)
-    log.info("beta invite accepted: invite=%s account=%s", row.id, account.id)
+    log.info(
+        "beta invite accepted: invite=%s account=%s reused_existing=%s",
+        row.id, account.id, existing is not None,
+    )
     return account
 
 
@@ -279,7 +338,34 @@ def account_for_session(session: Session, raw: Optional[str]) -> Optional[UserAc
         return None
     if row.expires_at <= datetime.now(timezone.utc).replace(tzinfo=None):
         return None
-    return session.get(UserAccount, row.user_id)
+    account = session.get(UserAccount, row.user_id)
+    # A disabled account must stop working immediately, not when its session
+    # happens to expire. Authorization is re-checked on every request rather
+    # than baked into the cookie at sign-in.
+    if account is None or account.status != "active":
+        return None
+    return account
+
+
+def disable_account(session: Session, user_id: str) -> bool:
+    """Disable an account and drop its sessions.
+
+    Deliberately does not delete anything the person contributed elsewhere:
+    removing a disabled account's meetup participation would silently rewrite
+    other people's plans. Deletion and anonymisation are a separate, explicit
+    operation - see docs/IDENTITY.md.
+    """
+    account = session.get(UserAccount, user_id)
+    if account is None:
+        return False
+    account.status = "disabled"
+    for row in session.execute(
+        select(StagingSession).where(StagingSession.user_id == user_id)
+    ).scalars():
+        session.delete(row)
+    session.commit()
+    log.info("account disabled: %s", user_id)
+    return True
 
 
 def close_session(session: Session, raw: Optional[str]) -> None:

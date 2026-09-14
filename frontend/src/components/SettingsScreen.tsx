@@ -1,6 +1,7 @@
 import type { RoadProfile } from "../types";
 import type { Settings, Units } from "../hooks/useSettings";
 import { ChipGroup } from "./ChipGroup";
+import { AccountSection } from "../auth/AccountSection";
 
 interface Props {
   settings: Settings;
@@ -26,6 +27,12 @@ export function SettingsScreen({ settings, update }: Props) {
   return (
     <main className="settings">
       <h2 className="settings-title">Settings</h2>
+
+      {/* First, because it is the only block here that is about the person
+          rather than the drive - and because the data controls inside it are
+          the ones someone arrives looking for. Renders nothing when no
+          sign-in provider is configured. */}
+      <AccountSection />
 
       <ChipGroup
         legend="Distance units"

@@ -75,6 +75,25 @@ class AddVenueRequest(BaseModel):
     opening_status: Literal["open", "closed", "unknown"] = "unknown"
 
 
+class AcceptInviteRequest(BaseModel):
+    """Redeeming a beta invite.
+
+    The token travels in the body, never the query string: uvicorn and most
+    reverse proxies write full request lines to their access logs, so a token
+    in the URL is a token in the logs, and in any Referer header the page
+    happens to send.
+    """
+
+    # Optional at the schema level so open registration can post without one.
+    # That is not a relaxation of the rule: accept_invite() checks the
+    # registration mode server-side and still refuses a missing token while
+    # the deployment is invite_only. Requiring it here instead would have made
+    # the check unreachable, since pydantic would reject the request first.
+    invite_token: Optional[str] = Field(None, min_length=8, max_length=128)
+    email: Optional[str] = Field(None, max_length=320)
+    display_name: Optional[str] = Field(None, max_length=80)
+
+
 class VoteRequest(BaseModel):
     value: VoteValue
     comment: Optional[str] = Field(None, max_length=280)
