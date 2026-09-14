@@ -30,6 +30,30 @@ from core.current_user import (
 )
 
 
+def _retention_status() -> dict | None:
+    """Summary of the last scheduled retention run, or None if it never ran."""
+    if not storage_available():
+        return None
+    try:
+        from core.db import SessionLocal
+        from core.retention import last_run
+        session = SessionLocal()
+        try:
+            row = last_run(session)
+        finally:
+            session.close()
+        if row is None:
+            return None
+        return {
+            "last_run": row.ran_at.isoformat(),
+            "meetups_purged": row.meetups_purged,
+            "accounts_purged": row.accounts_purged,
+            "backlog": row.capped,
+        }
+    except Exception:  # noqa: BLE001 - never let a status field break health
+        return None
+
+
 def _pending_schema() -> list:
     """Outstanding migration steps, or [] when up to date."""
     if not storage_available():
@@ -191,6 +215,10 @@ async def health():
         # So the sign-in screen can ask for an invitation only when one is
         # actually required, rather than guessing.
         "registration": registration_mode().value,
+        # Whether the scheduled purge is a behaviour or only a policy. Absent
+        # until a run completes against THIS database, which is what makes a
+        # configured cron verifiable rather than assumed.
+        "retention": _retention_status(),
         # The client uses this to decide whether to offer the staging entry
         # point at all, rather than showing a button that 404s.
         "meet_halfway": meet_halfway_enabled(),

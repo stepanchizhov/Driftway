@@ -158,6 +158,55 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 It should look like `kJ3n...` — 43 random characters, no spaces, no quotes. If
 the value in Render contains a space, it is wrong.
 
+### Retention — the scheduled purge
+
+Meetups are kept for 30 days after the event (60 from creation if never
+scheduled), and accounts for 365 days of inactivity. Those rules live in
+`backend/core/retention.py` and have been tested since 14 September. **They do
+nothing until something calls them on a schedule.**
+
+The work itself is `python -m jobs.run_retention`. It is safe to run twice —
+selection is by age, so a second run finds nothing left — and bounded to 200
+records of each kind per pass, draining any backlog across runs rather than in
+one long transaction. It logs counts and meetup ids only, never a coordinate,
+an address or a token.
+
+**Two ways to schedule it. Neither is active yet.**
+
+*Render cron (costs money).* `backend/render.yaml` carries a
+`Driftway-Retention` cron service running daily at 03:15 UTC. Render bills cron
+services separately from the web service, so applying it is a spending
+decision. Nothing has been applied.
+
+*External scheduler (no new spend).* `POST /api/admin/retention/run` with the
+`X-Admin-Token` header does the same work over HTTP, so any scheduler that can
+make an authenticated request will do. It returns counts only.
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "$API/api/admin/retention/run" -Headers $H
+```
+
+**Verifying it rather than assuming it.** `/api/health` carries a `retention`
+field. It is `null` until a run completes against that database, and then
+reports the timestamp, the counts, and whether a backlog remained:
+
+```json
+"retention": {"last_run": "2026-09-15T03:15:02", "meetups_purged": 0,
+              "accounts_purged": 0, "backlog": false}
+```
+
+Until that field is non-null on production, retention is implemented and
+scheduled but **not verified**, and should not be described as operational.
+
+**If a run is missed**, do nothing special. The next ordinary run takes
+whatever the missed one would have, because selection is by age rather than by
+a cursor. To catch up immediately, call the admin endpoint once. If `backlog`
+comes back `true` repeatedly, the schedule is too infrequent for the volume.
+
+**Retention is not erasure.** A person deleting their account gets that
+immediately from the account screen; retention is the separate promise that
+data nobody asked about does not accumulate. Both have to work.
+
 ### Incident note — admin token, 14 Sep 2026
 
 `ADMIN_API_TOKEN` on the production API had been set to the literal text of the

@@ -65,6 +65,30 @@ services:
       - key: ADMIN_API_TOKEN
         sync: false
 
+  # ------------------------------------------------------------- retention
+  # NOT ACTIVE until this is applied in Render and a run is observed. Render
+  # cron services are billed separately from the web service, so adding this
+  # is a spending decision the founder has to make - see docs/DEPLOY.md for
+  # the free alternative (an external scheduler calling the admin endpoint).
+  #
+  # Daily at 03:15 UTC: quiet hours, and far enough from midnight that a
+  # date-boundary bug would not be masked by one.
+  - type: cron
+    name: Driftway-Retention
+    runtime: python
+    region: oregon
+    rootDir: backend
+    schedule: "15 3 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m jobs.run_retention
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: DATABASE_URL
+        fromDatabase:
+          name: driftway-db
+          property: connectionString
+
   # --------------------------------------------------------------- frontend
   - type: web
     name: Driftway-Front

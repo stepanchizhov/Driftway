@@ -33,7 +33,14 @@ from core.identity import (
     link_identity,
     verify_access_token,
 )
-from core.retention import erase_account, export_account
+from core.retention import (
+    MAX_PER_RUN,
+    erase_account,
+    export_account,
+    purge_expired_meetups,
+    purge_inactive_accounts,
+    record_run,
+)
 from core.current_user import CredentialsRejected, current_account
 from core.accounts import (
     disable_account,
@@ -172,6 +179,38 @@ def revoke_beta_invite(
             detail="That invite cannot be revoked (already used, or already revoked).",
         )
     return {"ok": True}
+
+
+@router.post("/admin/retention/run")
+def run_retention_now(
+    _: None = Depends(_require_admin),
+    session: Session = Depends(get_session),
+):
+    """Run the scheduled purge now.
+
+    The same work `python -m jobs.run_retention` does, reachable over HTTP so
+    the schedule can come from anywhere that can make an authenticated request
+    - including a free external scheduler - rather than requiring a Render Cron
+    service. Safe to call repeatedly: selection is by age, so a second call
+    finds nothing left to take.
+
+    Returns counts only. Never the ids of accounts, never an origin.
+    """
+    _require_storage()
+    meetups = purge_expired_meetups(session)
+    accounts = purge_inactive_accounts(session)
+    capped = len(meetups) >= MAX_PER_RUN or len(accounts) >= MAX_PER_RUN
+    record_run(
+        session,
+        meetups_purged=len(meetups),
+        accounts_purged=len(accounts),
+        capped=capped,
+    )
+    return {
+        "meetups_purged": len(meetups),
+        "accounts_purged": len(accounts),
+        "backlog": capped,
+    }
 
 
 @router.post("/admin/accounts/{user_id}/disable")

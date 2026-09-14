@@ -39,11 +39,11 @@ from typing import Dict, List
 
 log = logging.getLogger("driftway")
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import DateTime, Integer, Boolean, String, select
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .accounts import BetaAccessInvite, StagingSession, UserAccount
-from .db import Favourite, Feedback
+from .db import Base, Favourite, Feedback, _uuid
 from .meetups import (
     MeetupParticipant,
     MeetupSession,
@@ -68,6 +68,46 @@ MEETUP_RETENTION_DAYS_UNSCHEDULED = 60
 
 def _now_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+class RetentionRun(Base):
+    """One completed scheduled run.
+
+    Exists so "is retention actually running?" has an answer that does not
+    depend on reading a scheduler's log. The API reports the most recent row on
+    /api/health, which is what turns a configured cron into a verified one.
+
+    Counts only. A row here must never carry an origin, an email address or a
+    token: a table recording what was deleted, in detail, would preserve
+    exactly what the deletion was for.
+    """
+
+    __tablename__ = "retention_runs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    ran_at: Mapped[datetime] = mapped_column(DateTime, default=_now_naive)
+    meetups_purged: Mapped[int] = mapped_column(Integer, default=0)
+    accounts_purged: Mapped[int] = mapped_column(Integer, default=0)
+    #: True when the run stopped at MAX_PER_RUN, so a backlog remains.
+    capped: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+def record_run(
+    session: Session, *, meetups_purged: int, accounts_purged: int, capped: bool
+) -> None:
+    session.add(RetentionRun(
+        meetups_purged=meetups_purged,
+        accounts_purged=accounts_purged,
+        capped=capped,
+    ))
+    session.commit()
+
+
+def last_run(session: Session):
+    """The most recent completed run, or None if it has never run here."""
+    return session.execute(
+        select(RetentionRun).order_by(RetentionRun.ran_at.desc()).limit(1)
+    ).scalars().first()
 
 
 # --------------------------------------------------------------------------
@@ -304,7 +344,16 @@ def _delete_meetup(session: Session, meetup: MeetupSession) -> int:
 # Scheduled purges
 # --------------------------------------------------------------------------
 
-def purge_expired_meetups(session: Session, now: datetime = None) -> List[str]:
+#: Most records one scheduled run will touch. Bounded on purpose: an unbounded
+#: delete over a table that has grown quietly is how a maintenance job becomes
+#: an outage. Whatever is left over is taken by the next run, and the run
+#: reports that it stopped early so a persistent backlog is visible.
+MAX_PER_RUN = 200
+
+
+def purge_expired_meetups(
+    session: Session, now: datetime = None, *, limit: int = MAX_PER_RUN
+) -> List[str]:
     """Delete meetups whose usefulness has passed.
 
     A plan is needed until the meetup happens, plus a short window to look back
@@ -317,6 +366,8 @@ def purge_expired_meetups(session: Session, now: datetime = None) -> List[str]:
 
     purged: List[str] = []
     for meetup in session.execute(select(MeetupSession)).scalars().all():
+        if len(purged) >= limit:
+            break
         expired = (
             meetup.scheduled_at is not None and meetup.scheduled_at < scheduled_cutoff
         ) or (
@@ -332,7 +383,9 @@ def purge_expired_meetups(session: Session, now: datetime = None) -> List[str]:
     return purged
 
 
-def purge_inactive_accounts(session: Session, now: datetime = None) -> List[str]:
+def purge_inactive_accounts(
+    session: Session, now: datetime = None, *, limit: int = MAX_PER_RUN
+) -> List[str]:
     """Erase accounts dormant for longer than the retention period.
 
     Measured from last activity, not from creation: someone using the app every
@@ -347,6 +400,7 @@ def purge_inactive_accounts(session: Session, now: datetime = None) -> List[str]
         if last < cutoff:
             stale.append(account.id)
 
+    stale = stale[:limit]
     for user_id in stale:
         erase_account(session, user_id)
 
