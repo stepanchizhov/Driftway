@@ -21,6 +21,7 @@ from core.models import (
 )
 from core.config import meet_halfway_enabled, registration_mode
 from core.identity import is_configured as identity_configured
+from core.ratelimit import RateLimited, check_generate
 from core.current_user import (
     SESSION_COOKIE,
     CredentialsRejected,
@@ -60,7 +61,47 @@ def _require_storage() -> None:
 
 
 @router.post("/generate", response_model=GenerateResponse)
-async def generate(req: GenerateRequest):
+async def generate(
+    req: GenerateRequest,
+    request: Request,
+    driftway_staging_session: str | None = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    """Plan a set of loops.
+
+    Open to everyone, signed in or not - this is the app's core job and putting
+    an account in front of it would defeat the point. What it is not is
+    unmetered: one generation costs many provider calls, so it is limited per
+    caller and capped across the service. See core/ratelimit.py.
+
+    Identity is optional here and used only to pick a better limit key, so an
+    unverifiable token is not fatal: the request falls back to being limited by
+    address rather than being refused. That is the opposite of the rule for
+    account-owned writes, and deliberately so - this endpoint owns nothing.
+    """
+    account_id = None
+    if storage_available():
+        try:
+            account = current_account(request, session, driftway_staging_session)
+            account_id = account.id if account else None
+        except CredentialsRejected:
+            account_id = None
+
+    try:
+        check_generate(request, account_id)
+    except RateLimited as limited:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Driftway is at its limit for the moment - too many routes "
+                "being planned at once. Please try again shortly."
+                if limited.scope == "service" else
+                "That is a lot of routes in a short time. Please wait a moment "
+                "and try again."
+            ),
+            headers={"Retry-After": str(limited.retry_after)},
+        )
+
     routing = get_router()
     result = await generate_routes(req, routing)
     if not result.routes:

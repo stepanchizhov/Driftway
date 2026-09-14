@@ -158,6 +158,59 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 It should look like `kJ3n...` — 43 random characters, no spaces, no quotes. If
 the value in Render contains a space, it is wrong.
 
+### Incident note — admin token, 14 Sep 2026
+
+`ADMIN_API_TOKEN` on the production API had been set to the literal text of the
+generator command above, rather than to its output. That string is published in
+this repository, so for an unknown period the admin endpoints were guarded by a
+value anyone could read.
+
+**The exposed token was rotated; no invitations were found at inspection.
+Historical misuse has not been established.** An empty invite list at one
+moment does not prove the token was never used — an invite could have been
+minted and revoked, and nothing else the admin endpoints do leaves a record
+that would survive. Treat the exposure window as unaudited.
+
+### Rate limits and the provider bill
+
+`/api/generate` is the only endpoint an anonymous stranger can use to spend
+money: one generation costs many routing calls. It is limited per caller and
+capped across the service.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `GENERATE_PER_MINUTE` | `6` | Per caller, sliding window |
+| `GENERATE_PER_HOUR` | `40` | Per caller, sliding window |
+| `GENERATE_GLOBAL_PER_HOUR` | `600` | Everybody combined — the provider-budget backstop |
+| `TRUSTED_PROXY_COUNT` | `0` | How many proxies in front may be believed |
+
+**Set `TRUSTED_PROXY_COUNT=1` on Render.** Render puts exactly one proxy in
+front of the service, so the caller's real address arrives only in
+`X-Forwarded-For`. Left at `0` that header is ignored entirely — the safe
+default, because an unproxied deployment that trusted it would let anyone mint
+a fresh allowance per request. The cost of leaving it at `0` behind Render is
+the opposite problem: every caller is keyed to the proxy's address and shares
+one bucket.
+
+Honest limits of this implementation: the counters live in the worker's memory.
+They reset when the service restarts, and they are not shared between
+instances — so on a multi-instance deployment the effective limit is the
+configured number times the instance count. A single-instance service, which is
+what this is, behaves exactly as configured. A shared store is the upgrade path
+and needs infrastructure that does not exist yet.
+
+Refusals return `429` with a `Retry-After` header, and the message distinguishes
+"you personally are going too fast" from "the whole service is at its limit".
+
+### Search engines
+
+`frontend/index.html` carries `<meta name="robots" content="noindex, nofollow">`
+and `frontend/public/robots.txt` disallows everything. Both are requests that
+well-behaved crawlers honour. **Neither restricts access**: anyone with the URL
+can still open the app. The controls that actually restrict things are
+server-side — `REGISTRATION_MODE=invite_only` for admission, and the rate
+limits above for usage. Remove both when the alpha opens.
+
 No frontend change is needed. The app asks `/api/health` whether the feature is
 on and only then shows the entry point.
 

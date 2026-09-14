@@ -1,0 +1,4 @@
+# Closed alpha. A request to crawlers, not an access control:
+# anyone with the URL can still open the app.
+User-agent: *
+Disallow: /

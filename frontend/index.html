@@ -21,6 +21,13 @@
       rel="stylesheet"
     />
 
+    <!-- Closed alpha. This asks search engines not to index or follow, and
+         well-behaved crawlers honour it - but it is a request, not a control.
+         The app stays publicly reachable to anyone with the URL, so it is not
+         a substitute for the server-side gates: admission is invite_only and
+         route generation is rate limited. Remove both this and robots.txt when
+         the alpha opens. -->
+    <meta name="robots" content="noindex, nofollow" />
     <title>Driftway</title>
   </head>
   <body>

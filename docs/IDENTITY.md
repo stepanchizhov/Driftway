@@ -223,6 +223,54 @@ If step 1 fails, stop: everything after it is theatre on disposable storage.
 
 ---
 
+### The same steps in PowerShell
+
+The founder works on Windows. Two traps make the bash forms above misleading
+there, and both have cost time already:
+
+* `export` does not exist. Use `$env:NAME = 'value'`.
+* `curl` is an **alias for `Invoke-WebRequest`**, which takes different
+  parameters entirely - `-X` and `-H` will error or misbehave. Use
+  `Invoke-RestMethod`, or spell it `curl.exe` to reach the real binary.
+
+```powershell
+$env:ADMIN_TOKEN = '<paste the token value here>'
+$API = 'https://driftway.onrender.com'
+$H   = @{ 'X-Admin-Token' = $env:ADMIN_TOKEN }
+
+# Mint an invite. invite_token is returned once and never again.
+Invoke-RestMethod -Method Post -Uri "$API/api/admin/beta-invites?ttl_days=30" -Headers $H | Format-List
+
+# List invites. Raw tokens are deliberately absent.
+Invoke-RestMethod -Uri "$API/api/admin/beta-invites" -Headers $H |
+  Format-Table id, status, bound_email, created_at, expires_at
+
+# Revoke one
+Invoke-RestMethod -Method Post -Uri "$API/api/admin/beta-invites/<id>/revoke" -Headers $H
+
+# Disable an account (does not delete their data)
+Invoke-RestMethod -Method Post -Uri "$API/api/admin/accounts/<user_id>/disable" -Headers $H
+```
+
+`403` means the token does not match the server's; `503` means
+`ADMIN_API_TOKEN` is unset there.
+
+**Generating a value and entering a value are different steps.** The command
+
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+*prints* a secret. What goes into the Render dashboard is the printed output -
+43 random characters, no spaces - never the command line itself. See the
+incident note in DEPLOY.md.
+
+---
+
+
+
+---
+
 ## Environment variables
 
 Names only.
