@@ -135,6 +135,8 @@ export interface FavouriteCreate {
 }
 
 export interface Favourite {
+  /** "account" once it belongs to a signed-in account, "device" until then. */
+  scope?: "account" | "device";
   id: string;
   label: string;
   place_label: string;

@@ -34,6 +34,7 @@ from core.identity import (
     verify_access_token,
 )
 from core.retention import erase_account, export_account
+from core.current_user import CredentialsRejected, current_account
 from core.accounts import (
     disable_account,
     InviteError,
@@ -261,22 +262,27 @@ def _bearer(request: Request) -> str:
 
 
 def _current_account(request: Request, session: Session, cookie: Optional[str]):
-    """The signed-in account, by whichever mechanism this deployment uses.
+    """The signed-in account, or None for an anonymous request.
 
-    A verified Auth0 token wins when one is present. The staging cookie is only
-    consulted while no provider is configured, so a configured deployment
-    cannot be entered through the temporary door.
+    Delegates to core.current_user so that every surface agrees on what a
+    credential means. The behaviour that changed: a token which is present but
+    unusable now raises rather than quietly becoming an anonymous request.
     """
-    token = _bearer(request)
-    if token and identity_configured():
-        try:
-            identity = verify_access_token(token)
-        except IdentityError:
-            return None
-        return account_for_identity(session, identity)
-    if identity_configured():
-        return None
-    return account_for_session(session, cookie)
+    try:
+        return current_account(request, session, cookie)
+    except CredentialsRejected as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
+def _optional_account(request: Request, session: Session, cookie: Optional[str]):
+    """Same, for endpoints that must keep working for guests.
+
+    Meetups are joined by capability link and need no account at all, so an
+    anonymous request here is ordinary. A *rejected* credential is still an
+    error: someone whose session expired mid-flow should be told, not silently
+    demoted to a guest and separated from their own meetup.
+    """
+    return _current_account(request, session, cookie)
 
 
 @router.post("/auth/session", response_model=AccountPublic)
@@ -349,12 +355,19 @@ def erase_my_account(
 
 @router.get("/auth/me", response_model=Optional[AccountPublic])
 def me(
+    request: Request,
     driftway_staging_session: Optional[str] = Cookie(None),
     session: Session = Depends(get_session),
 ):
+    """Who the caller is, or null.
+
+    Consulted the staging cookie only, which meant it answered null for every
+    Auth0 session - the one deployment shape it now has to work in. Routed
+    through the shared resolver so a bearer token counts here too.
+    """
     if not storage_available():
         return None
-    account = account_for_session(session, driftway_staging_session)
+    account = _current_account(request, session, driftway_staging_session)
     return _account_public(account) if account else None
 
 
@@ -396,10 +409,21 @@ def _parse_when(raw: Optional[str]) -> Optional[datetime]:
 @router.post("/meetups", response_model=MeetupCreated)
 def create_meetup(
     req: CreateMeetupRequest,
+    request: Request,
     _: None = Depends(_require_feature),
+    driftway_staging_session: Optional[str] = Cookie(None),
     repo: SqlMeetupRepository = Depends(_repo),
+    session: Session = Depends(get_session),
 ):
+    """Start a meetup.
+
+    Creating one signed in attaches it to that account, so it appears in the
+    organiser's export and is removed with them. Creating one signed out still
+    works and leaves the links null - the capability tokens returned below are
+    the whole access model in that case, exactly as before.
+    """
     _require_storage()
+    account = _optional_account(request, session, driftway_staging_session)
     meetup = repo.create_meetup(
         scheduled_at=_parse_when(req.scheduled_at),
         mode=req.mode,
@@ -421,6 +445,11 @@ def create_meetup(
         max_minutes=req.organiser.max_minutes,
     )
     meetup.owner_participant_id = organiser.id
+    # Server-derived, both of them. There is no request field that can set
+    # these, so no client can claim to organise on another account's behalf.
+    if account is not None:
+        meetup.owner_user_id = account.id
+        organiser.user_id = account.id
     repo.touch_meetup(meetup)
 
     # A second, empty participant slot carrying its own write capability. The
@@ -447,15 +476,26 @@ def join_meetup(
     meetup_id: str,
     join_token: str,
     req: JoinMeetupRequest,
+    request: Request,
     _: None = Depends(_require_feature),
+    driftway_staging_session: Optional[str] = Cookie(None),
     repo: SqlMeetupRepository = Depends(_repo),
+    session: Session = Depends(get_session),
 ):
     """Set or update this participant's origin and preferences.
 
     No account required: `user_id` stays null for a guest. Putting a signup
     wall inside the collaboration funnel would kill the feature.
+
+    A signed-in parent claims the seat instead, so that their participation -
+    and the exact origin inside it - is covered by their own export and
+    erasure. The capability that authorises the claim is the join token they
+    already had to present; nothing is inferred from an email address, a
+    display name or where they happen to be starting from. A seat already held
+    by a different account is never reassigned.
     """
     _require_storage()
+    account = _optional_account(request, session, driftway_staging_session)
     meetup = repo.get_meetup(meetup_id)
     if meetup is None:
         raise HTTPException(status_code=404, detail="Meetup not found.")
@@ -468,6 +508,17 @@ def join_meetup(
 
     if len(repo.participants(meetup_id)) > MAX_PARTICIPANTS_PER_MEETUP:
         raise HTTPException(status_code=409, detail="This meetup is full.")
+
+    if account is not None:
+        if participant.user_id and participant.user_id != account.id:
+            # Someone else's seat. Holding the link is not enough to take it:
+            # that would let a forwarded invitation overwrite the parent who
+            # already filled it in, origin and all.
+            raise HTTPException(
+                status_code=409,
+                detail="That place in the meetup belongs to another account.",
+            )
+        participant.user_id = account.id
 
     participant.start_lat = req.start.lat
     participant.start_lng = req.start.lng

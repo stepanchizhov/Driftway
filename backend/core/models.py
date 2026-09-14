@@ -170,6 +170,10 @@ class FavouriteCreate(BaseModel):
 
 
 class FavouriteOut(BaseModel):
+    #: "account" once it belongs to a signed-in account, "device" while it is
+    #: held against this browser's anonymous id. The UI uses it to offer
+    #: moving device rows onto the account, never to do so on its own.
+    scope: str = "device"
     id: str
     label: str
     place_label: str

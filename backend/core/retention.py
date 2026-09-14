@@ -9,6 +9,16 @@ schedule rather than kept indefinitely. That also removes the ugliest case in
 erasure: with nothing kept long-term, deleting a participant is not rewriting
 somebody's future plan, it is tidying a past one.
 
+**Records that cannot be attributed.** A favourite or a meetup created before
+anyone signed in carries a random device id, not an identity. Nothing here
+guesses whose it is: not from an email address, not from a starting point, not
+from the fact that the same browser later signed in - a browser can be shared,
+and attributing one parent's origins to another parent's account is exactly the
+harm this module exists to avoid. Such records are reachable only by whoever
+holds the device id, are excluded from export and erasure, and are removed by
+the meetup purges below on the same schedule as everything else. Device
+favourites have no expiry of their own and persist until claimed or deleted.
+
 **An inactive account survives one year.** Long enough that a parent returning
 after a quiet winter still finds their things; short enough that we are not
 holding identity for people who left. After that they can sign up again.
@@ -175,8 +185,11 @@ def export_account(session: Session, user_id: str) -> Dict:
         "not_included": [
             "Other participants' starting points and details, which are theirs "
             "rather than yours.",
-            "Saved places, which are held on your own device and never sent to "
-            "the server.",
+            "Anything saved on a device before you signed in. Those records "
+            "carry a random per-device id and no identity, so we cannot tell "
+            "whose they are - and on a shared browser they may not be yours. "
+            "You can move them onto this account yourself from Saved places; "
+            "until you do, they stay outside this export and outside erasure.",
         ],
     }
 

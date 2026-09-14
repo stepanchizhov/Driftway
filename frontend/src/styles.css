@@ -1751,3 +1751,17 @@ body {
 .account-confirm .btn-quiet {
   margin-right: 8px;
 }
+
+/* --- saved drives: device rows awaiting an explicit claim ---- */
+.favs-claim {
+  margin: 4px 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+}
+.favs-claim p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--ink-dim);
+}

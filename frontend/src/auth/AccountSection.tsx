@@ -272,8 +272,16 @@ function SignedIn({
       ) : (
         <div className="account-confirm">
           <p>
-            This deletes your account, your saved places, your votes, and any
-            meetup you organised — for everyone in it. It can&rsquo;t be undone.
+            This deletes your Driftway account, the drives saved to it, your
+            votes, and any meetup you organised — for everyone in it. It
+            can&rsquo;t be undone.
+          </p>
+          <p className="set-hint">
+            Two things it does not do. It does not delete your sign-in itself:
+            that lives with our sign-in provider, and you would need to remove
+            it there. And it does not touch drives saved on a device before you
+            signed in — those carry no identity, so we can&rsquo;t tell whose
+            they are. Move them to your account first if you want them included.
           </p>
           <p className="set-hint">
             If you want a copy first, download your data before deleting.

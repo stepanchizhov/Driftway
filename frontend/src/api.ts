@@ -132,26 +132,54 @@ export async function sendFeedback(fb: FeedbackRequest): Promise<void> {
   }
 }
 
+export class AuthExpired extends Error {}
+
 export async function listFavourites(owner: string): Promise<Favourite[]> {
   const res = await authFetch(
     `${API_BASE}/api/favourites?owner=${encodeURIComponent(owner)}`,
   );
+  // A rejected credential is not "no saved places". Swallowing it here would
+  // show an empty list to someone whose session merely expired, which reads
+  // as data loss.
+  if (res.status === 401) throw new AuthExpired(await describeFailure(res));
   if (!res.ok) return [];
   return res.json();
 }
 
 export async function saveFavourite(fav: FavouriteCreate): Promise<Favourite | null> {
+  let res: Response;
   try {
-    const res = await authFetch(`${API_BASE}/api/favourites`, {
+    res = await authFetch(`${API_BASE}/api/favourites`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(fav),
     });
-    if (!res.ok) return null;
-    return res.json();
   } catch {
-    return null;
+    return null; // offline; saving is best-effort
   }
+  // The server refuses rather than filing this under a device id the parent
+  // will never see again. Surface that instead of pretending it saved - and
+  // do not retry, which would risk a duplicate once the session is renewed.
+  if (res.status === 401) throw new AuthExpired(await describeFailure(res));
+  if (!res.ok) return null;
+  return res.json();
+}
+
+/**
+ * Move this device's saved places onto the signed-in account.
+ *
+ * Deliberately a separate, user-initiated call rather than something that
+ * happens on sign-in: a browser can be shared, and absorbing whatever is on it
+ * into whoever signed in most recently would attach one parent's saved drives
+ * to another parent's account.
+ */
+export async function claimFavourites(owner: string): Promise<Favourite[]> {
+  const res = await authFetch(
+    `${API_BASE}/api/favourites/claim?owner=${encodeURIComponent(owner)}`,
+    { method: "POST" },
+  );
+  if (!res.ok) throw new Error(await describeFailure(res));
+  return res.json();
 }
 
 export async function deleteFavourite(id: string, owner: string): Promise<void> {
