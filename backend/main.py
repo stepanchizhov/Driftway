@@ -54,7 +54,16 @@ _origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _origins.split(",") if o.strip()],
-    allow_methods=["GET", "POST"],
+    # Every verb the frontend actually issues. DELETE and PUT were missing,
+    # which is invisible in local development - vite proxies /api to the
+    # backend on the same origin, so no preflight happens at all - and breaks
+    # only in production, where the PWA and the API are separate origins.
+    # Deleting a favourite, removing a venue, casting a vote and erasing an
+    # account were all failing at the OPTIONS preflight rather than at any
+    # endpoint, so the server logs showed nothing.
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    # Authorization must be permitted here, or the bearer token turns every
+    # authenticated request into a blocked preflight.
     allow_headers=["*"],
 )
 

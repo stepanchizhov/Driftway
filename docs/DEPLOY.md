@@ -143,13 +143,20 @@ Backend service (**Driftway**) → **Environment**:
 | `REGISTRATION_MODE` | `invite_only` |
 | `ADMIN_API_TOKEN` | a long random string you keep private |
 
-`ADMIN_API_TOKEN` guards beta-invite creation. **Leave it unset and the admin
-endpoints refuse everything** — a missing secret is not permission. Generate
-one with:
+`ADMIN_API_TOKEN` guards beta-invite creation and account disabling. **Leave it
+unset and the admin endpoints refuse everything** — a missing secret is not
+permission.
+
+Run this locally and paste **the output** into Render — not the command itself.
+Pasting the line below verbatim has happened, and it sets the admin token to a
+string published in this repository, which anyone can read:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
+
+It should look like `kJ3n...` — 43 random characters, no spaces, no quotes. If
+the value in Render contains a space, it is wrong.
 
 No frontend change is needed. The app asks `/api/health` whether the feature is
 on and only then shows the entry point.
