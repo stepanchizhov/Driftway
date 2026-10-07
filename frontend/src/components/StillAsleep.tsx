@@ -47,6 +47,9 @@ export function StillAsleep({
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set only when the drive we found is not the one they asked for, so the
+  // handoff waits for a deliberate second tap instead of happening on its own.
+  const [held, setHeld] = useState<string | null>(null);
 
   const chosen: StillAsleepTarget | null =
     searched
@@ -64,6 +67,7 @@ export function StillAsleep({
     setBusy(true);
     setNote(null);
     setError(null);
+    setHeld(null);
     try {
       const data = await generateRoutes({
         start: current,
@@ -87,11 +91,20 @@ export function StillAsleep({
         // The floor. Total remaining journey time cannot be less than the
         // quickest way there, and saying so beats opening a drive that is not
         // the one they asked for.
+        //
+        // So this case stops and says it, rather than handing off at once:
+        // previously the note was set and Google Maps opened in the same
+        // moment, so the explanation was only visible after coming back.
         setNote(
           `${chosen.label} is about ${Math.round(data.direct_minutes)} min away, ` +
-            `so this is the direct route.`,
+            `so there's no longer way to fill ${minutes} min — only the direct route.`,
         );
+        setHeld(best.maps_url);
+        return;
       }
+      // The ordinary case hands straight off. That is the point of this
+      // screen - one tap during a brief stop - and the button says in advance
+      // where it goes, so the switch is expected rather than abrupt.
       window.open(best.maps_url, "_blank", "noopener");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -188,11 +201,12 @@ export function StillAsleep({
       </section>
 
       <button
-        className="btn-generate"
+        className="btn-generate sa-go"
         disabled={!current || !chosen || busy}
         onClick={() => void findRoute()}
       >
-        {busy ? "Finding a route…" : "Find route"}
+        <span>{busy ? "Finding a route…" : "Find route"}</span>
+        {!busy && <span className="sa-go-dest">Opens Google Maps</span>}
       </button>
 
       {!current && (
@@ -204,6 +218,17 @@ export function StillAsleep({
         </p>
       )}
       {note && <p className="sa-note">{note}</p>}
+      {held && (
+        <button
+          className="btn-quiet sa-held"
+          onClick={() => {
+            window.open(held, "_blank", "noopener");
+            setHeld(null);
+          }}
+        >
+          Open the direct route in Google Maps
+        </button>
+      )}
       {error && <p className="sa-error">{error}</p>}
 
       <button className="sa-prefs" onClick={onOpenPreferences}>
