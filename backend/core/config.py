@@ -68,6 +68,19 @@ def admin_token() -> str:
     return (os.getenv("ADMIN_API_TOKEN") or "").strip()
 
 
+def retention_trigger_token() -> str:
+    """A secret that can run the retention purge and do nothing else.
+
+    Held by whatever schedules retention - currently a GitHub Actions workflow -
+    so that the scheduler never needs the admin token, which can also mint
+    invitations and disable accounts. Least privilege, and here it is close to
+    zero privilege: the purge selects by age, so calling it more often than
+    scheduled deletes nothing that was not already due. A leaked trigger token
+    lets someone run a job early that would have run anyway.
+    """
+    return (os.getenv("RETENTION_TRIGGER_TOKEN") or "").strip()
+
+
 # How long a beta-access invite stays valid unless the founder overrides it.
 DEFAULT_INVITE_TTL_DAYS = 14
 

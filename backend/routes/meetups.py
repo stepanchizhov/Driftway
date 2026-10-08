@@ -62,6 +62,7 @@ from core.config import (
     SELF_REVEAL_METRES,
     RegistrationMode,
     admin_token,
+    retention_trigger_token,
     meet_halfway_enabled,
     registration_mode,
 )
@@ -116,6 +117,29 @@ def _require_admin(x_admin_token: Optional[str] = Header(None)) -> None:
         )
     if not x_admin_token or not hmac.compare_digest(x_admin_token, expected):
         raise HTTPException(status_code=403, detail="Not permitted.")
+
+
+def _require_retention_trigger(
+    x_retention_token: Optional[str] = Header(None),
+    x_admin_token: Optional[str] = Header(None),
+) -> None:
+    """The scoped retention token, or the admin token, and nothing else.
+
+    Same refusal rules as _require_admin: with neither secret configured every
+    request is refused, because a missing secret is not permission.
+    """
+    scoped = retention_trigger_token()
+    admin = admin_token()
+    if not scoped and not admin:
+        raise HTTPException(
+            status_code=503,
+            detail="Retention triggering is not configured on this deployment.",
+        )
+    if scoped and x_retention_token and hmac.compare_digest(x_retention_token, scoped):
+        return
+    if admin and x_admin_token and hmac.compare_digest(x_admin_token, admin):
+        return
+    raise HTTPException(status_code=403, detail="Not permitted.")
 
 
 def _repo(session: Session = Depends(get_session)) -> SqlMeetupRepository:
@@ -183,7 +207,7 @@ def revoke_beta_invite(
 
 @router.post("/admin/retention/run")
 def run_retention_now(
-    _: None = Depends(_require_admin),
+    _: None = Depends(_require_retention_trigger),
     session: Session = Depends(get_session),
 ):
     """Run the scheduled purge now.

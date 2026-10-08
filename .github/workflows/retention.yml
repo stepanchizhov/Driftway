@@ -1,0 +1,52 @@
+# Scheduled retention for Driftway.
+#
+# Calls the API's retention endpoint once a day. Free: GitHub Actions costs
+# nothing for public repositories, and this run takes seconds.
+#
+# Needs one repository secret, RETENTION_TRIGGER_TOKEN, holding the same value
+# as the RETENTION_TRIGGER_TOKEN environment variable on the Render API. That
+# token can run the purge and do nothing else - it cannot mint invitations or
+# disable accounts - which is why the scheduler gets it instead of the admin
+# token. See docs/DEPLOY.md.
+#
+# Known limits, both from GitHub's documentation:
+#   * Scheduled runs on public repositories are switched off after 60 days with
+#     no repository activity. A commit, or re-enabling it on the Actions tab,
+#     turns it back on.
+#   * Scheduled runs can start late when GitHub is busy. Retention selects by
+#     age, so a late or missed run loses nothing - the next one takes it.
+
+name: Retention
+
+on:
+  schedule:
+    # 03:15 UTC daily: quiet hours, and far enough from midnight that a date
+    # boundary bug would not be hidden by one.
+    - cron: "15 3 * * *"
+  # Run it by hand from the Actions tab, e.g. to verify the setup.
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run the retention purge
+        env:
+          TOKEN: ${{ secrets.RETENTION_TRIGGER_TOKEN }}
+          API: https://driftway.onrender.com
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::RETENTION_TRIGGER_TOKEN is not set as a repository secret."
+            exit 1
+          fi
+          # The free Render service sleeps when idle and can take a minute to
+          # wake, hence the long timeout and the retries. A 503 means storage
+          # is unavailable on the API, which is a failed run, not a skipped one.
+          curl --fail-with-body --silent --show-error \
+            --max-time 120 --retry 2 --retry-delay 30 --retry-all-errors \
+            -X POST "$API/api/admin/retention/run" \
+            -H "X-Retention-Token: $TOKEN"
+          echo

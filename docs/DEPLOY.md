@@ -171,20 +171,47 @@ records of each kind per pass, draining any backlog across runs rather than in
 one long transaction. It logs counts and meetup ids only, never a coordinate,
 an address or a token.
 
-**Two ways to schedule it. Neither is active yet.**
+**Chosen schedule: GitHub Actions (free).** Decided 8 Oct 2026.
+`.github/workflows/retention.yml` calls the API daily at 03:15 UTC. It is free
+because the repository is public, and it runs whether or not anyone's computer
+is on. It uses a **retention-only token**, not the admin token: that token can
+run the purge and nothing else, and since the purge selects by age, a leaked
+copy only lets someone run early a job that was going to run anyway.
 
-*Render cron (costs money).* `backend/render.yaml` carries a
-`Driftway-Retention` cron service running daily at 03:15 UTC. Render bills cron
-services separately from the web service, so applying it is a spending
-decision. Nothing has been applied.
+Setting it up is three steps. **Generating a value and entering it are separate
+steps** - the command below prints a secret; what you paste is the printed
+output (43 random characters, no spaces), never the command.
 
-*External scheduler (no new spend).* `POST /api/admin/retention/run` with the
-`X-Admin-Token` header does the same work over HTTP, so any scheduler that can
-make an authenticated request will do. It returns counts only.
+1. Generate the token, in PowerShell on your own machine:
+   ```powershell
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
+   ```
+2. Enter the **output** in two places, identically:
+   - Render → Driftway (API) → Environment → `RETENTION_TRIGGER_TOKEN`
+   - GitHub → the repository → Settings → Secrets and variables →
+     Actions → New repository secret → `RETENTION_TRIGGER_TOKEN`
+3. GitHub → Actions → Retention → **Run workflow**, then check that
+   `/api/health` shows a non-null `retention` field.
+
+Known limits, from GitHub's own documentation: scheduled workflows in a public
+repository are switched off after 60 days with no repository activity, and
+scheduled runs can start late when GitHub is busy. Neither loses data -
+selection is by age, so the next run takes whatever a missed one would have.
+
+*Alternatives, not in use.* `backend/render.yaml` still carries a Render cron
+service, which Render bills separately. And the endpoint can be called from a
+local Windows scheduled task if GitHub is ever unsuitable:
 
 ```powershell
-Invoke-RestMethod -Method Post -Uri "$API/api/admin/retention/run" -Headers $H
+$action  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument (
+  '-NoProfile -Command "Invoke-RestMethod -Method Post ' +
+  '-Uri https://driftway.onrender.com/api/admin/retention/run ' +
+  '-Headers @{''X-Retention-Token''=$env:RETENTION_TRIGGER_TOKEN}"')
+$trigger = New-ScheduledTaskTrigger -Daily -At 4am
+Register-ScheduledTask -TaskName 'Driftway retention' -Action $action -Trigger $trigger
 ```
+
+That only runs while the machine is on, which is why it is the fallback.
 
 **Verifying it rather than assuming it.** `/api/health` carries a `retention`
 field. It is `null` until a run completes against that database, and then

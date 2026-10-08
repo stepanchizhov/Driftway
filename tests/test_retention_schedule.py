@@ -23,6 +23,7 @@ if BACKEND not in sys.path:
     sys.path.insert(0, BACKEND)
 
 ADMIN = "retention-admin-token"
+TRIGGER = "retention-only-trigger"
 
 
 def _reset_modules():
@@ -37,6 +38,7 @@ def _fresh():
     os.environ["DATABASE_URL"] = f"sqlite:///{tmp.name.replace(os.sep, '/')}"
     os.environ["MEET_HALFWAY_ENABLED"] = "true"
     os.environ["ADMIN_API_TOKEN"] = ADMIN
+    os.environ["RETENTION_TRIGGER_TOKEN"] = TRIGGER
     os.environ["ROUTING_PROVIDER"] = "mock"
     os.environ["REGISTRATION_MODE"] = "invite_only"
     _reset_modules()
@@ -183,3 +185,42 @@ class JobEntryPointTests(unittest.TestCase):
         # Non-zero so the scheduler shows red rather than a green tick over
         # a run that deleted nothing because it could not connect.
         self.assertNotEqual(job.main(), 0)
+
+
+class ScopedTriggerTests(unittest.TestCase):
+    """The scheduler holds a token that can run retention and nothing else."""
+
+    def setUp(self):
+        self.client, _ = _fresh()
+
+    def tearDown(self):
+        self.client.close()
+
+    def test_the_scoped_token_runs_retention(self):
+        r = self.client.post("/api/admin/retention/run",
+                             headers={"X-Retention-Token": TRIGGER})
+        self.assertEqual(r.status_code, 200, r.text)
+
+    def test_the_scoped_token_cannot_mint_invitations(self):
+        """The whole point of scoping it: a leak must not open the front door."""
+        r = self.client.post("/api/admin/beta-invites",
+                             headers={"X-Admin-Token": TRIGGER})
+        self.assertEqual(r.status_code, 403)
+        r = self.client.post("/api/admin/beta-invites",
+                             headers={"X-Retention-Token": TRIGGER})
+        self.assertEqual(r.status_code, 403)
+
+    def test_the_scoped_token_cannot_disable_accounts(self):
+        r = self.client.post("/api/admin/accounts/anyone/disable",
+                             headers={"X-Retention-Token": TRIGGER})
+        self.assertEqual(r.status_code, 403)
+
+    def test_the_admin_token_still_works_so_the_founder_is_not_locked_out(self):
+        r = self.client.post("/api/admin/retention/run",
+                             headers={"X-Admin-Token": ADMIN})
+        self.assertEqual(r.status_code, 200, r.text)
+
+    def test_a_wrong_scoped_token_is_refused(self):
+        r = self.client.post("/api/admin/retention/run",
+                             headers={"X-Retention-Token": "guess"})
+        self.assertEqual(r.status_code, 403)
