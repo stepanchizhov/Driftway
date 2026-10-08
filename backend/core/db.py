@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -51,7 +53,12 @@ IS_SQLITE = DATABASE_URL.startswith("sqlite")
 # SQLite needs check_same_thread off (FastAPI uses a threadpool for sync
 # endpoints). pool_pre_ping quietly reconnects dropped Postgres connections,
 # which matters on Render where idle connections get closed.
-_connect_args = {"check_same_thread": False} if IS_SQLITE else {}
+# Postgres gets a connect timeout so that an unreachable host fails in seconds
+# rather than holding a request open until the OS gives up. That matters more
+# now that storage is re-checked while serving requests (see storage_available).
+_connect_args = (
+    {"check_same_thread": False} if IS_SQLITE else {"connect_timeout": 5}
+)
 
 # create_engine does not connect - it only builds the engine and imports the
 # driver - but it still raises if the URL is malformed or the driver is
@@ -152,10 +159,41 @@ class Favourite(Base):
 # Whether storage answered at startup. Favourites and feedback need it;
 # routing and search do not.
 _storage_ready = False
+_last_attempt = 0.0
+_attempt_lock = threading.Lock()
+
+#: How long to wait between attempts to reach a database that was down.
+RETRY_SECONDS = 30.0
 
 
 def storage_available() -> bool:
-    return _storage_ready
+    """Whether the database answers - re-checked, not just remembered.
+
+    This used to report only what happened at boot. A database that was
+    briefly unreachable at the moment the service started (a restart racing a
+    Postgres maintenance window, a deploy during a network blip) left the API
+    reporting "unavailable" until someone restarted it by hand, even after the
+    database came back seconds later.
+
+    Now a failed state is retried at most every RETRY_SECONDS. The lock is
+    taken without waiting, so a burst of requests during an outage produces
+    one connection attempt, not one per request, and nobody queues behind it.
+    """
+    global _last_attempt
+    if _storage_ready:
+        return True
+    if time.monotonic() - _last_attempt < RETRY_SECONDS:
+        return False
+    if not _attempt_lock.acquire(blocking=False):
+        return False
+    try:
+        _last_attempt = time.monotonic()
+        init_db()
+        if _storage_ready:
+            log.info("storage reachable again; account features restored")
+        return _storage_ready
+    finally:
+        _attempt_lock.release()
 
 
 def init_db() -> None:
@@ -168,7 +206,8 @@ def init_db() -> None:
     storage. Crashing the process on a storage fault would break the core
     promise to protect a feature nobody is using at that moment.
     """
-    global _storage_ready
+    global _storage_ready, _last_attempt
+    _last_attempt = time.monotonic()
     try:
         Base.metadata.create_all(engine)
         _storage_ready = True

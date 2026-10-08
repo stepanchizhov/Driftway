@@ -86,3 +86,59 @@ class StorageOutageTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StorageRecoveryTests(unittest.TestCase):
+    """A database that comes back must be noticed without a restart.
+
+    Found in production on 8 Oct 2026: /api/health reported storage
+    "unavailable" after a deploy, and the check only ever ran at boot, so a
+    database that was briefly unreachable when the service started would have
+    kept every account feature off until someone restarted it by hand.
+    """
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self._shutil = shutil
+        self.base = tempfile.mkdtemp()
+        # A directory that does not exist yet: SQLite cannot open a file in
+        # it, which stands in for an unreachable Postgres host.
+        self.dir = os.path.join(self.base, "not-yet")
+        path = os.path.join(self.dir, "recover.db").replace(os.sep, "/")
+        os.environ["DATABASE_URL"] = f"sqlite:///{path}"
+        os.environ["ROUTING_PROVIDER"] = "mock"
+        for name in [m for m in sys.modules
+                     if m == "main" or m.startswith(("core.", "routes."))]:
+            sys.modules.pop(name, None)
+        backend = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
+        if backend not in sys.path:
+            sys.path.insert(0, backend)
+        self.db = importlib.import_module("core.db")
+
+    def tearDown(self):
+        self._shutil.rmtree(self.base, ignore_errors=True)
+
+    def test_storage_recovers_once_the_database_is_reachable(self):
+        self.db.init_db()
+        self.assertFalse(self.db.storage_available())
+
+        os.makedirs(self.dir)            # the database "comes back"
+        self.db.RETRY_SECONDS = 0.0      # don't make the test wait 30 s
+        self.assertTrue(self.db.storage_available())
+
+    def test_retries_are_rate_limited_during_an_outage(self):
+        """A burst of requests mid-outage must not each try to connect."""
+        self.db.init_db()
+        attempts = []
+        real_init = self.db.init_db
+
+        def counting_init():
+            attempts.append(1)
+            real_init()
+
+        self.db.init_db = counting_init
+        self.db.RETRY_SECONDS = 3600.0
+        for _ in range(20):
+            self.assertFalse(self.db.storage_available())
+        self.assertEqual(attempts, [])
