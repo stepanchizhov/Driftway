@@ -1783,3 +1783,164 @@ body {
   display: block;
   margin: 8px 0 12px;
 }
+
+/* --- Walks (experiment) ------------------------------------- */
+/* Verdict colours carry meaning, so they are fixed: ok is green, harder is
+   amber, blocked is red, and unknown is grey - never green. A stretch nobody
+   has recorded must not look like a stretch somebody has checked. */
+
+.walks { padding-bottom: 32px; }
+.walks-head { margin-bottom: 18px; }
+.walks-title {
+  font-family: var(--display);
+  font-size: 24px;
+  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.walks-badge {
+  font-family: var(--body);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.walks-sub, .walks-hint { color: var(--ink-dim); font-size: 14px; margin: 6px 0; }
+.walks-gate {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+.walks-setup {
+  margin: 4px 0 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  background: var(--surface);
+}
+.walks-setup summary {
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.walks-setup-now { font-weight: 400; color: var(--ink-dim); font-size: 14px; }
+.walks-setup[open] summary { margin-bottom: 10px; }
+.walks-check { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 15px; }
+
+.walks-list { display: grid; gap: 16px; margin-top: 8px; }
+
+.walk {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 16px;
+}
+.walk-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.walk-name { font-family: var(--display); font-size: 18px; margin: 0; }
+.walk-area { margin: 0; color: var(--ink-dim); font-size: 13px; }
+.walk-verdict { margin: 8px 0 12px; font-weight: 600; font-size: 15px; }
+.verdict-ok { color: var(--ok); }
+.verdict-unknown { color: var(--ink-dim); }
+.verdict-difficult { color: var(--warn); }
+.verdict-blocked { color: var(--danger); }
+
+.walk-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.walk-stats div { min-width: 0; }
+.walk-stats dt {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.walk-stats dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 420px) {
+  .walk-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* The route as a line, start on the left: where the hard bits are, at a glance. */
+.walk-strip {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.walk-strip span { min-width: 3px; }
+.strip-ok { background: var(--ok); }
+.strip-unknown { background: var(--line); }
+.strip-difficult { background: var(--warn); }
+.strip-blocked { background: var(--danger); }
+.walk-strip-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-dim);
+  margin: 4px 0 12px;
+}
+
+.walk-summary { font-size: 15px; margin: 0 0 12px; }
+
+.walk-findings { margin: 10px 0; }
+.walk-findings h4 {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+.walk-findings ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.walk-findings li {
+  border-left: 3px solid var(--line);
+  padding: 2px 0 2px 10px;
+  display: grid;
+  gap: 1px;
+}
+.finding-reason { font-size: 15px; }
+.finding-meta { font-size: 12.5px; color: var(--ink-dim); }
+.findings-blocked h4 { color: var(--danger); }
+.findings-blocked li { border-left-color: var(--danger); }
+.findings-difficult h4 { color: var(--warn); }
+.findings-difficult li { border-left-color: var(--warn); }
+.findings-unknown h4 { color: var(--ink-dim); }
+.findings-note h4 { color: var(--ink-dim); }
+.findings-note .finding-reason { color: var(--ink-dim); }
+
+.walk-coverage { font-size: 13px; color: var(--ink-dim); margin: 12px 0 8px; }
+.walk-curator {
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+.walk-go { display: inline-block; text-decoration: none; margin-top: 4px; }
+.walk-handoff { font-size: 12.5px; color: var(--ink-dim); margin: 6px 0 0; }
+
+.walks-guidance { margin-top: 24px; display: grid; gap: 12px; }
+.walks-guide {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px 14px;
+}
+.walks-guide h3 { font-size: 15px; margin: 0 0 6px; }
+.walks-guide ul { margin: 0; padding-left: 18px; font-size: 14px; }
+.walks-cite { font-size: 12.5px; color: var(--ink-dim); margin: 8px 0 0; }
+.walks-cite a, .walks-attrib a { color: var(--ink-dim); }
+.walks-attrib { font-size: 12px; color: var(--ink-dim); margin-top: 20px; }

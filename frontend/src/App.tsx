@@ -25,6 +25,8 @@ import { MeetHalfway } from "./meetup/MeetHalfway";
 import { StillAsleep } from "./components/StillAsleep";
 import { useStillAsleepTargets } from "./hooks/useStillAsleepTargets";
 import { meetHalfwayEnabled } from "./meetup/api";
+import { Walks } from "./walking/Walks";
+import { walkingEnabled } from "./walking/api";
 import type { Endpoint } from "./components/PlaceSearch";
 
 /**
@@ -55,6 +57,10 @@ type Screen =
       toLabel: string;
     }
   | { name: "favourites" }
+  // The walking experiment. A secondary screen like Saved, deliberately not a
+  // fourth tab: the brief rules out a permanent walking tab until a design has
+  // been tested, and this way it can be removed without touching navigation.
+  | { name: "walks" }
   | { name: "settings" };
 
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60, 90];
@@ -92,6 +98,7 @@ export default function App() {
   );
   const [screen, setScreen] = useState<Screen>({ name: "plan" });
   const [meetupAvailable, setMeetupAvailable] = useState(false);
+  const [walkingAvailable, setWalkingAvailable] = useState(false);
   const [mode, setMode] = useState<RouteMode>("loop");
   const [duration, setDuration] = useState<number>(settings.lastDuration);
   const [profile, setProfile] = useState<RoadProfile>(settings.lastProfile);
@@ -179,6 +186,9 @@ export default function App() {
 
   useEffect(() => {
     void meetHalfwayEnabled().then(setMeetupAvailable);
+    // The entry point appears only when the deployment has the experiment on.
+    // Whether this person may use it is the server's decision, not this flag's.
+    void walkingEnabled().then(setWalkingAvailable);
   }, []);
 
   async function runGenerate(targetMinutes: number) {
@@ -270,7 +280,8 @@ export default function App() {
     if (geo.status === "ready") saveHome(geo.coord);
   }
 
-  const isSecondary = screen.name === "favourites" || screen.name === "settings";
+  const isSecondary =
+    screen.name === "favourites" || screen.name === "settings" || screen.name === "walks";
 
   return (
     <div className={`app${isSecondary ? "" : " app-tabbed"}`}>
@@ -285,6 +296,11 @@ export default function App() {
           </button>
         ) : (
           <div className="masthead-actions">
+            {walkingAvailable && (
+              <button className="btn-back" onClick={() => setScreen({ name: "walks" })}>
+                Walks
+              </button>
+            )}
             <button
               className="btn-back"
               onClick={() => setScreen({ name: "favourites" })}
@@ -511,6 +527,8 @@ export default function App() {
       {screen.name === "settings" && (
         <SettingsScreen settings={settings} update={update} />
       )}
+
+      {screen.name === "walks" && <Walks units={settings.units} />}
 
       {/* Persistent job switcher. Hidden on the secondary surfaces so their
           own Back control is unambiguous. */}
