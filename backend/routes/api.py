@@ -19,7 +19,7 @@ from core.models import (
     GenerateResponse,
     SearchResponse,
 )
-from core.config import meet_halfway_enabled, registration_mode
+from core.config import meet_halfway_enabled, registration_mode, walking_enabled
 from core.identity import is_configured as identity_configured
 from core.ratelimit import RateLimited, check_generate
 from core.current_user import (
@@ -219,6 +219,9 @@ async def health():
         # until a run completes against THIS database, which is what makes a
         # configured cron verifiable rather than assumed.
         "retention": _retention_status(),
+        # Whether the walking experiment exists on this deployment. The
+        # frontend shows its entry point only when this is true.
+        "walking": walking_enabled(),
         # The client uses this to decide whether to offer the staging entry
         # point at all, rather than showing a button that 404s.
         "meet_halfway": meet_halfway_enabled(),

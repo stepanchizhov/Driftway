@@ -9,3 +9,6 @@ __pycache__/
 # OS
 Thumbs.db
 .DS_Store
+
+# Responses cached by backend/tools/build_walk.py (OSM, elevation)
+backend/tools/.cache/

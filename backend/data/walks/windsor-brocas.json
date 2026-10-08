@@ -1,0 +1,410 @@
+{
+ "id": "windsor-brocas",
+ "name": "The Brocas riverside meadow",
+ "area": "Windsor & Eton",
+ "summary": "Across Windsor Bridge and along the Eton-side riverside meadow, then back the same way. Level ground beside the river; rougher underfoot.",
+ "shape": "out_and_back",
+ "start": {
+  "lat": 51.485704,
+  "lng": -0.608115,
+  "label": "Windsor Bridge, Windsor end"
+ },
+ "built_on": "2026-10-08",
+ "sample": false,
+ "notes": [
+  "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
+  "Riverside meadow: expect it to be wetter and softer after rain than any map can say."
+ ],
+ "sources": [
+  {
+   "id": "osm",
+   "label": "OpenStreetMap",
+   "as_of": "2026-10-08T21:28:14Z",
+   "licence": "ODbL",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "id": "eudem25m",
+   "label": "EU-DEM 25 m terrain model via Open Topo Data",
+   "licence": "Copernicus",
+   "attribution": "Produced using Copernicus data and information funded by the European Union - EU-DEM layers",
+   "limitation": "25 m grid: sustained slopes only; short ramps and kerbs are not visible, and buildings or trees can distort values in town."
+  }
+ ],
+ "sections": [
+  {
+   "from_m": 0.0,
+   "to_m": 55.3,
+   "label": "Windsor Bridge",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.485704,
+     -0.608115
+    ],
+    [
+     51.486121,
+     -0.608551
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/30629296",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 250,
+     "status": "mapped",
+     "source": "osm:way/30629296",
+     "observed_on": null,
+     "note": "Estimated by the mapper"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/30629296",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 55.3,
+   "to_m": 80.8,
+   "label": "High Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.486121,
+     -0.608551
+    ],
+    [
+     51.486168,
+     -0.608608
+    ],
+    [
+     51.486247,
+     -0.608702
+    ],
+    [
+     51.486305,
+     -0.608771
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/23649649",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 80.8,
+   "to_m": 128.7,
+   "label": "Brocas Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.486305,
+     -0.608771
+    ],
+    [
+     51.486292,
+     -0.6088
+    ],
+    [
+     51.486217,
+     -0.609101
+    ],
+    [
+     51.486209,
+     -0.609159
+    ],
+    [
+     51.48621,
+     -0.609218
+    ],
+    [
+     51.48624,
+     -0.609426
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/989038964",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/989038964",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/30629251",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/30629251",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 128.7,
+   "to_m": 168.6,
+   "label": "Brocas Street",
+   "surface": "unknown",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.48624,
+     -0.609426
+    ],
+    [
+     51.4862,
+     -0.609449
+    ],
+    [
+     51.486159,
+     -0.609471
+    ],
+    [
+     51.486108,
+     -0.609544
+    ],
+    [
+     51.48605,
+     -0.609859
+    ]
+   ],
+   "evidence": [],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 168.6,
+   "to_m": 217.9,
+   "label": "Pedestrian street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.48605,
+     -0.609859
+    ],
+    [
+     51.486077,
+     -0.609982
+    ],
+    [
+     51.486055,
+     -0.610127
+    ],
+    [
+     51.485969,
+     -0.610538
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/586375489",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 217.9,
+   "to_m": 235.0,
+   "label": "Footpath",
+   "surface": "loose",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.485969,
+     -0.610538
+    ],
+    [
+     51.485911,
+     -0.610766
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "gravel",
+     "status": "mapped",
+     "source": "osm:way/30629235",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 235.0,
+   "to_m": 599.7,
+   "label": "Footpath",
+   "surface": "unpaved",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.485911,
+     -0.610766
+    ],
+    [
+     51.485885,
+     -0.611041
+    ],
+    [
+     51.485853,
+     -0.611467
+    ],
+    [
+     51.485826,
+     -0.611884
+    ],
+    [
+     51.485828,
+     -0.612426
+    ],
+    [
+     51.485863,
+     -0.612931
+    ],
+    [
+     51.485917,
+     -0.61359
+    ],
+    [
+     51.486008,
+     -0.614306
+    ],
+    [
+     51.486088,
+     -0.614829
+    ],
+    [
+     51.486192,
+     -0.615457
+    ],
+    [
+     51.486224,
+     -0.615793
+    ],
+    [
+     51.486222,
+     -0.615959
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "unpaved",
+     "status": "mapped",
+     "source": "osm:way/25680955",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.3,
+    "steepest_down_pct": 0.5,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  }
+ ]
+}

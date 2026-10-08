@@ -46,6 +46,18 @@ def registration_mode() -> RegistrationMode:
         return _DEFAULT_REGISTRATION_MODE
 
 
+def walking_enabled() -> bool:
+    """Feature flag for the pram and carrier walking experiment.
+
+    Off by default, per the brief: shipping the code must not ship the feature.
+    With it off, every walking endpoint answers 404 and the frontend shows no
+    entry point, so driving and meetups behave exactly as before.
+    """
+    return (os.getenv("WALKING_ENABLED") or "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
 def meet_halfway_enabled() -> bool:
     """Feature flag for the whole Meet Halfway surface.
 

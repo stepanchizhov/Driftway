@@ -1,0 +1,18 @@
+{
+  "id": "windsor-brocas",
+  "name": "The Brocas riverside meadow",
+  "area": "Windsor & Eton",
+  "summary": "Across Windsor Bridge and along the Eton-side riverside meadow, then back the same way. Level ground beside the river; rougher underfoot.",
+  "shape": "out_and_back",
+  "start_label": "Windsor Bridge, Windsor end",
+  "waypoints": [
+    [51.48570, -0.60812],
+    [51.48612, -0.60855],
+    [51.48591, -0.61077],
+    [51.48622, -0.61596]
+  ],
+  "notes": [
+    "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
+    "Riverside meadow: expect it to be wetter and softer after rain than any map can say."
+  ]
+}

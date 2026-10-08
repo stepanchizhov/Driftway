@@ -1,0 +1,38 @@
+{
+  "id": "windsor-castle-hill",
+  "name": "Castle Hill and the old town",
+  "area": "Windsor",
+  "summary": "From the river up past the castle and through the cobbled old-town lanes, then back down. Firm surfaces throughout; the climb is the effort.",
+  "shape": "loop",
+  "start_label": "Windsor Bridge, Windsor end",
+  "waypoints": [
+    [
+      51.4857,
+      -0.60812
+    ],
+    [
+      51.48278,
+      -0.60646
+    ],
+    [
+      51.48212,
+      -0.60645
+    ],
+    [
+      51.48195,
+      -0.60701
+    ],
+    [
+      51.4857,
+      -0.60812
+    ]
+  ],
+  "notes": [
+    "Curated to avoid steps: it climbs by Thames Street rather than the shorter flights, so it stays usable with a pram.",
+    "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
+    "Central Windsor is busy with visitors; pavements around the castle can be crowded at midday."
+  ],
+  "avoid": [
+    "steps"
+  ]
+}

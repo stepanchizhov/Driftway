@@ -32,6 +32,7 @@ except ImportError:
 
 from routes.api import router as api_router
 from routes.meetups import router as meetup_router
+from routes.walks import router as walks_router
 from core.db import init_db
 
 # Importing the meetup tables registers them on the shared metadata so
@@ -72,6 +73,8 @@ app.include_router(api_router, prefix="/api")
 # by conditional mounting, so a disabled deployment returns a clean 404 instead
 # of a differently-shaped app.
 app.include_router(meetup_router, prefix="/api")
+# Walking: gated per-endpoint by WALKING_ENABLED, like Meet Halfway.
+app.include_router(walks_router, prefix="/api")
 
 
 @app.get("/")

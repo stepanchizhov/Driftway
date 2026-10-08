@@ -1,0 +1,1216 @@
+{
+ "id": "windsor-castle-hill",
+ "name": "Castle Hill and the old town",
+ "area": "Windsor",
+ "summary": "From the river up past the castle and through the cobbled old-town lanes, then back down. Firm surfaces throughout; the climb is the effort.",
+ "shape": "loop",
+ "start": {
+  "lat": 51.485704,
+  "lng": -0.608115,
+  "label": "Windsor Bridge, Windsor end"
+ },
+ "built_on": "2026-10-08",
+ "sample": false,
+ "notes": [
+  "Curated to avoid steps: it climbs by Thames Street rather than the shorter flights, so it stays usable with a pram.",
+  "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
+  "Central Windsor is busy with visitors; pavements around the castle can be crowded at midday."
+ ],
+ "sources": [
+  {
+   "id": "osm",
+   "label": "OpenStreetMap",
+   "as_of": "2026-10-08T21:28:14Z",
+   "licence": "ODbL",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "id": "eudem25m",
+   "label": "EU-DEM 25 m terrain model via Open Topo Data",
+   "licence": "Copernicus",
+   "attribution": "Produced using Copernicus data and information funded by the European Union - EU-DEM layers",
+   "limitation": "25 m grid: sustained slopes only; short ramps and kerbs are not visible, and buildings or trees can distort values in town."
+  }
+ ],
+ "sections": [
+  {
+   "from_m": 0.0,
+   "to_m": 89.5,
+   "label": "Thames Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.485704,
+     -0.608115
+    ],
+    [
+     51.485685,
+     -0.608095
+    ],
+    [
+     51.485413,
+     -0.607818
+    ],
+    [
+     51.485267,
+     -0.607668
+    ],
+    [
+     51.485112,
+     -0.607517
+    ],
+    [
+     51.485023,
+     -0.607426
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/1047632140",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/1047632140",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/25670263",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/25670263",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 3.1,
+    "descent_m": 0.0,
+    "steepest_up_pct": 4.3,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 89.5,
+   "to_m": 188.7,
+   "label": "Thames Avenue",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.485023,
+     -0.607426
+    ],
+    [
+     51.484888,
+     -0.60775
+    ],
+    [
+     51.484634,
+     -0.608359
+    ],
+    [
+     51.484581,
+     -0.608485
+    ],
+    [
+     51.484577,
+     -0.60856
+    ],
+    [
+     51.484595,
+     -0.608637
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/5487256",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/5487256",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 1.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 188.7,
+   "to_m": 265.6,
+   "label": "River Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.484595,
+     -0.608637
+    ],
+    [
+     51.484543,
+     -0.608607
+    ],
+    [
+     51.484496,
+     -0.608574
+    ],
+    [
+     51.484324,
+     -0.608391
+    ],
+    [
+     51.484266,
+     -0.608318
+    ],
+    [
+     51.48415,
+     -0.608177
+    ],
+    [
+     51.484031,
+     -0.608006
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/5063317",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/1456660080",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 4.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 7.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 265.6,
+   "to_m": 403.1,
+   "label": "Thames Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.484031,
+     -0.608006
+    ],
+    [
+     51.483819,
+     -0.60832
+    ],
+    [
+     51.483764,
+     -0.608406
+    ],
+    [
+     51.483721,
+     -0.608455
+    ],
+    [
+     51.483662,
+     -0.608496
+    ],
+    [
+     51.483616,
+     -0.60851
+    ],
+    [
+     51.483555,
+     -0.608509
+    ],
+    [
+     51.483484,
+     -0.608479
+    ],
+    [
+     51.4833,
+     -0.608305
+    ],
+    [
+     51.482988,
+     -0.608021
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/5063319",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/223158941",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 6.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 8.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 403.1,
+   "to_m": 454.5,
+   "label": "High Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482988,
+     -0.608021
+    ],
+    [
+     51.482858,
+     -0.607911
+    ],
+    [
+     51.482729,
+     -0.607772
+    ],
+    [
+     51.482634,
+     -0.607669
+    ],
+    [
+     51.482595,
+     -0.60763
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/995549844",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/995549844",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/1458392382",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/1458392382",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 454.5,
+   "to_m": 538.9,
+   "label": "Castle Hill",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482595,
+     -0.60763
+    ],
+    [
+     51.482624,
+     -0.607547
+    ],
+    [
+     51.482634,
+     -0.60747
+    ],
+    [
+     51.482638,
+     -0.60736
+    ],
+    [
+     51.482648,
+     -0.607217
+    ],
+    [
+     51.48267,
+     -0.607123
+    ],
+    [
+     51.482727,
+     -0.606846
+    ],
+    [
+     51.482737,
+     -0.606799
+    ],
+    [
+     51.482786,
+     -0.606562
+    ],
+    [
+     51.482791,
+     -0.606515
+    ],
+    [
+     51.482784,
+     -0.606465
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/1164897818",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/5063316",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/5063316",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 4.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 7.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 538.9,
+   "to_m": 563.0,
+   "label": "Saint Alban's Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482784,
+     -0.606465
+    ],
+    [
+     51.482665,
+     -0.606397
+    ],
+    [
+     51.482603,
+     -0.606353
+    ],
+    [
+     51.482582,
+     -0.606338
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/8371386",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/8371386",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [
+    {
+     "kind": "bollard",
+     "at_m": 561,
+     "status": "mapped",
+     "source": "osm:node/13295487939",
+     "width_cm": null,
+     "step_count": null,
+     "has_ramp": null,
+     "note": null
+    }
+   ],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 563.0,
+   "to_m": 610.3,
+   "label": "Footpath",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482582,
+     -0.606338
+    ],
+    [
+     51.482575,
+     -0.606383
+    ],
+    [
+     51.482326,
+     -0.606201
+    ],
+    [
+     51.482214,
+     -0.606116
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paved",
+     "status": "mapped",
+     "source": "osm:way/930830772",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "paved",
+     "status": "mapped",
+     "source": "osm:way/930830756",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 610.3,
+   "to_m": 660.6,
+   "label": "Church Lane",
+   "surface": "setts",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482214,
+     -0.606116
+    ],
+    [
+     51.482207,
+     -0.606148
+    ],
+    [
+     51.482124,
+     -0.606447
+    ],
+    [
+     51.482092,
+     -0.606568
+    ],
+    [
+     51.482041,
+     -0.606786
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "sett",
+     "status": "mapped",
+     "source": "osm:way/56180216",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [
+    {
+     "kind": "bollard",
+     "at_m": 613,
+     "status": "mapped",
+     "source": "osm:node/2320853794",
+     "width_cm": null,
+     "step_count": null,
+     "has_ramp": null,
+     "note": null
+    }
+   ],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 1.9,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 660.6,
+   "to_m": 665.9,
+   "label": "Church Lane",
+   "surface": "setts",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482041,
+     -0.606786
+    ],
+    [
+     51.482022,
+     -0.606856
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "sett",
+     "status": "mapped",
+     "source": "osm:way/930447970",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 1.4,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 665.9,
+   "to_m": 698.7,
+   "label": "Church Lane",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482022,
+     -0.606856
+    ],
+    [
+     51.482001,
+     -0.606902
+    ],
+    [
+     51.481946,
+     -0.607009
+    ],
+    [
+     51.482001,
+     -0.606902
+    ],
+    [
+     51.482073,
+     -0.606982
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/930447971",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "surface",
+     "value": "paved",
+     "status": "mapped",
+     "source": "osm:way/1552006027",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 698.7,
+   "to_m": 773.6,
+   "label": "Market Street",
+   "surface": "unknown",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482073,
+     -0.606982
+    ],
+    [
+     51.482133,
+     -0.606838
+    ],
+    [
+     51.482361,
+     -0.60697
+    ],
+    [
+     51.48243,
+     -0.607013
+    ],
+    [
+     51.482601,
+     -0.607089
+    ],
+    [
+     51.48267,
+     -0.607123
+    ]
+   ],
+   "evidence": [],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.6,
+    "descent_m": 0.0,
+    "steepest_up_pct": 3.3,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 773.6,
+   "to_m": 810.2,
+   "label": "Castle Hill",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.48267,
+     -0.607123
+    ],
+    [
+     51.482648,
+     -0.607217
+    ],
+    [
+     51.482638,
+     -0.60736
+    ],
+    [
+     51.482634,
+     -0.60747
+    ],
+    [
+     51.482624,
+     -0.607547
+    ],
+    [
+     51.482595,
+     -0.60763
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/5063316",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/5063316",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/1164897818",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 810.2,
+   "to_m": 861.6,
+   "label": "High Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482595,
+     -0.60763
+    ],
+    [
+     51.482634,
+     -0.607669
+    ],
+    [
+     51.482729,
+     -0.607772
+    ],
+    [
+     51.482858,
+     -0.607911
+    ],
+    [
+     51.482988,
+     -0.608021
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/1458392382",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/1458392382",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/995549844",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/995549844",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 1.8,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 861.6,
+   "to_m": 999.1,
+   "label": "Thames Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.482988,
+     -0.608021
+    ],
+    [
+     51.4833,
+     -0.608305
+    ],
+    [
+     51.483484,
+     -0.608479
+    ],
+    [
+     51.483555,
+     -0.608509
+    ],
+    [
+     51.483616,
+     -0.60851
+    ],
+    [
+     51.483662,
+     -0.608496
+    ],
+    [
+     51.483721,
+     -0.608455
+    ],
+    [
+     51.483764,
+     -0.608406
+    ],
+    [
+     51.483819,
+     -0.60832
+    ],
+    [
+     51.484031,
+     -0.608006
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/223158941",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/5063319",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 4.7,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 7.8,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 999.1,
+   "to_m": 1076.1,
+   "label": "River Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.484031,
+     -0.608006
+    ],
+    [
+     51.48415,
+     -0.608177
+    ],
+    [
+     51.484266,
+     -0.608318
+    ],
+    [
+     51.484324,
+     -0.608391
+    ],
+    [
+     51.484496,
+     -0.608574
+    ],
+    [
+     51.484543,
+     -0.608607
+    ],
+    [
+     51.484595,
+     -0.608637
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/1456660080",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/5063317",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 4.4,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 7.3,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1076.1,
+   "to_m": 1175.2,
+   "label": "Thames Avenue",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.484595,
+     -0.608637
+    ],
+    [
+     51.484577,
+     -0.60856
+    ],
+    [
+     51.484581,
+     -0.608485
+    ],
+    [
+     51.484634,
+     -0.608359
+    ],
+    [
+     51.484888,
+     -0.60775
+    ],
+    [
+     51.485023,
+     -0.607426
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/5487256",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/5487256",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.9,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1175.2,
+   "to_m": 1264.7,
+   "label": "Thames Street",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.485023,
+     -0.607426
+    ],
+    [
+     51.485112,
+     -0.607517
+    ],
+    [
+     51.485267,
+     -0.607668
+    ],
+    [
+     51.485413,
+     -0.607818
+    ],
+    [
+     51.485685,
+     -0.608095
+    ],
+    [
+     51.485704,
+     -0.608115
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/25670263",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/25670263",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "paving_stones",
+     "status": "mapped",
+     "source": "osm:way/1047632140",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "lit",
+     "value": "yes",
+     "status": "mapped",
+     "source": "osm:way/1047632140",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 3.3,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 4.5,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  }
+ ]
+}
