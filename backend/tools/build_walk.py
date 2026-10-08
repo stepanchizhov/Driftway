@@ -281,7 +281,21 @@ def _walk_from_gpx(graph: Graph, path: str):
             pts.append((p, graph.nearest_way(p), None))
     if len(pts) < 2:
         raise RuntimeError("GPX file has fewer than two track points")
-    return pts
+    # Junction jitter: near where paths meet, a single GPS point often snaps to
+    # the neighbouring way, which would invent a two-metre stretch of whatever
+    # that way is. A point that disagrees with both of its neighbours, when
+    # they agree with each other, takes their way.
+    #
+    # Aimed at dense recorded traces (a fitness app logs a point every second
+    # or so). NOT demonstrated yet: the only check so far used a sparse trace
+    # built from map nodes, about 17 m apart, where each mismatch sat between
+    # two different ways and this rule did not apply. Nearest-way matching
+    # stays labelled as such on every piece of evidence it produces.
+    ways = [p[1] for p in pts]
+    for i in range(1, len(ways) - 1):
+        if ways[i - 1] == ways[i + 1] != ways[i]:
+            ways[i] = ways[i - 1]
+    return [(p[0], w, p[2]) for p, w in zip(pts, ways)]
 
 
 def _sections(graph: Graph, pts, matched_by_proximity: bool) -> List[Section]:

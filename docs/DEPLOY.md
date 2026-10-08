@@ -247,6 +247,14 @@ moment does not prove the token was never used — an invite could have been
 minted and revoked, and nothing else the admin endpoints do leaves a record
 that would survive. Treat the exposure window as unaudited.
 
+### Walking experiment
+
+`WALKING_ENABLED=true` on the API turns on the pram and carrier walks. Off by
+default; off means the endpoint answers 404 and the app shows no **Walks**
+button. When on, only admitted beta accounts can use it - enforced on the
+server. It makes no provider calls at request time and stores nothing about
+equipment or load. Details in [WALKING.md](WALKING.md).
+
 ### Rate limits and the provider bill
 
 `/api/generate` is the only endpoint an anonymous stranger can use to spend
