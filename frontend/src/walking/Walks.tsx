@@ -76,20 +76,31 @@ function fitSentence(walk: Walk, units: Units): string | null {
     case "about_right":
       return null;
     case "shorter":
-      return walk.shape === "loop"
-        ? `About ${duration(f.full_minutes)}, shorter than the ` +
-            `${duration(f.requested_minutes)} you asked for. It's a loop, so it ` +
-            `can't be stretched.`
-        : `About ${duration(f.full_minutes)} for the whole walk there and back, ` +
-            `shorter than the ${duration(f.requested_minutes)} you asked for.`;
+      return walk.shape === "out_and_back"
+        ? `About ${duration(f.full_minutes)} for the whole walk there and back, ` +
+            `shorter than the ${duration(f.requested_minutes)} you asked for.`
+        : `About ${duration(f.full_minutes)}, shorter than the ` +
+            `${duration(f.requested_minutes)} you asked for. ${FIXED[walk.shape]}`;
     case "longer":
       return (
         `About ${duration(f.full_minutes)}, longer than the ` +
-        `${duration(f.requested_minutes)} you asked for. It's a loop, so there's ` +
-        `no point to turn back early.`
+        `${duration(f.requested_minutes)} you asked for. ${FIXED[walk.shape]}`
       );
   }
 }
+
+/** Why a walk that is not there-and-back cannot be fitted to the time. */
+const FIXED: Record<Walk["shape"], string> = {
+  loop: "It's a loop, so it can't be shortened or stretched.",
+  one_way: "It's a walk to a destination, so its length is fixed.",
+  out_and_back: "",
+};
+
+const SHAPE_LABEL: Record<Walk["shape"], string> = {
+  loop: "Loop",
+  out_and_back: "There and back",
+  one_way: "One way",
+};
 
 function numberOrNull(raw: string): number | null {
   const n = Number(raw.replace(",", "."));
@@ -431,7 +442,7 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
         </div>
         <div>
           <dt>Shape</dt>
-          <dd>{walk.shape === "out_and_back" ? "There and back" : "Loop"}</dd>
+          <dd>{SHAPE_LABEL[walk.shape]}</dd>
         </div>
       </dl>
 
@@ -460,7 +471,7 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
             turn is in the middle and the far end is the start again. */}
         <span>Start</span>
         {walk.shape === "out_and_back" && <span>Turn back</span>}
-        <span>Back at start</span>
+        <span>{walk.shape === "one_way" ? "Arrive" : "Back at start"}</span>
       </p>
 
       <p className="walk-summary">{walk.summary}</p>

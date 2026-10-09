@@ -573,7 +573,10 @@ def build(spec_path: str) -> str:
     else:
         lats = [w[0] for w in spec["waypoints"]]
         lngs = [w[1] for w in spec["waypoints"]]
-    margin = 0.004
+    # Degrees around the route to fetch. The default suits town walks; a walk
+    # whose only connection loops away from the straight line (a bridge
+    # downstream, a gate round the corner) needs "margin" raised in its spec.
+    margin = float(spec.get("margin", 0.004))
     bbox = (min(lats) - margin, min(lngs) - margin, max(lats) + margin, max(lngs) + margin)
 
     graph = Graph(fetch_osm(bbox), avoid=tuple(spec.get("avoid", ())))
@@ -584,6 +587,8 @@ def build(spec_path: str) -> str:
         pts = _walk_from_waypoints(graph, spec["waypoints"])
         sections = _sections(graph, pts, matched_by_proximity=False)
 
+    if spec.get("start_after_m"):
+        sections = _trim_start(sections, float(spec["start_after_m"]))
     sections = _split_long(sections)
     _attach_gradients(sections)
     obs_path = spec_path.replace(".spec.json", ".observations.json")
@@ -618,6 +623,37 @@ def build(spec_path: str) -> str:
     out = os.path.join(OUT_DIR, f"{spec['id']}.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(route, f, indent=1, ensure_ascii=False)
+    return out
+
+
+def _trim_start(sections: List[Section], trim_m: float) -> List[Section]:
+    """Drop the first `trim_m` metres, so the walk starts further along.
+
+    For walks that begin at someone's home. Walk files are committed to a
+    public repository and shown to every beta tester, so a walk must never
+    start at a front door. The route is still built from the real start - that
+    is what makes it the route actually walked - and then the opening stretch,
+    with every coordinate in it, is cut away before anything is written. The
+    spec naming the home street lives in a git-ignored folder.
+    """
+    out: List[Section] = []
+    for s in sections:
+        if s.to_m <= trim_m:
+            continue
+        geom = s.geometry
+        barriers = [b for b in s.barriers if b.at_m >= trim_m]
+        start = s.from_m
+        if s.from_m < trim_m:
+            geom = _slice_geometry(s.geometry, trim_m - s.from_m, s.length_m)
+            start = trim_m
+        for b in barriers:
+            b.at_m -= trim_m
+        out.append(Section(start - trim_m, s.to_m - trim_m, s.label, geom,
+                           surface=s.surface, evidence=s.evidence,
+                           hazards=s.hazards, barriers=barriers,
+                           access_restricted=s.access_restricted))
+    if not out:
+        raise RuntimeError("start_after_m is longer than the whole walk")
     return out
 
 

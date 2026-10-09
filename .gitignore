@@ -12,3 +12,6 @@ Thumbs.db
 
 # Responses cached by backend/tools/build_walk.py (OSM, elevation)
 backend/tools/.cache/
+
+# Walk specs that name a private start (someone's home street). Never committed.
+backend/data/walks/specs/private/

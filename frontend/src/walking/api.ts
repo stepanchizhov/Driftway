@@ -46,7 +46,7 @@ export interface Walk {
   name: string;
   area: string;
   summary: string;
-  shape: "loop" | "out_and_back";
+  shape: "loop" | "out_and_back" | "one_way";
   sample: boolean;
   start: { lat: number; lng: number; label: string };
   verdict: Verdict;

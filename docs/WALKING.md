@@ -108,11 +108,27 @@ Manufacturer limits are specific to the carrier model.
 | Castle Hill and the old town | the town | loop | 1.3 km round | Firm; about 19 m of climbing; setts |
 | The Long Walk | south, into the Great Park | there and back | 3.7 km | Mapped asphalt; gentle until Snow Hill (about 11%) at the far end |
 | Jubilee River Way | north-east | there and back | 1.4 km | Compacted gravel; level; about 560 m unrecorded |
+| Westward past Ostritzer Straße | Köpenick, Berlin | there and back | 2.0 km | Level; most of the far half mapped as soft ground |
+| Through Alt-Köpenick | Köpenick, Berlin | there and back | 2.0 km | Firm; about 900 m of setts; bollards, one gate |
+| To the Müggelsee shore | Köpenick, Berlin | one way | 4.3 km | Mostly sealed, a stretch of soft path; ends at the Seglergemeinschaft am Müggelsee |
 
 Castle Hill is curated to **avoid steps**: the shortest path climbs four
 flights, and no curator would offer that walk to someone with a pram. The Long
 Walk starts where Park Street meets it; the stretch north of there, towards
 the castle, is mapped private and is not part of the walk.
+
+### Walks from someone's home
+
+The three Berlin walks are routes testers walk regularly from home, built
+between the home street and the furthest point they gave. **No walk may start
+at anyone's door**: walk files are committed to a public repository and shown
+to every beta tester. So such a walk is built from the real start and then has
+its opening stretch cut away (`"start_after_m"` in the spec) before anything is
+written; every published point of the Berlin walks is at least 432 m from the
+home street, checked by distance rather than assumed. The specs naming the
+home street live in `backend/data/walks/specs/private/`, which is git-ignored.
+They were built from the map between two points, so the way the testers
+actually walk may differ; a GPS recording would replace them.
 
 ## Adding your own walk
 

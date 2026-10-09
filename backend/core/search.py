@@ -59,6 +59,14 @@ _POSTCODE_RE = re.compile(
 )
 
 
+def default_country() -> str:
+    """Country set used only when the caller gives no position.
+
+    SEARCH_DEFAULT_COUNTRIES, comma-separated ISO codes, default "GB".
+    """
+    return (os.getenv("SEARCH_DEFAULT_COUNTRIES") or "GB").strip() or "GB"
+
+
 def normalise_query(raw: str) -> str:
     """Tidy a UK postcode into its canonical spacing and case.
 
@@ -183,16 +191,21 @@ class TomTomSearch:
             "key": self._key,
             "typeahead": "true",       # predictive: the user is still typing
             "limit": min(max(limit * 2, limit), 20),  # room to dedupe, then trim
-            "countrySet": "GB",
             "idxSet": _IDX_SET,
             "language": "en-GB",
         }
         if near is not None:
-            # Bias toward the parent, without excluding anywhere: someone in
-            # Windsor searching "High Street" means the local one.
+            # Bias toward the parent: someone in Windsor searching "High
+            # Street" means the local one. With a position to bias by, no
+            # country restriction - it used to be fixed to GB, which made the
+            # search return nothing at all for testers in Berlin.
             params["lat"] = f"{near.lat:.6f}"
             params["lon"] = f"{near.lng:.6f}"
             params["radius"] = 60000
+        else:
+            # No position: keep to the default country rather than offering a
+            # "High Street" from the other side of the world.
+            params["countrySet"] = default_country()
 
         url = f"{_SEARCH_BASE}/{quote(clean)}.json"
         try:
