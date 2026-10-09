@@ -338,3 +338,23 @@ class CircuitFitTests(unittest.TestCase):
         self.assertEqual(assess_route(r, "pram", PramSetup())["verdict"], "blocked")
         self.assertEqual(
             assess_route(r, "pram", PramSetup(), minutes=60)["verdict"], "ok")
+
+
+class MarkerTests(unittest.TestCase):
+    """What the in-app map draws: obstacles once, and where to turn back."""
+
+    def test_a_gate_is_placed_once_on_a_there_and_back_walk(self):
+        s = section(0, 1000, barriers=[gate(500)])
+        s.geometry = [[52.0, 13.0], [52.009, 13.0]]
+        card = assess_route(route(s, shape="out_and_back"), "pram", PramSetup())
+        gates = [m for m in card["markers"] if m["kind"] == "gate"]
+        self.assertEqual(len(gates), 1)
+        self.assertAlmostEqual(gates[0]["lat"], 52.0045, places=3)
+
+    def test_a_turned_walk_marks_where_to_turn(self):
+        s = section(0, 3000)
+        s.geometry = [[52.0, 13.0], [52.027, 13.0]]
+        card = assess_route(route(s, shape="out_and_back"), "pram", PramSetup(), minutes=30)
+        turn = [m for m in card["markers"] if m["kind"] == "turn_back"][0]
+        self.assertEqual(turn["at_m"], card["fit"]["turn_back_at_m"])
+        self.assertLess(turn["lat"], 52.027)

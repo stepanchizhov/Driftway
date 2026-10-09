@@ -229,8 +229,14 @@ person.
 - **Sections are at most 300 m.** Long ways are split so a slope sits roughly
   where it is; the first Long Walk build charged Snow Hill's climb to walkers
   turning back long before it.
-- **No map view.** The strip shows where the hard stretches fall along the
-  walk; there is no map yet.
+- **The map uses OpenStreetMap's own map images** (tile.openstreetmap.org).
+  Its usage policy, checked 9 Oct 2026, allows light use with attribution on
+  the map, a real Referer and honoured caching, and forbids bulk or offline
+  download; access can be withdrawn without notice, "especially" for commercial
+  services. Fine for the beta. Switch to a tile provider before wider use.
+- **Google Maps can only approximate a walk.** Its links take at most three
+  checkpoints on a phone, and it picks its own way between them. The in-app
+  map is the way to follow a walk; the checkpoint link says so.
 - **Navigation handoff.** "Directions to the start" opens Google Maps to the
   start point only. It will not follow the walk and the screen says so.
 - **Not yet seen rendered.** Typechecked and built; the founder's phone is the

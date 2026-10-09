@@ -540,6 +540,7 @@ export default function App() {
       {tab === "walk" && !isSecondary && (
         <Walks
           units={settings.units}
+          here={liveCoord}
           onOpenSettings={() => setScreen({ name: "settings" })}
         />
       )}

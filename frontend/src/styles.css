@@ -1957,3 +1957,23 @@ body {
 }
 .fit-shorter, .fit-longer { color: var(--ink-dim); }
 .fit-turned { color: var(--ink); }
+
+/* --- Walks: map and grouping ---------------------------------- */
+.walk-map-box { margin: 12px 0 8px; }
+.walk-map-box summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+.walk-map {
+  height: 320px;
+  max-width: 100%;
+  margin-top: 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.walk-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.walks-more { margin-top: 18px; }
+.walks-more > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 10px 0;
+  color: var(--ink-dim);
+}

@@ -11,6 +11,9 @@ import {
   type WalksResponse,
 } from "./api";
 import { useWalkSetup, type WalkSetup } from "./useWalkSetup";
+import { WalkMap } from "./WalkMap";
+import { NEAR_KM, groupWalks } from "./group";
+import type { Coord } from "../types";
 import { useDriftwayAuth } from "../auth/AuthProvider";
 
 /**
@@ -113,9 +116,12 @@ function numberOrNull(raw: string): number | null {
 
 export function Walks({
   units,
+  here,
   onOpenSettings,
 }: {
   units: Units;
+  /** Your position, if known. Used on this device only, to group walks. */
+  here: Coord | null;
   onOpenSettings: () => void;
 }) {
   const { setup, update } = useWalkSetup();
@@ -210,11 +216,13 @@ export function Walks({
             </p>
           )}
 
-          <div className="walks-list">
-            {result.walks.map((w) => (
-              <WalkCard key={w.id} walk={w} units={units} handoff={result.handoff} />
-            ))}
-          </div>
+          <WalkGroups
+            walks={result.walks}
+            here={here}
+            units={units}
+            minutes={setup.minutes}
+            handoff={result.handoff}
+          />
 
           <section className="walks-guidance">
             {result.guidance.map((g) => (
@@ -442,7 +450,9 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
         </div>
         <div>
           <dt>Climb</dt>
-          <dd>{walk.ascent_m == null ? "not known" : `${walk.ascent_m} m`}</dd>
+          {/* "m uphill", not "m": a bare "9 m" under the time was read as
+              nine minutes. */}
+          <dd>{walk.ascent_m == null ? "not known" : `${walk.ascent_m} m uphill`}</dd>
         </div>
         <div>
           <dt>Shape</dt>
@@ -502,11 +512,122 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
         </ul>
       )}
 
-      <a className="btn-quiet walk-go" href={directions} target="_blank" rel="noopener noreferrer">
-        Directions to the start · {walk.start.label}
-      </a>
-      <p className="walk-handoff">{handoff}</p>
+      <WalkMapLazy walk={walk} />
+
+      <div className="walk-links">
+        <a className="btn-quiet walk-go" href={directions} target="_blank" rel="noopener noreferrer">
+          Directions to the start · {walk.start.label}
+        </a>
+        <a className="btn-quiet walk-go" href={checkpointsUrl(walk)} target="_blank" rel="noopener noreferrer">
+          Walk it in Google Maps, via 3 checkpoints
+        </a>
+      </div>
+      <p className="walk-handoff">
+        {handoff} With checkpoints it keeps closer to this walk, but between them
+        it still picks its own way. Where they differ, follow the map above.
+      </p>
     </article>
+  );
+}
+
+/**
+ * The map, only once its section is opened: a Leaflet map per card on load
+ * would fetch map images for walks nobody looked at.
+ */
+function WalkMapLazy({ walk }: { walk: Walk }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="walk-map-box" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>Show on map</summary>
+      {open && <WalkMap walk={walk} />}
+    </details>
+  );
+}
+
+/**
+ * A Google Maps walking link through three points of the walk - the most its
+ * links accept on a phone (developers.google.com/maps/documentation/urls,
+ * checked 9 Oct 2026). Origin is left out so it starts from wherever you are.
+ */
+function checkpointsUrl(walk: Walk): string {
+  const outward =
+    walk.shape === "out_and_back"
+      ? walk.sections.filter((s) => s.to_m <= walk.distance_m / 2 + 1)
+      : walk.sections;
+  const line = outward.flatMap((s) => s.geometry);
+  if (line.length === 0) return "https://www.google.com/maps";
+  const pick = (share: number) =>
+    line[Math.min(line.length - 1, Math.round(share * (line.length - 1)))];
+  const points =
+    walk.shape === "out_and_back"
+      ? [pick(1 / 3), pick(2 / 3), pick(1)] // the last is the turning point
+      : [pick(0.25), pick(0.5), pick(0.75)];
+  const dest: [number, number] =
+    walk.shape === "one_way" ? line[line.length - 1] : [walk.start.lat, walk.start.lng];
+  const fmt = (p: [number, number]) => `${p[0].toFixed(5)},${p[1].toFixed(5)}`;
+  return (
+    "https://www.google.com/maps/dir/?api=1&travelmode=walking" +
+    `&destination=${fmt(dest)}` +
+    `&waypoints=${encodeURIComponent(points.map(fmt).join("|"))}`
+  );
+}
+
+/**
+ * The walks, grouped so the time you chose visibly matters.
+ *
+ * The first version listed every walk in one column: walks that could not
+ * reach the time sat beside ones fitted to it, and walks in Berlin appeared
+ * for someone in Windsor. Now: walks near you that fit the time; then, folded,
+ * nearby walks that are shorter or longer; then, folded, walks further away.
+ * The grouping happens on the device - your position is not sent for it.
+ */
+function WalkGroups({
+  walks,
+  here,
+  units,
+  minutes,
+  handoff,
+}: {
+  walks: Walk[];
+  here: Coord | null;
+  units: Units;
+  minutes: number;
+  handoff: string;
+}) {
+  const { fitting, other, far } = groupWalks(walks, here);
+  const card = (w: Walk) => (
+    <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
+  );
+
+  return (
+    <>
+      <p className="walks-hint">
+        {here
+          ? `Walks within ${NEAR_KM} km that fit about ${duration(minutes)}, ` +
+            "those with no known problems for your setup first."
+          : "Turn on location to see walks near you first. " +
+            `Showing walks that fit about ${duration(minutes)}.`}
+      </p>
+      {fitting.length === 0 && (
+        <p className="walks-gate">No walk near you fits {duration(minutes)} yet.</p>
+      )}
+      <div className="walks-list">{fitting.map(card)}</div>
+
+      {other.length > 0 && (
+        <details className="walks-more">
+          <summary>
+            {other.length} more nearby, shorter or longer than {duration(minutes)}
+          </summary>
+          <div className="walks-list">{other.map(card)}</div>
+        </details>
+      )}
+      {far.length > 0 && (
+        <details className="walks-more">
+          <summary>{far.length} further away</summary>
+          <div className="walks-list">{far.map(card)}</div>
+        </details>
+      )}
+    </>
   );
 }
 

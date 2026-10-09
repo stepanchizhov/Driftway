@@ -184,6 +184,35 @@ def _turn_point(route: Route, minutes: float) -> Optional[float]:
     return None
 
 
+def _point_at(section: Section, at_m: float) -> Optional[List[float]]:
+    """Where along a section's line a distance falls."""
+    if not section.geometry:
+        return None
+    share = (at_m - section.from_m) / section.length_m if section.length_m else 0.0
+    return _cut_geometry(section.geometry, min(1.0, max(0.0, share)))[-1]
+
+
+def _markers(route: Route) -> List[Dict]:
+    """Things to show on the map: the turning point, and each obstacle once.
+
+    Taken from the outward sections only - on a there-and-back walk the way
+    back passes the same gates, and a map with every gate drawn twice on top of
+    itself says nothing more.
+    """
+    out: List[Dict] = []
+    for s in route.sections:
+        for b in s.barriers:
+            p = _point_at(s, b.at_m)
+            if p:
+                out.append({"kind": b.kind.value, "lat": p[0], "lng": p[1],
+                            "at_m": round(b.at_m), "basis": b.status.value})
+    if route.shape == "out_and_back" and route.sections and route.sections[-1].geometry:
+        end = route.sections[-1].geometry[-1]
+        out.append({"kind": "turn_back", "lat": end[0], "lng": end[1],
+                    "at_m": round(route.outbound_m), "basis": "modelled"})
+    return out
+
+
 def _cut_geometry(geometry: List[List[float]], keep: float) -> List[List[float]]:
     """The first `keep` share of a polyline, by distance along it."""
     if len(geometry) < 2 or keep >= 1.0:
@@ -367,6 +396,7 @@ def assess_route(route: Route, profile: str,
             "surface_reported_share": round(reported / distance, 2) if distance else 0,
             "gradient": "modelled" if have_gradient else "unknown",
         },
+        "markers": _markers(route),
         "sections": [
             {
                 "label": a.section.label,

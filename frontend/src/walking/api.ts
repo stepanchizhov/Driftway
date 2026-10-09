@@ -31,6 +31,15 @@ export interface WalkSection {
   surface: string;
   surface_basis: Basis;
   verdict: Verdict;
+  geometry: [number, number][];
+}
+
+export interface WalkMarker {
+  kind: string;
+  lat: number;
+  lng: number;
+  at_m: number;
+  basis: Basis;
 }
 
 export interface WalkSource {
@@ -74,6 +83,7 @@ export interface Walk {
     gradient: "modelled" | "unknown";
   };
   sections: WalkSection[];
+  markers: WalkMarker[];
   sources: WalkSource[];
   built_on: string;
   notes_from_curator: string[];
