@@ -83,18 +83,22 @@ export function WalkMap({ walk }: { walk: Walk }) {
       line.forEach((p) => bounds.extend(p));
     }
 
+    // Start, turning point and checkpoint each look different: founder
+    // feedback, 9 Oct - start and turn-back were identical orange dots.
     L.circleMarker([walk.start.lat, walk.start.lng], {
-      radius: 8, color: "#fff", weight: 2, fillColor: token("--accent", "#f2b179"),
-      fillOpacity: 1,
+      radius: 9, color: CASING, weight: 3, fillColor: "#ffffff", fillOpacity: 1,
     }).bindTooltip(`Start: ${walk.start.label}`).addTo(map);
 
     for (const m of walk.markers) {
-      const turn = m.kind === "turn_back" || m.kind === "via";
+      const fill =
+        m.kind === "turn_back" ? token("--accent", "#f2b179")
+        : m.kind === "via" ? "#7c3aed"
+        : colour.difficult;
       L.circleMarker([m.lat, m.lng], {
-        radius: turn ? 8 : 6,
-        color: "#fff",
+        radius: m.kind === "turn_back" || m.kind === "via" ? 8 : 6,
+        color: CASING,
         weight: 2,
-        fillColor: turn ? token("--accent", "#f2b179") : colour.difficult,
+        fillColor: fill,
         fillOpacity: 1,
       })
         .bindTooltip(m.label ? `${MARKER_LABEL[m.kind] ?? m.kind}: ${m.label}` : MARKER_LABEL[m.kind] ?? m.kind)
