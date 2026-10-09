@@ -56,6 +56,8 @@ export interface Walk {
   area: string;
   summary: string;
   shape: "loop" | "out_and_back" | "one_way";
+  /** The shape on the ground, measured from the route, not declared. */
+  path_shape: "loop" | "lollipop" | "there_and_back" | "one_way";
   sample: boolean;
   start: { lat: number; lng: number; label: string };
   verdict: Verdict;
@@ -131,6 +133,7 @@ export interface GeneratedWalks {
 export async function generateWalks(body: {
   profile: "pram" | "carrier";
   minutes: number;
+  allow_out_and_back?: boolean;
   start: { lat: number; lng: number };
   start_label: string;
   pram?: PramSetup;
@@ -168,6 +171,7 @@ export class NotAdmitted extends Error {}
 export async function assessWalks(body: {
   profile: "pram" | "carrier";
   minutes: number;
+  allow_out_and_back?: boolean;
   pram?: PramSetup;
   carrier?: CarrierSetup;
 }): Promise<WalksResponse> {

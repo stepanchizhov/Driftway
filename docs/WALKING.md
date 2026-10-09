@@ -36,6 +36,27 @@ Each walk comes back judged for that setup:
 A blocking obstacle is never averaged away by the pleasant stretch around it,
 and an unknown is never shown as fine.
 
+## Shapes, distance and preferences
+
+Founder decisions, 9 Oct 2026, after using it:
+
+- **Shape is measured, not declared.** The share of a walk that passes within
+  20 m of ground already walked decides whether the card says *Loop*, *Loop,
+  partly walked twice* or *There and back*. Castle Hill, curated as a loop,
+  measures as there-and-back: it goes up and comes back down the same streets.
+  Generated walks are called "Walk", not "Loop", for the same reason.
+- **There-and-back walks can be avoided** (Walk preferences, kept on the
+  device). Avoiding them also stops a long loop being fitted to the time by
+  turning back, since that would make one.
+- **From your doorstep versus needing travel.** A walk starting within 1 km of
+  you is from your doorstep; further ones are listed separately with their
+  distance, and can be hidden.
+- **Nothing more than about an hour's drive away is shown.** Approximated as
+  60 km in a straight line - roughly an hour's drive across most of the UK, not
+  a measured drive time.
+- Walks hidden by a preference are counted on screen, never silently dropped.
+- **Time:** 20, 30, 45, 60 or 90 minutes, or any number from 10 to 240.
+
 ## Walks made from your start
 
 With `ORS_API_KEY` set on the API (`/api/health` reports

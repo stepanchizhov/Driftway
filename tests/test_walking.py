@@ -358,3 +358,31 @@ class MarkerTests(unittest.TestCase):
         turn = [m for m in card["markers"] if m["kind"] == "turn_back"][0]
         self.assertEqual(turn["at_m"], card["fit"]["turn_back_at_m"])
         self.assertLess(turn["lat"], 52.027)
+
+
+class PathShapeTests(unittest.TestCase):
+    """The shape on the ground, measured - founder feedback, 9 Oct: a walk that
+    goes out and back on the same path should not be called a loop."""
+
+    def walk(self, pts, shape="loop"):
+        s = section(0, 1, surface=Surface.SEALED)
+        s.geometry = pts
+        s.to_m = 2000
+        return route(s, shape=shape)
+
+    def test_a_square_circuit_is_a_loop(self):
+        from core.walking.catalogue import path_shape
+        sq = [[52.0, 13.0], [52.0045, 13.0], [52.0045, 13.0073], [52.0, 13.0073], [52.0, 13.0]]
+        self.assertEqual(path_shape(self.walk(sq)), "loop")
+
+    def test_a_line_walked_out_and_back_is_there_and_back(self):
+        from core.walking.catalogue import path_shape
+        line = [[52.0, 13.0], [52.009, 13.0], [52.0, 13.0]]
+        self.assertEqual(path_shape(self.walk(line)), "there_and_back")
+
+    def test_avoiding_there_and_back_stops_a_circuit_being_turned(self):
+        long_circuit = route(section(0, 4000), section(4000, 8000))
+        card = assess_route(long_circuit, "pram", PramSetup(), minutes=60,
+                            allow_out_and_back=False)
+        self.assertEqual(card["fit"]["kind"], "longer")
+        self.assertEqual(card["path_shape"], "loop")

@@ -177,7 +177,7 @@ def route_from_ors(feature: Dict, *, walk_id: str, name: str,
 
     return Route(
         id=walk_id, name=name, area="", shape="loop",
-        summary="A loop generated from your start along mapped paths.",
+        summary="Made from your start along mapped paths.",
         start={"lat": pts[0][0], "lng": pts[0][1], "label": start_label},
         sections=sections,
         sources=[{"id": "ors", "label": "openrouteservice",
@@ -228,8 +228,10 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
     for n, feat in enumerate(results, start=1):
         if isinstance(feat, Exception) or not feat:
             continue
+        # "Walk", not "Loop": a round trip can retrace much of itself, and
+        # the card names its real shape from the geometry.
         routes.append(route_from_ors(feat, walk_id=f"generated-{n}",
-                                     name=f"Loop {n} from {start_label}",
+                                     name=f"Walk {n} from {start_label}",
                                      start_label=start_label))
     if not routes:
         raise GenerationUnavailable(

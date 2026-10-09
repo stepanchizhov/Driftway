@@ -55,6 +55,9 @@ class AssessIn(BaseModel):
     minutes: Optional[int] = Field(None, ge=10, le=240)
     pram: Optional[PramIn] = None
     carrier: Optional[CarrierIn] = None
+    #: False for parents who would rather not walk the same ground twice: a
+    #: long circuit is then not shortened by turning back.
+    allow_out_and_back: bool = True
 
 
 #: Shown with every response. Sources checked 8 Oct 2026.
@@ -147,7 +150,8 @@ def assess_walks(
         carried = setup.carried_kg()
 
     return {
-        "walks": assess_all(body.profile, setup, body.minutes),
+        "walks": assess_all(body.profile, setup, body.minutes,
+                            allow_out_and_back=body.allow_out_and_back),
         "guidance": guidance,
         # The carrying adult's own arithmetic, echoed back - not a judgement.
         "carried_kg": carried,
@@ -229,6 +233,7 @@ async def generate_walks(
         raise HTTPException(status_code=503, detail=str(e))
 
     return {
-        "walks": [assess_route(r, body.profile, setup, minutes) for r in routes],
+        "walks": [assess_route(r, body.profile, setup, minutes, body.allow_out_and_back)
+                  for r in routes],
         "attribution": gen.ATTRIBUTION,
     }

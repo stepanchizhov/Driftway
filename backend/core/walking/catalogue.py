@@ -269,7 +269,55 @@ def _shortened(route: Route, turn_m: float) -> Route:
     return Route(**{**route.__dict__, "sections": kept})
 
 
-def _may_turn(route: Route, full: float, minutes: float) -> bool:
+#: Distance within which a later point counts as walking ground already walked.
+RETRACE_M = 20.0
+#: Spacing of the points used to measure retracing.
+RETRACE_SAMPLE_M = 20.0
+
+
+def path_shape(route: Route) -> str:
+    """What the walk is on the ground: "loop", "lollipop" or "there_and_back".
+
+    Measured, not declared. A generated round trip is called a loop by the
+    provider but can retrace much of itself, and a curated "loop" like Castle
+    Hill goes up and comes back down the same street. The share of the walk
+    that passes within RETRACE_M of ground already walked decides: a pure
+    there-and-back scores about one half (the whole way back), a true loop
+    near zero.
+    """
+    if route.shape == "out_and_back":
+        return "there_and_back"
+    if route.shape == "one_way":
+        return "one_way"
+    line = [p for s in route.sections for p in s.geometry]
+    samples: List[List[float]] = []
+    walked = 0.0
+    next_at = 0.0
+    for a, b in zip(line, line[1:]):
+        d = _haversine(a, b)
+        while d > 0 and walked + d >= next_at:
+            t = (next_at - walked) / d
+            samples.append([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])])
+            next_at += RETRACE_SAMPLE_M
+        walked += d
+    if len(samples) < 10:
+        return "loop"
+    gap = int(3 * RETRACE_M / RETRACE_SAMPLE_M) + 2   # ignore immediate neighbours
+    again = 0
+    for i in range(gap, len(samples)):
+        if any(_haversine(samples[i], samples[j]) <= RETRACE_M
+               for j in range(0, i - gap)):
+            again += 1
+    share = again / len(samples)
+    if share >= 0.35:
+        return "there_and_back"
+    if share >= 0.1:
+        return "lollipop"
+    return "loop"
+
+
+def _may_turn(route: Route, full: float, minutes: float,
+               allow_out_and_back: bool = True) -> bool:
     """Whether to fit this walk to the time by turning back early.
 
     Any there-and-back walk can. So can a circuit - you can always turn round
@@ -281,7 +329,9 @@ def _may_turn(route: Route, full: float, minutes: float) -> bool:
     if route.shape == "out_and_back":
         return True
     if route.shape == "loop":
-        return full - minutes > max(5.0, 0.15 * minutes)
+        # Turning back on a circuit makes a there-and-back - not offered to
+        # someone who has said they would rather avoid those.
+        return allow_out_and_back and full - minutes > max(5.0, 0.15 * minutes)
     return False
 
 
@@ -314,11 +364,13 @@ def _fit(route: Route, requested: Optional[int], full: float,
 
 def assess_route(route: Route, profile: str,
                  setup: Union[PramSetup, CarrierSetup],
-                 minutes: Optional[int] = None) -> Dict:
+                 minutes: Optional[int] = None,
+                 allow_out_and_back: bool = True) -> Dict:
     requested = minutes
     full = _full_minutes(route)
     turn_m = None
-    if minutes and full > minutes and _may_turn(route, full, minutes):
+    if minutes and full > minutes and _may_turn(route, full, minutes,
+                                                 allow_out_and_back):
         turn_m = _turn_point(route, minutes)
     whole = route
     if turn_m is not None:
@@ -375,6 +427,7 @@ def assess_route(route: Route, profile: str,
         "area": route.area,
         "summary": route.summary,
         "shape": route.shape,
+        "path_shape": path_shape(route),
         "sample": route.sample,
         "start": route.start,
         "verdict": verdict.value,
@@ -489,7 +542,8 @@ def _first_meeting(findings: List[Finding], turn_m: float) -> List[Finding]:
 
 
 def assess_all(profile: str, setup, minutes: Optional[int] = None,
-               routes: Optional[List[Route]] = None) -> List[Dict]:
+               routes: Optional[List[Route]] = None,
+               allow_out_and_back: bool = True) -> List[Dict]:
     """Every walk, assessed and fitted to the time asked for.
 
     Out-and-back walks are shortened to the requested time by turning back
@@ -503,7 +557,7 @@ def assess_all(profile: str, setup, minutes: Optional[int] = None,
     your pram by steps is itself useful, and a list that silently shrinks tells
     you nothing about why.
     """
-    cards = [assess_route(r, profile, setup, minutes)
+    cards = [assess_route(r, profile, setup, minutes, allow_out_and_back)
              for r in (routes if routes is not None else load_routes())]
     tier = {"ok": 0, "unknown": 0, "difficult": 1, "blocked": 2}
     if minutes:

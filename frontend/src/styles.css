@@ -1985,3 +1985,12 @@ body {
   font-size: 17px;
   margin: 18px 0 4px;
 }
+
+/* --- Walks: preferences and travel ----------------------------- */
+.walks-own-time { margin-top: -6px; }
+.walk-travel {
+  width: 100%;
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--warn);
+}

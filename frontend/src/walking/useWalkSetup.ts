@@ -15,6 +15,10 @@ const KEY = "driftway.walk.v1";
 export interface WalkSetup {
   profile: "pram" | "carrier";
   minutes: number;
+  /** Show walks that go out and come back the same way. */
+  allowOutAndBack: boolean;
+  /** Show walks that need driving or travelling to the start. */
+  allowTravel: boolean;
   pram: PramSetup;
   carrier: CarrierSetup;
 }
@@ -22,6 +26,8 @@ export interface WalkSetup {
 const DEFAULTS: WalkSetup = {
   profile: "pram",
   minutes: 30,
+  allowOutAndBack: true,
+  allowTravel: true,
   pram: { wheels: "standard", width_cm: null, double: false },
   carrier: {
     kind: "soft",

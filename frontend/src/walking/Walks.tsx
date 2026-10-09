@@ -14,7 +14,7 @@ import {
 } from "./api";
 import { useWalkSetup, type WalkSetup } from "./useWalkSetup";
 import { WalkMap } from "./WalkMap";
-import { NEAR_KM, groupWalks } from "./group";
+import { groupWalks } from "./group";
 import type { Coord } from "../types";
 import { PlaceSearch, type Endpoint } from "../components/PlaceSearch";
 import { useDriftwayAuth } from "../auth/AuthProvider";
@@ -43,7 +43,7 @@ const BASIS_LABEL: Record<Basis, string> = {
   unknown: "not recorded",
 };
 
-const DURATIONS = [20, 30, 45, 60];
+const DURATIONS = [20, 30, 45, 60, 90];
 
 function distance(m: number, units: Units): string {
   if (units === "mi") return `${(m / 1609.344).toFixed(1)} mi`;
@@ -106,9 +106,11 @@ const FIXED: Record<Walk["shape"], string> = {
   out_and_back: "",
 };
 
-const SHAPE_LABEL: Record<Walk["shape"], string> = {
+/** Named from the shape measured on the ground, not the one declared. */
+const SHAPE_LABEL: Record<Walk["path_shape"], string> = {
   loop: "Loop",
-  out_and_back: "There and back",
+  lollipop: "Loop, partly walked twice",
+  there_and_back: "There and back",
   one_way: "One way",
 };
 
@@ -131,6 +133,12 @@ export function Walks({
   onOpenSettings: () => void;
 }) {
   const { setup, update } = useWalkSetup();
+  // The own-time field shows a number only while that number is the one in
+  // use: tapping a chip afterwards clears it, so the field never contradicts
+  // the time the walks are fitted to.
+  const [ownTime, setOwnTime] = useState(
+    DURATIONS.includes(setup.minutes) ? "" : String(setup.minutes),
+  );
   const auth = useDriftwayAuth();
   const [result, setResult] = useState<WalksResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +156,7 @@ export function Walks({
       assessWalks({
         profile: setup.profile,
         minutes: setup.minutes,
+        allow_out_and_back: setup.allowOutAndBack,
         ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
       })
         .then((r) => {
@@ -192,14 +201,32 @@ export function Walks({
       />
 
       <SetupPanel setup={setup} update={update} />
+      <PrefsPanel setup={setup} update={update} />
 
       <ChipGroup
         legend="About how long"
-        columns={4}
+        columns={5}
         options={DURATIONS.map((d) => ({ value: d, label: `${d} min` }))}
         value={setup.minutes}
-        onChange={(v) => update({ minutes: Number(v) })}
+        onChange={(v) => {
+          setOwnTime("");
+          update({ minutes: Number(v) });
+        }}
       />
+      <label className="account-field walks-own-time">
+        <span>Or your own time, in minutes (10 to 240)</span>
+        <input
+          id="walk-own-minutes"
+          inputMode="numeric"
+          placeholder="e.g. 120"
+          value={ownTime}
+          onChange={(e) => {
+            setOwnTime(e.target.value);
+            const n = Number(e.target.value);
+            if (Number.isInteger(n) && n >= 10 && n <= 240) update({ minutes: n });
+          }}
+        />
+      </label>
 
       {notAdmitted && (
         <Gate
@@ -229,7 +256,7 @@ export function Walks({
             walks={result.walks}
             here={here}
             units={units}
-            minutes={setup.minutes}
+            setup={setup}
             handoff={result.handoff}
           />
 
@@ -313,6 +340,55 @@ function Gate({
         <p className="walks-hint">Sign-in isn&rsquo;t available on this version.</p>
       )}
     </div>
+  );
+}
+
+/** Walk preferences, kept on this device. */
+function PrefsPanel({
+  setup,
+  update,
+}: {
+  setup: WalkSetup;
+  update: (patch: Partial<WalkSetup>) => void;
+}) {
+  return (
+    <details className="walks-setup">
+      <summary>
+        Walk preferences
+        <span className="walks-setup-now">
+          {[
+            setup.allowOutAndBack ? null : "no there-and-back",
+            setup.allowTravel ? null : "doorstep only",
+          ]
+            .filter(Boolean)
+            .join(" · ") || "all walks"}
+        </span>
+      </summary>
+      <ChipGroup
+        legend="There-and-back walks"
+        columns={2}
+        options={[
+          { value: "yes", label: "Show" },
+          { value: "no", label: "Avoid" },
+        ]}
+        value={setup.allowOutAndBack ? "yes" : "no"}
+        onChange={(v) => update({ allowOutAndBack: v === "yes" })}
+      />
+      <p className="walks-hint">
+        Avoiding them also stops a long loop being shortened by turning back.
+      </p>
+      <ChipGroup
+        legend="Walks that need travel to the start"
+        columns={2}
+        options={[
+          { value: "yes", label: "Show" },
+          { value: "no", label: "Hide" },
+        ]}
+        value={setup.allowTravel ? "yes" : "no"}
+        onChange={(v) => update({ allowTravel: v === "yes" })}
+      />
+      <p className="walks-hint">Saved on this device only.</p>
+    </details>
   );
 }
 
@@ -434,7 +510,18 @@ function SetupPanel({
   );
 }
 
-function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff: string }) {
+function WalkCard({
+  walk,
+  units,
+  handoff,
+  fromKm,
+}: {
+  walk: Walk;
+  units: Units;
+  handoff: string;
+  /** Set when the walk needs travel to its start: how far away that is. */
+  fromKm?: number;
+}) {
   const directions =
     `https://www.google.com/maps/dir/?api=1&destination=` +
     `${walk.start.lat},${walk.start.lng}`;
@@ -444,6 +531,11 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
       <header className="walk-head">
         <h3 className="walk-name">{walk.name}</h3>
         <p className="walk-area">{walk.area}</p>
+        {fromKm !== undefined && (
+          <p className="walk-travel">
+            Starts {distance(fromKm * 1000, units)} from you
+          </p>
+        )}
       </header>
 
       <p className={`walk-verdict verdict-${walk.verdict}`}>{VERDICT_LABEL[walk.verdict]}</p>
@@ -465,7 +557,7 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
         </div>
         <div>
           <dt>Shape</dt>
-          <dd>{SHAPE_LABEL[walk.shape]}</dd>
+          <dd>{SHAPE_LABEL[walk.path_shape]}</dd>
         </div>
       </dl>
 
@@ -582,64 +674,81 @@ function checkpointsUrl(walk: Walk): string {
 }
 
 /**
- * The walks, grouped so the time you chose visibly matters.
+ * The walks, grouped by what you would have to do to start them.
  *
- * The first version listed every walk in one column: walks that could not
- * reach the time sat beside ones fitted to it, and walks in Berlin appeared
- * for someone in Windsor. Now: walks near you that fit the time; then, folded,
- * nearby walks that are shorter or longer; then, folded, walks further away.
- * The grouping happens on the device - your position is not sent for it.
+ * Founder feedback, 9 Oct: walks needing a drive to the start must be clearly
+ * apart from ones that start at your doorstep; there-and-back walks and walks
+ * needing travel can each be switched off; nothing more than about an hour's
+ * drive away is shown. Walks a preference hides are counted, not dropped
+ * silently. Grouping happens on the device; your position is not sent for it.
  */
 function WalkGroups({
   walks,
   here,
   units,
-  minutes,
+  setup,
   handoff,
 }: {
   walks: Walk[];
   here: Coord | null;
   units: Units;
-  minutes: number;
+  setup: WalkSetup;
   handoff: string;
 }) {
-  const { fitting, other, far } = groupWalks(walks, here);
-  const card = (w: Walk) => (
-    <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
+  const g = groupWalks(walks, here, setup);
+  const minutes = setup.minutes;
+  const card = (w: Walk, km?: number) => (
+    <WalkCard key={w.id} walk={w} units={units} handoff={handoff} fromKm={km} />
   );
+  const hiddenNote = [
+    g.hidden.outAndBack
+      ? `${g.hidden.outAndBack} there-and-back walk${g.hidden.outAndBack > 1 ? "s" : ""}`
+      : "",
+    g.hidden.travel
+      ? `${g.hidden.travel} walk${g.hidden.travel > 1 ? "s" : ""} needing travel to the start`
+      : "",
+  ].filter(Boolean);
 
   return (
     <>
-      <p className="walks-hint">
-        {here
-          ? `Walks within ${NEAR_KM} km that fit about ${duration(minutes)}, ` +
-            "those with no known problems for your setup first."
-          : "Turn on location to see walks near you first. " +
-            `Showing walks that fit about ${duration(minutes)}.`}
-      </p>
-      {fitting.length === 0 && (
-        <p className="walks-gate">No walk near you fits {duration(minutes)} yet.</p>
+      <h3 className="walks-group-title">
+        {g.located ? "From your doorstep" : "Curated walks"}
+      </h3>
+      {!g.located && (
+        <p className="walks-hint">Turn on location to see which walks start near you.</p>
       )}
-      <div className="walks-list">{fitting.map(card)}</div>
+      {g.doorstep.length === 0 ? (
+        <p className="walks-hint">
+          None of the curated walks starts near you and fits {duration(minutes)}.
+        </p>
+      ) : (
+        <div className="walks-list">{g.doorstep.map((w) => card(w))}</div>
+      )}
 
-      {other.length > 0 && (
+      {g.travel.length > 0 && (
+        <>
+          <h3 className="walks-group-title">Needs travel to the start</h3>
+          <div className="walks-list">{g.travel.map((t) => card(t.walk, t.km))}</div>
+        </>
+      )}
+
+      {g.other.length > 0 && (
         <details className="walks-more">
           <summary>
-            {other.length} more nearby, shorter or longer than {duration(minutes)}
+            {g.other.length} more, shorter or longer than {duration(minutes)}
           </summary>
-          <div className="walks-list">{other.map(card)}</div>
+          <div className="walks-list">{g.other.map((w) => card(w))}</div>
         </details>
       )}
-      {far.length > 0 && (
-        <details className="walks-more">
-          <summary>{far.length} further away</summary>
-          <div className="walks-list">{far.map(card)}</div>
-        </details>
+
+      {hiddenNote.length > 0 && (
+        <p className="walks-hint">
+          Hidden by your preferences: {hiddenNote.join(" and ")}.
+        </p>
       )}
     </>
   );
 }
-
 
 /**
  * Make walks from a start you choose - where you are, or anywhere you search.
@@ -684,6 +793,7 @@ function MakeWalks({
         await generateWalks({
           profile: setup.profile,
           minutes: setup.minutes,
+          allow_out_and_back: setup.allowOutAndBack,
           start: start.coord,
           start_label: start.label,
           ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
@@ -723,10 +833,20 @@ function MakeWalks({
         <>
           <h3 className="walks-group-title">From {start?.label ?? "your start"}</h3>
           <div className="walks-list">
-            {made.walks.map((w) => (
-              <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
-            ))}
+            {made.walks
+              .filter((w) => setup.allowOutAndBack || w.path_shape !== "there_and_back")
+              .map((w) => (
+                <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
+              ))}
           </div>
+          {!setup.allowOutAndBack &&
+            made.walks.some((w) => w.path_shape === "there_and_back") && (
+              <p className="walks-hint">
+                Hidden by your preferences:{" "}
+                {made.walks.filter((w) => w.path_shape === "there_and_back").length}{" "}
+                that went out and back the same way.
+              </p>
+            )}
           <p className="walks-attrib">{made.attribution}</p>
           <h3 className="walks-group-title">Curated walks</h3>
         </>
