@@ -61,6 +61,7 @@ export interface Walk {
     turn_back_at_m: number | null;
     turn_back_near: string | null;
     can_shorten: boolean;
+    whole_shape: "loop" | "out_and_back" | "one_way";
   } | null;
   assumptions: string;
   blocking: WalkFinding[];

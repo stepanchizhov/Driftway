@@ -583,6 +583,8 @@ def build(spec_path: str) -> str:
     if "gpx" in spec:
         pts = _walk_from_gpx(graph, gpx)
         sections = _sections(graph, pts, matched_by_proximity=True)
+        if spec.get("close_loop"):
+            sections += _closing_leg(graph, pts[-1][0], pts[0][0], sections[-1].to_m)
     else:
         pts = _walk_from_waypoints(graph, spec["waypoints"])
         sections = _sections(graph, pts, matched_by_proximity=False)
@@ -624,6 +626,28 @@ def build(spec_path: str) -> str:
     with open(out, "w", encoding="utf-8") as f:
         json.dump(route, f, indent=1, ensure_ascii=False)
     return out
+
+
+def _closing_leg(graph: "Graph", end, start, offset_m: float) -> List[Section]:
+    """Join the end of a recording back to its start along mapped paths.
+
+    For a circuit whose recording stopped early - a phone battery, a late
+    start. The joining stretch is the shortest mapped route, which may not be
+    the way actually walked, so every section of it says so in its label and
+    on each piece of evidence. It is never presented as recorded.
+    """
+    pts = _walk_from_waypoints(graph, [end, start])
+    closing = _sections(graph, pts, matched_by_proximity=False)
+    for s in closing:
+        s.from_m += offset_m
+        s.to_m += offset_m
+        for b in s.barriers:
+            b.at_m += offset_m
+        s.label = f"{s.label} (completed from the map)"
+        for e in s.evidence:
+            e.note = ((e.note + "; ") if e.note else "") + \
+                "not recorded - the shortest mapped way back to the start"
+    return closing
 
 
 def _trim_start(sections: List[Section], trim_m: float) -> List[Section]:

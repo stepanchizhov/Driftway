@@ -288,9 +288,11 @@ class DurationFitTests(unittest.TestCase):
 
     def test_a_loop_says_it_is_shorter_rather_than_pretending(self):
         loop = route(section(0, 1400))                       # 21 min
-        fit = assess_route(loop, "pram", PramSetup(), minutes=60)["fit"]
-        self.assertEqual(fit["kind"], "shorter")
-        self.assertFalse(fit["can_shorten"])
+        card = assess_route(loop, "pram", PramSetup(), minutes=60)
+        # Shorter than asked, and offered as it is: a circuit can be cut
+        # short by turning back, but never stretched.
+        self.assertEqual(card["fit"]["kind"], "shorter")
+        self.assertEqual(card["distance_m"], 1400)
 
     def test_a_walk_shorter_than_asked_is_offered_whole(self):
         card = assess_route(self.long_walk(), "pram", PramSetup(), minutes=120)
@@ -310,3 +312,29 @@ class DurationFitTests(unittest.TestCase):
         long_out.id = "long"
         cards = assess_all("pram", PramSetup(), 60, routes=[short_loop, long_out])
         self.assertEqual(cards[0]["id"], "long")
+
+
+class CircuitFitTests(unittest.TestCase):
+    """A circuit can always be turned back on - founder feedback, 9 Oct."""
+
+    def circuit(self):
+        return route(section(0, 4000), section(4000, 8000))     # 2 h round
+
+    def test_a_long_circuit_becomes_a_there_and_back_along_its_start(self):
+        card = assess_route(self.circuit(), "pram", PramSetup(), minutes=60)
+        self.assertEqual(card["fit"]["kind"], "turned")
+        self.assertEqual(card["fit"]["whole_shape"], "loop")
+        self.assertEqual(card["shape"], "out_and_back")
+        self.assertEqual(card["minutes"], 60)
+
+    def test_a_circuit_close_to_the_time_is_offered_whole(self):
+        card = assess_route(self.circuit(), "pram", PramSetup(), minutes=110)
+        self.assertEqual(card["fit"]["kind"], "about_right")
+        self.assertEqual(card["distance_m"], 8000)
+
+    def test_an_obstacle_on_the_far_side_of_the_circuit_drops_out(self):
+        far = Barrier(BarrierKind.STILE, 6000, Status.MAPPED, "osm:node/1")
+        r = route(section(0, 4000), section(4000, 8000, barriers=[far]))
+        self.assertEqual(assess_route(r, "pram", PramSetup())["verdict"], "blocked")
+        self.assertEqual(
+            assess_route(r, "pram", PramSetup(), minutes=60)["verdict"], "ok")

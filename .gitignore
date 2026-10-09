@@ -15,3 +15,7 @@ backend/tools/.cache/
 
 # Walk specs that name a private start (someone's home street). Never committed.
 backend/data/walks/specs/private/
+
+# Founder drop-folder for raw recordings (GPS tracks, photos). Never committed:
+# a track starts near someone's home.
+feedback/

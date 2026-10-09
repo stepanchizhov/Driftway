@@ -67,12 +67,16 @@ function fitSentence(walk: Walk, units: Units): string | null {
   if (!f) return null;
   switch (f.kind) {
     case "turned":
-      return (
-        `Turn back after about ${distance(f.turn_back_at_m ?? 0, units)}` +
-        (f.turn_back_near ? `, on ${f.turn_back_near},` : "") +
-        ` for about ${duration(walk.minutes)}. The whole walk there and back ` +
-        `is about ${duration(f.full_minutes)}.`
-      );
+      return f.whole_shape === "loop"
+        ? `Go out along the circuit and turn back after about ` +
+            `${distance(f.turn_back_at_m ?? 0, units)}` +
+            (f.turn_back_near ? `, on ${f.turn_back_near},` : "") +
+            ` for about ${duration(walk.minutes)}. The full circuit is about ` +
+            `${duration(f.full_minutes)}.`
+        : `Turn back after about ${distance(f.turn_back_at_m ?? 0, units)}` +
+            (f.turn_back_near ? `, on ${f.turn_back_near},` : "") +
+            ` for about ${duration(walk.minutes)}. The whole walk there and back ` +
+            `is about ${duration(f.full_minutes)}.`;
     case "about_right":
       return null;
     case "shorter":
@@ -91,7 +95,7 @@ function fitSentence(walk: Walk, units: Units): string | null {
 
 /** Why a walk that is not there-and-back cannot be fitted to the time. */
 const FIXED: Record<Walk["shape"], string> = {
-  loop: "It's a loop, so it can't be shortened or stretched.",
+  loop: "It's a circuit, so it can't be stretched.",
   one_way: "It's a walk to a destination, so its length is fixed.",
   out_and_back: "",
 };

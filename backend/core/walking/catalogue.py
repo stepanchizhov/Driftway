@@ -240,6 +240,22 @@ def _shortened(route: Route, turn_m: float) -> Route:
     return Route(**{**route.__dict__, "sections": kept})
 
 
+def _may_turn(route: Route, full: float, minutes: float) -> bool:
+    """Whether to fit this walk to the time by turning back early.
+
+    Any there-and-back walk can. So can a circuit - you can always turn round
+    on one, and the first version wrongly said there was "no point to turn
+    back early" - but a circuit close to the time asked for is offered whole,
+    because walking the full loop is the better walk. A one-way walk to a
+    destination cannot be fitted.
+    """
+    if route.shape == "out_and_back":
+        return True
+    if route.shape == "loop":
+        return full - minutes > max(5.0, 0.15 * minutes)
+    return False
+
+
 def _fit(route: Route, requested: Optional[int], full: float,
          turn_m: Optional[float]) -> Optional[Dict]:
     """How the walk relates to the time asked for, said plainly."""
@@ -262,7 +278,8 @@ def _fit(route: Route, requested: Optional[int], full: float,
         "full_minutes": round(full),
         "turn_back_at_m": round(turn_m) if turn_m is not None else None,
         "turn_back_near": near,
-        "can_shorten": route.shape == "out_and_back",
+        "can_shorten": route.shape in ("out_and_back", "loop"),
+        "whole_shape": route.shape,
     }
 
 
@@ -272,11 +289,14 @@ def assess_route(route: Route, profile: str,
     requested = minutes
     full = _full_minutes(route)
     turn_m = None
-    if minutes and route.shape == "out_and_back" and full > minutes:
+    if minutes and full > minutes and _may_turn(route, full, minutes):
         turn_m = _turn_point(route, minutes)
     whole = route
     if turn_m is not None:
         route = _shortened(route, turn_m)
+        # Turning back on a circuit makes it a there-and-back along its first
+        # part: the same ground twice, so the same requirements both ways.
+        route.shape = "out_and_back"
 
     legs = list(route.sections)
     if route.shape == "out_and_back":
