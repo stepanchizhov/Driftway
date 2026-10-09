@@ -1811,6 +1811,8 @@ body {
   padding: 2px 8px;
 }
 .walks-sub, .walks-hint { color: var(--ink-dim); font-size: 14px; margin: 6px 0; }
+.walks-gate p { margin: 0 0 10px; font-size: 15px; }
+.walks-gate .btn-primary { margin-top: 0; }
 .walks-gate {
   background: var(--surface);
   border: 1px solid var(--line);

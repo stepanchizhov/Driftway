@@ -11,6 +11,7 @@ import {
   type WalksResponse,
 } from "./api";
 import { useWalkSetup, type WalkSetup } from "./useWalkSetup";
+import { useDriftwayAuth } from "../auth/AuthProvider";
 
 /**
  * Walks with a pram or a carrier - the experiment.
@@ -54,8 +55,15 @@ function numberOrNull(raw: string): number | null {
   return raw.trim() === "" || Number.isNaN(n) ? null : n;
 }
 
-export function Walks({ units }: { units: Units }) {
+export function Walks({
+  units,
+  onOpenSettings,
+}: {
+  units: Units;
+  onOpenSettings: () => void;
+}) {
   const { setup, update } = useWalkSetup();
+  const auth = useDriftwayAuth();
   const [result, setResult] = useState<WalksResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notAdmitted, setNotAdmitted] = useState<string | null>(null);
@@ -126,9 +134,12 @@ export function Walks({ units }: { units: Units }) {
       />
 
       {notAdmitted && (
-        <p className="walks-gate">
-          {notAdmitted} You can sign in under Settings → Account.
-        </p>
+        <Gate
+          signedIn={auth.isAuthenticated}
+          canSignIn={auth.configured}
+          onSignIn={() => void auth.signIn()}
+          onOpenSettings={onOpenSettings}
+        />
       )}
       {error && <p className="account-error">{error}</p>}
       {busy && !result && <p className="walks-hint">Checking the walks…</p>}
@@ -181,6 +192,54 @@ export function Walks({ units }: { units: Units }) {
         </>
       )}
     </main>
+  );
+}
+
+/**
+ * Why the walks are not showing, and the one action that fixes it - in place,
+ * rather than a sentence pointing somewhere else.
+ *
+ * Two different situations, worded differently, because they need different
+ * things: someone signed out needs to sign in; someone signed in without an
+ * invitation needs to add one, and signing in again would get them nowhere.
+ * Signing in from here returns to this tab - the tab is in the URL hash, and
+ * the sign-in flow restores the URL it started from.
+ */
+function Gate({
+  signedIn,
+  canSignIn,
+  onSignIn,
+  onOpenSettings,
+}: {
+  signedIn: boolean;
+  canSignIn: boolean;
+  onSignIn: () => void;
+  onOpenSettings: () => void;
+}) {
+  if (signedIn) {
+    return (
+      <div className="walks-gate">
+        <p>
+          Walks are part of the closed beta, and your account doesn&rsquo;t
+          have an invitation yet.
+        </p>
+        <button className="btn-primary" onClick={onOpenSettings}>
+          Add your invitation
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="walks-gate">
+      <p>Walks are part of the closed beta. Sign in to try them.</p>
+      {canSignIn ? (
+        <button className="btn-primary" onClick={onSignIn}>
+          Sign in
+        </button>
+      ) : (
+        <p className="walks-hint">Sign-in isn&rsquo;t available on this version.</p>
+      )}
+    </div>
   );
 }
 

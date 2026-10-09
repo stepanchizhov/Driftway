@@ -246,12 +246,3 @@ export function clearSelection(
 }
 
 /** Whether this deployment has Meet Halfway switched on. */
-export async function meetHalfwayEnabled(): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}/api/health`);
-    if (!res.ok) return false;
-    return Boolean((await res.json())?.meet_halfway);
-  } catch {
-    return false;
-  }
-}

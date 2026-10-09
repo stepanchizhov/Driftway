@@ -101,16 +101,6 @@ export interface CarrierSetup {
 /** Not in the beta, as opposed to broken. */
 export class NotAdmitted extends Error {}
 
-export async function walkingEnabled(): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}/api/health`);
-    if (!res.ok) return false;
-    return Boolean((await res.json())?.walking);
-  } catch {
-    return false;
-  }
-}
-
 export async function assessWalks(body: {
   profile: "pram" | "carrier";
   minutes: number;

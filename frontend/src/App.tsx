@@ -24,21 +24,37 @@ import { PlaceSearch } from "./components/PlaceSearch";
 import { MeetHalfway } from "./meetup/MeetHalfway";
 import { StillAsleep } from "./components/StillAsleep";
 import { useStillAsleepTargets } from "./hooks/useStillAsleepTargets";
-import { meetHalfwayEnabled } from "./meetup/api";
 import { Walks } from "./walking/Walks";
-import { walkingEnabled } from "./walking/api";
+import { useFeatures } from "./hooks/useFeatures";
 import type { Endpoint } from "./components/PlaceSearch";
 
 /**
- * Three top-level jobs, per Bible v0.4 section 6. Still Asleep lands first
- * because it is the most time-sensitive: a parent reaching for the phone with
- * a sleeping child should not have to navigate to the urgent thing.
+ * The top-level jobs. Still Asleep lands first because it is the most
+ * time-sensitive: a parent reaching for the phone with a sleeping child should
+ * not have to navigate to the urgent thing.
  *
  * Round trip and Go somewhere deliberately do NOT get their own tabs. They are
  * different route primitives but share controls and mental context, so they
  * stay as a segmented choice inside Plan a drive.
+ *
+ * Walk is a tab by founder decision, 9 Oct 2026, after using it: as a header
+ * button it made the navigation grow in two places at once. That supersedes the
+ * brief's caution against a fourth tab before a tested design. It is still
+ * behind WALKING_ENABLED, so switching the flag off removes the tab entirely.
  */
-type Tab = "stillasleep" | "plan" | "meetup";
+type Tab = "stillasleep" | "plan" | "meetup" | "walk";
+
+const TABS: Tab[] = ["stillasleep", "plan", "meetup", "walk"];
+
+/**
+ * The tab named in the URL hash, if any. The hash is what lets a refresh - or
+ * a return from signing in - land on the same tab. Opening the app fresh (from
+ * the home screen, with no hash) still starts on Still asleep.
+ */
+function tabFromHash(): Tab | null {
+  const raw = window.location.hash.replace("#", "") as Tab;
+  return TABS.includes(raw) ? raw : null;
+}
 
 /**
  * Where the Plan tab is in its own flow, plus the two secondary surfaces.
@@ -57,10 +73,6 @@ type Screen =
       toLabel: string;
     }
   | { name: "favourites" }
-  // The walking experiment. A secondary screen like Saved, deliberately not a
-  // fourth tab: the brief rules out a permanent walking tab until a design has
-  // been tested, and this way it can be removed without touching navigation.
-  | { name: "walks" }
   | { name: "settings" };
 
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60, 90];
@@ -93,12 +105,21 @@ export default function App() {
 
   // A meetup link opens the meetup directly. Checked once, from the URL,
   // before anything renders, so a shared link never lands on the wrong job.
-  const [tab, setTab] = useState<Tab>(() =>
-    hasMeetupLink() ? "meetup" : "stillasleep",
+  const [tab, setTabState] = useState<Tab>(() =>
+    hasMeetupLink() ? "meetup" : tabFromHash() ?? "stillasleep",
   );
+  function setTab(next: Tab) {
+    setTabState(next);
+    // Keep the query string - it may carry a meetup capability - and only
+    // replace the hash, without adding a history entry per tab tap.
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}#${next}`,
+    );
+  }
   const [screen, setScreen] = useState<Screen>({ name: "plan" });
-  const [meetupAvailable, setMeetupAvailable] = useState(false);
-  const [walkingAvailable, setWalkingAvailable] = useState(false);
+  const features = useFeatures();
   const [mode, setMode] = useState<RouteMode>("loop");
   const [duration, setDuration] = useState<number>(settings.lastDuration);
   const [profile, setProfile] = useState<RoadProfile>(settings.lastProfile);
@@ -183,13 +204,6 @@ export default function App() {
     toEndpoint?.coord.lat,
     toEndpoint?.coord.lng,
   ]);
-
-  useEffect(() => {
-    void meetHalfwayEnabled().then(setMeetupAvailable);
-    // The entry point appears only when the deployment has the experiment on.
-    // Whether this person may use it is the server's decision, not this flag's.
-    void walkingEnabled().then(setWalkingAvailable);
-  }, []);
 
   async function runGenerate(targetMinutes: number) {
     if (!start) return;
@@ -281,7 +295,7 @@ export default function App() {
   }
 
   const isSecondary =
-    screen.name === "favourites" || screen.name === "settings" || screen.name === "walks";
+    screen.name === "favourites" || screen.name === "settings";
 
   return (
     <div className={`app${isSecondary ? "" : " app-tabbed"}`}>
@@ -296,11 +310,6 @@ export default function App() {
           </button>
         ) : (
           <div className="masthead-actions">
-            {walkingAvailable && (
-              <button className="btn-back" onClick={() => setScreen({ name: "walks" })}>
-                Walks
-              </button>
-            )}
             <button
               className="btn-back"
               onClick={() => setScreen({ name: "favourites" })}
@@ -528,7 +537,12 @@ export default function App() {
         <SettingsScreen settings={settings} update={update} />
       )}
 
-      {screen.name === "walks" && <Walks units={settings.units} />}
+      {tab === "walk" && !isSecondary && (
+        <Walks
+          units={settings.units}
+          onOpenSettings={() => setScreen({ name: "settings" })}
+        />
+      )}
 
       {/* Persistent job switcher. Hidden on the secondary surfaces so their
           own Back control is unambiguous. */}
@@ -541,8 +555,13 @@ export default function App() {
             onSelect={setTab}
           />
           <TabButton id="plan" label="Plan a drive" active={tab} onSelect={setTab} />
-          {meetupAvailable && (
+          {features.meetHalfway && (
             <TabButton id="meetup" label="Meet up" active={tab} onSelect={setTab} />
+          )}
+          {/* Whether this person may use walks is the server's decision; the
+              flag only says the experiment exists on this deployment. */}
+          {features.walking && (
+            <TabButton id="walk" label="Walk" active={tab} onSelect={setTab} />
           )}
         </nav>
       )}
