@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChipGroup } from "../components/ChipGroup";
 import type { Units } from "../hooks/useSettings";
 import {
@@ -140,24 +140,30 @@ export function Walks({
     DURATIONS.includes(setup.minutes) ? "" : String(setup.minutes),
   );
   const auth = useDriftwayAuth();
+  // The settings being edited, and the settings the walks on screen were made
+  // with. Founder feedback, 9 Oct: changes used to do nothing visible until a
+  // page refresh. Now nothing recalculates on each tap; an Update bar appears
+  // when the two differ, and one tap recalculates everything.
+  const [applied, setApplied] = useState<WalkSetup>(setup);
+  const dirty = JSON.stringify(setup) !== JSON.stringify(applied);
+  const [runToken, setRunToken] = useState(0);
   const [result, setResult] = useState<WalksResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notAdmitted, setNotAdmitted] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Re-assess whenever the setup changes, after a short pause so that typing
-  // "12.5" into a weight field is one request rather than four. `alive` drops
-  // any answer that arrives after a newer setup has replaced the one it was for.
+  // Assess the curated walks for the settings in use. `alive` drops an answer
+  // that arrives after newer settings have been applied.
   useEffect(() => {
     let alive = true;
     const timer = window.setTimeout(() => {
       setBusy(true);
       setError(null);
       assessWalks({
-        profile: setup.profile,
-        minutes: setup.minutes,
-        allow_out_and_back: setup.maxRetrace >= 0.5,
-        ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
+        profile: applied.profile,
+        minutes: applied.minutes,
+        allow_out_and_back: applied.maxRetrace >= 0.5,
+        ...(applied.profile === "pram" ? { pram: applied.pram } : { carrier: applied.carrier }),
       })
         .then((r) => {
           if (!alive) return;
@@ -175,7 +181,14 @@ export function Walks({
       alive = false;
       window.clearTimeout(timer);
     };
-  }, [setup]);
+  }, [applied]);
+
+  // With no curated walk starting here that fits, make walks straight away.
+  const autoMake =
+    canGenerate &&
+    here !== null &&
+    result !== null &&
+    groupWalks(result.walks, here, applied).doorstep.length === 0;
 
   return (
     <main className="walks">
@@ -184,8 +197,9 @@ export function Walks({
           Walks <span className="walks-badge">Experiment</span>
         </h2>
         <p className="walks-sub">
-          A few curated walks, checked against your pram or carrier. What&rsquo;s
-          known is shown with where it comes from; what isn&rsquo;t, is said.
+          Walks from where you are, checked against your pram or carrier.
+          What&rsquo;s known is shown with where it comes from; what isn&rsquo;t,
+          is said.
         </p>
       </header>
 
@@ -228,6 +242,23 @@ export function Walks({
         />
       </label>
 
+      {dirty && (
+        <div className="walks-update">
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setApplied(setup);
+              setRunToken((t) => t + 1);
+            }}
+          >
+            Update walks
+          </button>
+          <button className="btn-quiet" onClick={() => update(applied)}>
+            Undo changes
+          </button>
+        </div>
+      )}
+
       {notAdmitted && (
         <Gate
           signedIn={auth.isAuthenticated}
@@ -241,7 +272,7 @@ export function Walks({
 
       {result && !notAdmitted && (
         <>
-          {setup.profile === "carrier" && result.carried_kg != null && (
+          {applied.profile === "carrier" && result.carried_kg != null && (
             <p className="walks-hint">
               You&rsquo;d be carrying about {result.carried_kg} kg. That&rsquo;s
               your own figures added up, not a judgement - limits depend on your
@@ -250,15 +281,28 @@ export function Walks({
           )}
 
           {canGenerate && (
-            <MakeWalks setup={setup} here={here} units={units} handoff={result.handoff} />
+            <MakeWalks
+              setup={applied}
+              here={here}
+              units={units}
+              handoff={result.handoff}
+              runToken={runToken}
+              autoMake={autoMake}
+            />
           )}
-          <WalkGroups
-            walks={result.walks}
-            here={here}
-            units={units}
-            setup={setup}
-            handoff={result.handoff}
-          />
+
+          {/* Curated walks follow, folded when walks can be made: outside the
+              founder's own area there are hardly any yet. */}
+          <details className="walks-more walks-curated" open={!canGenerate}>
+            <summary>Curated walks</summary>
+            <WalkGroups
+              walks={result.walks}
+              here={here}
+              units={units}
+              setup={applied}
+              handoff={result.handoff}
+            />
+          </details>
 
           <section className="walks-guidance">
             {result.guidance.map((g) => (
@@ -797,11 +841,17 @@ function MakeWalks({
   here,
   units,
   handoff,
+  runToken,
+  autoMake,
 }: {
   setup: WalkSetup;
   here: Coord | null;
   units: Units;
   handoff: string;
+  /** Bumped by "Update walks": walks already made are made again. */
+  runToken: number;
+  /** No curated walk fits here: make walks without waiting to be asked. */
+  autoMake: boolean;
 }) {
   const [start, setStart] = useState<Endpoint | null>(
     here ? { coord: here, label: "Your location", source: "current" } : null,
@@ -811,8 +861,7 @@ function MakeWalks({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Walks made for a different setup or time are no longer the answer.
-  useEffect(() => setMade(null), [setup]);
+  const autoTried = useRef(false);
 
   // Location usually arrives after the screen opens. Use it then - unless a
   // place has already been chosen, which it must not overwrite.
@@ -843,6 +892,22 @@ function MakeWalks({
       setBusy(false);
     }
   }
+
+  // "Update walks": walks on screen were made with the old settings, so make
+  // them again with the new ones, from the same start and checkpoint.
+  useEffect(() => {
+    if (runToken > 0 && made && start) void make();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runToken]);
+
+  // Nothing curated fits here: make walks once, without waiting to be asked.
+  useEffect(() => {
+    if (autoMake && start && !made && !busy && !autoTried.current) {
+      autoTried.current = true;
+      void make();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoMake, start]);
 
   return (
     <section className="walks-make">
@@ -899,7 +964,6 @@ function MakeWalks({
             </p>
           )}
           <p className="walks-attrib">{made.attribution}</p>
-          <h3 className="walks-group-title">Curated walks</h3>
         </>
       )}
     </section>
