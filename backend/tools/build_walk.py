@@ -370,6 +370,60 @@ def _sections(graph: Graph, pts, matched_by_proximity: bool) -> List[Section]:
     return _merge(sections)
 
 
+#: Longest single section after building. A section carries one gradient and
+#: one set of findings, so a long one smears a local feature across its whole
+#: length: the first build of the Long Walk had a 2.6 km section whose steepest
+#: climb - Snow Hill, at the far end - was charged to a walker who turned back
+#: after 1.9 km. Splitting puts each slope roughly where it is.
+MAX_SECTION_M = 300.0
+
+
+def _slice_geometry(geom: List[List[float]], start_m: float, end_m: float) -> List[List[float]]:
+    """The part of a polyline between two distances along it."""
+    out: List[List[float]] = []
+    walked = 0.0
+    for a, b in zip(geom, geom[1:]):
+        d = haversine(tuple(a), tuple(b))
+        seg_start, seg_end = walked, walked + d
+        if seg_end >= start_m and seg_start <= end_m and d > 0:
+            t0 = max(0.0, (start_m - seg_start) / d)
+            t1 = min(1.0, (end_m - seg_start) / d)
+            p0 = [a[0] + t0 * (b[0] - a[0]), a[1] + t0 * (b[1] - a[1])]
+            p1 = [a[0] + t1 * (b[0] - a[0]), a[1] + t1 * (b[1] - a[1])]
+            if not out:
+                out.append(p0)
+            out.append(p1)
+        walked = seg_end
+    return out or geom[:1]
+
+
+def _split_long(sections: List[Section]) -> List[Section]:
+    """Cut sections longer than MAX_SECTION_M into equal pieces.
+
+    Each piece keeps the section's label and evidence (the map says the same
+    thing about all of it); barriers go to the piece they are in; gradients are
+    computed afterwards, per piece, so they become local.
+    """
+    out: List[Section] = []
+    for s in sections:
+        pieces = max(1, math.ceil(s.length_m / MAX_SECTION_M))
+        if pieces == 1:
+            out.append(s)
+            continue
+        step = s.length_m / pieces
+        for i in range(pieces):
+            a, b = s.from_m + i * step, s.from_m + (i + 1) * step
+            piece = Section(a, b, s.label,
+                            _slice_geometry(s.geometry, a - s.from_m, b - s.from_m),
+                            surface=s.surface, evidence=list(s.evidence),
+                            hazards=list(s.hazards),
+                            access_restricted=s.access_restricted)
+            piece.barriers = [x for x in s.barriers
+                              if a <= x.at_m < b or (i == pieces - 1 and x.at_m == b)]
+            out.append(piece)
+    return out
+
+
 #: Labels the builder invents for unnamed ways. Anything else is a real name.
 GENERIC = {"Footpath", "Path", "Pedestrian street", "Track", "Cycle path",
            "Bridleway", "Street"}
@@ -530,6 +584,7 @@ def build(spec_path: str) -> str:
         pts = _walk_from_waypoints(graph, spec["waypoints"])
         sections = _sections(graph, pts, matched_by_proximity=False)
 
+    sections = _split_long(sections)
     _attach_gradients(sections)
     obs_path = spec_path.replace(".spec.json", ".observations.json")
     notes = list(spec.get("notes", [])) + _apply_observations(sections, obs_path)

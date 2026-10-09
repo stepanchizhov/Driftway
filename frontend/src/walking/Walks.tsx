@@ -50,6 +50,47 @@ function at(m: number | null, units: Units): string {
   return `after ${Math.round(m / 10) * 10} m`;
 }
 
+function duration(min: number): string {
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+/**
+ * How this walk fits the time asked for, in one sentence. Never silent: the
+ * first version only sorted by duration, so asking for 60 minutes quietly
+ * returned 20-minute walks.
+ */
+function fitSentence(walk: Walk, units: Units): string | null {
+  const f = walk.fit;
+  if (!f) return null;
+  switch (f.kind) {
+    case "turned":
+      return (
+        `Turn back after about ${distance(f.turn_back_at_m ?? 0, units)}` +
+        (f.turn_back_near ? `, on ${f.turn_back_near},` : "") +
+        ` for about ${duration(walk.minutes)}. The whole walk there and back ` +
+        `is about ${duration(f.full_minutes)}.`
+      );
+    case "about_right":
+      return null;
+    case "shorter":
+      return walk.shape === "loop"
+        ? `About ${duration(f.full_minutes)}, shorter than the ` +
+            `${duration(f.requested_minutes)} you asked for. It's a loop, so it ` +
+            `can't be stretched.`
+        : `About ${duration(f.full_minutes)} for the whole walk there and back, ` +
+            `shorter than the ${duration(f.requested_minutes)} you asked for.`;
+    case "longer":
+      return (
+        `About ${duration(f.full_minutes)}, longer than the ` +
+        `${duration(f.requested_minutes)} you asked for. It's a loop, so there's ` +
+        `no point to turn back early.`
+      );
+  }
+}
+
 function numberOrNull(raw: string): number | null {
   const n = Number(raw.replace(",", "."));
   return raw.trim() === "" || Number.isNaN(n) ? null : n;
@@ -382,7 +423,7 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
         </div>
         <div>
           <dt>Time</dt>
-          <dd>~{walk.minutes} min</dd>
+          <dd>~{duration(walk.minutes)}</dd>
         </div>
         <div>
           <dt>Climb</dt>
@@ -393,6 +434,10 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
           <dd>{walk.shape === "out_and_back" ? "There and back" : "Loop"}</dd>
         </div>
       </dl>
+
+      {fitSentence(walk, units) && (
+        <p className={`walk-fit fit-${walk.fit?.kind}`}>{fitSentence(walk, units)}</p>
+      )}
 
       <div
         className="walk-strip"
@@ -411,8 +456,11 @@ function WalkCard({ walk, units, handoff }: { walk: Walk; units: Units; handoff:
         ))}
       </div>
       <p className="walk-strip-legend">
+        {/* The strip draws every leg walked, so on a there-and-back walk the
+            turn is in the middle and the far end is the start again. */}
         <span>Start</span>
-        <span>{walk.shape === "out_and_back" ? "turn back halfway" : "back to start"}</span>
+        {walk.shape === "out_and_back" && <span>Turn back</span>}
+        <span>Back at start</span>
       </p>
 
       <p className="walk-summary">{walk.summary}</p>

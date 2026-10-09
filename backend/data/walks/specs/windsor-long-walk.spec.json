@@ -1,0 +1,19 @@
+{
+  "id": "windsor-long-walk",
+  "name": "The Long Walk",
+  "area": "Windsor Great Park",
+  "summary": "Straight down the tree-lined avenue from the end of Park Street towards Snow Hill, and back the same way. Turn back whenever your time is up.",
+  "shape": "out_and_back",
+  "start_label": "The Long Walk, at the end of Park Street",
+  "avoid": ["steps"],
+  "waypoints": [
+    [51.48025, -0.60364],
+    [51.47001, -0.60526],
+    [51.44670, -0.60904]
+  ],
+  "notes": [
+    "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
+    "The map marks the Long Walk open to walkers by permission of the landowner. The stretch north of Park Street, towards the castle, is marked private and is not part of this walk.",
+    "Long and open: little shelter from wind or rain."
+  ]
+}

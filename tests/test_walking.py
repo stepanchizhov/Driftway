@@ -234,3 +234,79 @@ class RouteTests(unittest.TestCase):
         card = assess_route(route(section(0, 2000)), "pram", PramSetup())
         self.assertIsNone(card["ascent_m"])
         self.assertEqual(card["coverage"]["gradient"], "unknown")
+
+
+# ------------------------------------------------------- fitting the time
+
+class DurationFitTests(unittest.TestCase):
+    """Founder feedback, 9 Oct: asking for 60 minutes returned 20-minute walks.
+
+    The duration used to only sort a fixed catalogue. Out-and-back walks now
+    turn back sooner to fit the time asked for; loops, which cannot be
+    shortened that way, say plainly how far off they are.
+    """
+
+    def long_walk(self):
+        # 3 km out on firm ground: 90 min there and back at 4 km/h.
+        return route(section(0, 1500), section(1500, 3000), shape="out_and_back")
+
+    def test_an_out_and_back_turns_back_to_fit_the_time(self):
+        card = assess_route(self.long_walk(), "pram", PramSetup(), minutes=60)
+        self.assertEqual(card["fit"]["kind"], "turned")
+        self.assertEqual(card["minutes"], 60)
+        self.assertEqual(card["distance_m"], 4000)          # 2 km out, 2 km back
+        self.assertEqual(card["fit"]["turn_back_at_m"], 2000)
+        self.assertEqual(card["fit"]["full_minutes"], 90)
+
+    def test_climbing_uses_the_time_up_faster(self):
+        """A hilly stretch costs more than a flat one of the same length."""
+        hill = Gradient(30, 0, 9, 0, Status.MODELLED, "eudem25m")
+        hilly = route(section(0, 1500, gradient=hill), section(1500, 3000),
+                      shape="out_and_back")
+        flat_turn = assess_route(self.long_walk(), "pram", PramSetup(),
+                                 minutes=40)["fit"]["turn_back_at_m"]
+        hill_turn = assess_route(hilly, "pram", PramSetup(),
+                                 minutes=40)["fit"]["turn_back_at_m"]
+        self.assertLess(hill_turn, flat_turn)
+
+    def test_an_obstacle_beyond_the_turn_does_not_count(self):
+        """A stile you never reach is no reason to avoid the walk."""
+        far_stile = Barrier(BarrierKind.STILE, 2800, Status.MAPPED, "osm:node/1")
+        r = route(section(0, 1500), section(1500, 3000, barriers=[far_stile]),
+                  shape="out_and_back")
+        whole = assess_route(r, "pram", PramSetup())
+        short = assess_route(r, "pram", PramSetup(), minutes=40)
+        self.assertEqual(whole["verdict"], "blocked")
+        self.assertEqual(short["verdict"], "ok")
+
+    def test_an_obstacle_before_the_turn_still_counts(self):
+        near_steps = steps(at_m=500)
+        r = route(section(0, 1500, barriers=[near_steps]), section(1500, 3000),
+                  shape="out_and_back")
+        self.assertEqual(
+            assess_route(r, "pram", PramSetup(), minutes=40)["verdict"], "blocked")
+
+    def test_a_loop_says_it_is_shorter_rather_than_pretending(self):
+        loop = route(section(0, 1400))                       # 21 min
+        fit = assess_route(loop, "pram", PramSetup(), minutes=60)["fit"]
+        self.assertEqual(fit["kind"], "shorter")
+        self.assertFalse(fit["can_shorten"])
+
+    def test_a_walk_shorter_than_asked_is_offered_whole(self):
+        card = assess_route(self.long_walk(), "pram", PramSetup(), minutes=120)
+        self.assertEqual(card["fit"]["kind"], "shorter")
+        self.assertEqual(card["distance_m"], 6000)
+
+    def test_a_close_enough_walk_is_not_called_wrong(self):
+        loop = route(section(0, 2000))                       # 30 min
+        fit = assess_route(loop, "pram", PramSetup(), minutes=30)["fit"]
+        self.assertEqual(fit["kind"], "about_right")
+
+    def test_the_fitted_walk_ranks_above_a_mismatched_one(self):
+        from core.walking.catalogue import assess_all
+        short_loop = route(section(0, 1400))
+        short_loop.id = "short"
+        long_out = self.long_walk()
+        long_out.id = "long"
+        cards = assess_all("pram", PramSetup(), 60, routes=[short_loop, long_out])
+        self.assertEqual(cards[0]["id"], "long")

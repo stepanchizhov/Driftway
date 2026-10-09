@@ -53,6 +53,15 @@ export interface Walk {
   distance_m: number;
   ascent_m: number | null;
   minutes: number;
+  /** How the walk relates to the time asked for. Null if none was asked. */
+  fit: {
+    kind: "turned" | "about_right" | "shorter" | "longer";
+    requested_minutes: number;
+    full_minutes: number;
+    turn_back_at_m: number | null;
+    turn_back_near: string | null;
+    can_shorten: boolean;
+  } | null;
   assumptions: string;
   blocking: WalkFinding[];
   difficult: WalkFinding[];

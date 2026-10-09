@@ -1,0 +1,501 @@
+{
+ "id": "jubilee-river",
+ "name": "Jubilee River Way",
+ "area": "Datchet side of Windsor",
+ "summary": "Along the flood-relief channel's path on a compacted, fine-gravel surface, and back the same way. Level; firm when dry.",
+ "shape": "out_and_back",
+ "start": {
+  "lat": 51.494371,
+  "lng": -0.593086,
+  "label": "Jubilee River Way, south-east end"
+ },
+ "built_on": "2026-10-09",
+ "sample": false,
+ "notes": [
+  "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
+  "The Jubilee River is a flood-relief channel. Banks and paths near it can flood; take warning signs at their word on the day."
+ ],
+ "sources": [
+  {
+   "id": "osm",
+   "label": "OpenStreetMap",
+   "as_of": "2026-10-09T10:59:21Z",
+   "licence": "ODbL",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "id": "eudem25m",
+   "label": "EU-DEM 25 m terrain model via Open Topo Data",
+   "licence": "Copernicus",
+   "attribution": "Produced using Copernicus data and information funded by the European Union - EU-DEM layers",
+   "limitation": "25 m grid: sustained slopes only; short ramps and kerbs are not visible, and buildings or trees can distort values in town."
+  }
+ ],
+ "sections": [
+  {
+   "from_m": 0.0,
+   "to_m": 208.7,
+   "label": "Jubilee River Way",
+   "surface": "unknown",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.494371,
+     -0.593086
+    ],
+    [
+     51.494572,
+     -0.592936
+    ],
+    [
+     51.494852,
+     -0.592266
+    ],
+    [
+     51.49501,
+     -0.591858
+    ],
+    [
+     51.49517,
+     -0.591547
+    ],
+    [
+     51.495315,
+     -0.591307
+    ],
+    [
+     51.495503,
+     -0.590972
+    ],
+    [
+     51.49560927837825,
+     -0.5909062801547942
+    ]
+   ],
+   "evidence": [],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.6,
+    "steepest_down_pct": 0.1,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 208.7,
+   "to_m": 417.5,
+   "label": "Jubilee River Way",
+   "surface": "unknown",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.49560927837825,
+     -0.5909062801547942
+    ],
+    [
+     51.496069,
+     -0.590622
+    ],
+    [
+     51.496318,
+     -0.590588
+    ],
+    [
+     51.496695,
+     -0.590673
+    ],
+    [
+     51.496961,
+     -0.590746
+    ],
+    [
+     51.497066,
+     -0.590775
+    ],
+    [
+     51.497234,
+     -0.591018
+    ],
+    [
+     51.497377,
+     -0.590939
+    ]
+   ],
+   "evidence": [],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.1,
+    "descent_m": 0.0,
+    "steepest_up_pct": 1.3,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 417.5,
+   "to_m": 562.0,
+   "label": "The Myrke",
+   "surface": "unknown",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.497377,
+     -0.590939
+    ],
+    [
+     51.497635,
+     -0.591169
+    ],
+    [
+     51.497862,
+     -0.591355
+    ],
+    [
+     51.497985,
+     -0.591507
+    ],
+    [
+     51.498068,
+     -0.591633
+    ],
+    [
+     51.49822,
+     -0.591935
+    ],
+    [
+     51.49841,
+     -0.592164
+    ]
+   ],
+   "evidence": [],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.8,
+    "steepest_down_pct": 0.9,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 562.0,
+   "to_m": 623.6,
+   "label": "Jubilee River Way",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.49841,
+     -0.592164
+    ],
+    [
+     51.498378,
+     -0.592228
+    ],
+    [
+     51.498093,
+     -0.592792
+    ],
+    [
+     51.498059,
+     -0.592852
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/25681280",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/25681280",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 623.6,
+   "to_m": 681.5,
+   "label": "Summerleaze Bridge",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.498059,
+     -0.592852
+    ],
+    [
+     51.497709,
+     -0.593472
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "wood",
+     "status": "mapped",
+     "source": "osm:way/25681279",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/25681279",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 681.5,
+   "to_m": 925.0,
+   "label": "Jubilee River Way",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.497709,
+     -0.593472
+    ],
+    [
+     51.498046,
+     -0.59387
+    ],
+    [
+     51.498095,
+     -0.593904
+    ],
+    [
+     51.498404,
+     -0.593983
+    ],
+    [
+     51.498671,
+     -0.594023
+    ],
+    [
+     51.499013,
+     -0.594144
+    ],
+    [
+     51.499066,
+     -0.594194
+    ],
+    [
+     51.499279,
+     -0.59451
+    ],
+    [
+     51.499525,
+     -0.595022
+    ],
+    [
+     51.4995442970128,
+     -0.5950643440523802
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "fine_gravel",
+     "status": "mapped",
+     "source": "osm:way/45317529",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.1,
+    "descent_m": 0.0,
+    "steepest_up_pct": 1.1,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 925.0,
+   "to_m": 1168.5,
+   "label": "Jubilee River Way",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.4995442970128,
+     -0.5950643440523802
+    ],
+    [
+     51.499772,
+     -0.595564
+    ],
+    [
+     51.499834,
+     -0.595979
+    ],
+    [
+     51.499964,
+     -0.59627
+    ],
+    [
+     51.500269,
+     -0.596936
+    ],
+    [
+     51.500588,
+     -0.597681
+    ],
+    [
+     51.500698,
+     -0.597878
+    ],
+    [
+     51.50075324890662,
+     -0.5979550004446547
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "fine_gravel",
+     "status": "mapped",
+     "source": "osm:way/45317529",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.8,
+    "steepest_down_pct": 0.2,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1168.5,
+   "to_m": 1411.9,
+   "label": "Jubilee River Way",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.50075324890662,
+     -0.5979550004446547
+    ],
+    [
+     51.500825,
+     -0.598055
+    ],
+    [
+     51.500893,
+     -0.598265
+    ],
+    [
+     51.500931,
+     -0.598499
+    ],
+    [
+     51.500983,
+     -0.598762
+    ],
+    [
+     51.501022,
+     -0.599098
+    ],
+    [
+     51.501051,
+     -0.599334
+    ],
+    [
+     51.501033,
+     -0.599611
+    ],
+    [
+     51.501057,
+     -0.599735
+    ],
+    [
+     51.501141,
+     -0.600016
+    ],
+    [
+     51.501152,
+     -0.600113
+    ],
+    [
+     51.501139,
+     -0.600711
+    ],
+    [
+     51.501109,
+     -0.601233
+    ],
+    [
+     51.501129,
+     -0.601313
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "fine_gravel",
+     "status": "mapped",
+     "source": "osm:way/45317529",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.5,
+    "steepest_down_pct": 1.7,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  }
+ ]
+}

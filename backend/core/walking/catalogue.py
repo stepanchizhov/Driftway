@@ -151,8 +151,133 @@ def _return_leg(route: Route) -> List[Section]:
     return back
 
 
+def _minutes(distance_m: float, ascent_m: float) -> float:
+    return distance_m / 1000.0 / PACE_KMH * 60.0 + ascent_m / 10.0 * MIN_PER_10M_ASCENT
+
+
+def _full_minutes(route: Route) -> float:
+    """The whole walk, out and back where that is its shape."""
+    out = route.outbound_m
+    up = sum(s.gradient.ascent_m for s in route.sections if s.gradient)
+    down = sum(s.gradient.descent_m for s in route.sections if s.gradient)
+    if route.shape == "out_and_back":
+        # The way back climbs what the way out descended.
+        return _minutes(2 * out, up + down)
+    return _minutes(out, up)
+
+
+def _turn_point(route: Route, minutes: float) -> Optional[float]:
+    """How far out to go on an out-and-back so the round trip takes `minutes`.
+
+    None when the whole walk is shorter than that. Each stretch costs its
+    length twice plus everything climbed on it in either direction, so a
+    hilly stretch uses up the time faster than a flat one of the same length.
+    """
+    spent = 0.0
+    for s in route.sections:
+        climb = (s.gradient.ascent_m + s.gradient.descent_m) if s.gradient else 0.0
+        cost = _minutes(2 * s.length_m, climb)
+        if spent + cost >= minutes:
+            share = (minutes - spent) / cost if cost > 0 else 0.0
+            return s.from_m + share * s.length_m
+        spent += cost
+    return None
+
+
+def _cut_geometry(geometry: List[List[float]], keep: float) -> List[List[float]]:
+    """The first `keep` share of a polyline, by distance along it."""
+    if len(geometry) < 2 or keep >= 1.0:
+        return geometry
+    steps = [_haversine(a, b) for a, b in zip(geometry, geometry[1:])]
+    target = sum(steps) * max(0.0, keep)
+    out, walked = [geometry[0]], 0.0
+    for (a, b), d in zip(zip(geometry, geometry[1:]), steps):
+        if walked + d >= target:
+            t = (target - walked) / d if d else 0.0
+            out.append([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])])
+            return out
+        out.append(b)
+        walked += d
+    return out
+
+
+def _haversine(a: List[float], b: List[float]) -> float:
+    la1, lo1, la2, lo2 = map(math.radians, (a[0], a[1], b[0], b[1]))
+    h = (math.sin((la2 - la1) / 2) ** 2
+         + math.cos(la1) * math.cos(la2) * math.sin((lo2 - lo1) / 2) ** 2)
+    return 2 * 6371000.0 * math.asin(math.sqrt(h))
+
+
+def _shortened(route: Route, turn_m: float) -> Route:
+    """The same out-and-back walk, turning back at `turn_m`.
+
+    Everything beyond the turn is dropped, including its obstacles - a stile
+    you will never reach is not a reason to avoid the walk. The stretch the
+    turn falls in keeps its steepest gradient (the steep bit may well be in
+    the part you walk) and has its climb scaled to the share walked.
+    """
+    kept: List[Section] = []
+    for s in route.sections:
+        if s.from_m >= turn_m:
+            break
+        if s.to_m <= turn_m:
+            kept.append(s)
+            continue
+        share = (turn_m - s.from_m) / s.length_m if s.length_m else 0.0
+        cut = Section(
+            from_m=s.from_m, to_m=turn_m, label=s.label,
+            geometry=_cut_geometry(s.geometry, share), surface=s.surface,
+            evidence=s.evidence, hazards=s.hazards,
+            access_restricted=s.access_restricted,
+            barriers=[b for b in s.barriers if b.at_m <= turn_m],
+        )
+        if s.gradient:
+            g = s.gradient
+            cut.gradient = Gradient(g.ascent_m * share, g.descent_m * share,
+                                    g.steepest_up_pct, g.steepest_down_pct,
+                                    g.status, g.source)
+        kept.append(cut)
+    return Route(**{**route.__dict__, "sections": kept})
+
+
+def _fit(route: Route, requested: Optional[int], full: float,
+         turn_m: Optional[float]) -> Optional[Dict]:
+    """How the walk relates to the time asked for, said plainly."""
+    if not requested:
+        return None
+    near = None
+    if turn_m is not None:
+        near = next((s.label for s in route.sections
+                     if s.from_m <= turn_m <= s.to_m), None)
+        kind = "turned"
+    elif abs(full - requested) <= max(5.0, 0.15 * requested):
+        kind = "about_right"
+    elif full < requested:
+        kind = "shorter"
+    else:
+        kind = "longer"
+    return {
+        "kind": kind,
+        "requested_minutes": requested,
+        "full_minutes": round(full),
+        "turn_back_at_m": round(turn_m) if turn_m is not None else None,
+        "turn_back_near": near,
+        "can_shorten": route.shape == "out_and_back",
+    }
+
+
 def assess_route(route: Route, profile: str,
-                 setup: Union[PramSetup, CarrierSetup]) -> Dict:
+                 setup: Union[PramSetup, CarrierSetup],
+                 minutes: Optional[int] = None) -> Dict:
+    requested = minutes
+    full = _full_minutes(route)
+    turn_m = None
+    if minutes and route.shape == "out_and_back" and full > minutes:
+        turn_m = _turn_point(route, minutes)
+    whole = route
+    if turn_m is not None:
+        route = _shortened(route, turn_m)
+
     legs = list(route.sections)
     if route.shape == "out_and_back":
         legs += _return_leg(route)
@@ -174,6 +299,7 @@ def assess_route(route: Route, profile: str,
             for x in (blocking, difficult, unknowns, notes))
 
     unknowns = _summarise_unknown_surface(unknowns, assessed, route)
+    difficult, notes = _once_per_way(difficult), _once_per_way(notes)
 
     distance = sum(s.length_m for s in legs)
     ascent = sum(s.gradient.ascent_m for s in legs if s.gradient)
@@ -206,6 +332,7 @@ def assess_route(route: Route, profile: str,
         "distance_m": round(distance),
         "ascent_m": round(ascent) if have_gradient else None,
         "minutes": round(minutes),
+        "fit": _fit(whole, requested, full, turn_m),
         "assumptions": (
             f"About {PACE_KMH:g} km/h"
             + (", plus a minute for every 10 m climbed" if have_gradient else "")
@@ -251,14 +378,52 @@ def _summarise_unknown_surface(unknowns: List[Finding],
     if len(surface_gaps) <= 1:
         return unknowns
     turn = route.outbound_m if route.shape == "out_and_back" else math.inf
-    gap_m = sum(a.section.length_m for a in assessed
-                if a.section.surface is Surface.UNKNOWN and a.section.from_m < turn)
+    gap_m = 0.0
+    runs = 0
+    previous_unknown = False
+    for a in assessed:
+        if a.section.from_m >= turn:
+            break
+        unknown = a.section.surface is Surface.UNKNOWN
+        if unknown:
+            gap_m += a.section.length_m
+            # Long sections are split into pieces when built; consecutive
+            # unknown pieces are one stretch on the ground, so count runs.
+            if not previous_unknown:
+                runs += 1
+        previous_unknown = unknown
+    if runs <= 1:
+        return [Finding(Verdict.UNKNOWN, "surface",
+                        f"Surface not recorded for about {round(gap_m, -1):.0f} m.",
+                        Status.UNKNOWN, "none", surface_gaps[0].at_m)] + \
+            [f for f in unknowns if f.kind != "surface"]
     summary = Finding(
         Verdict.UNKNOWN, "surface",
-        f"Surface not recorded on {len(surface_gaps)} stretches, "
+        f"Surface not recorded on {runs} stretches, "
         f"about {round(gap_m, -1):.0f} m in total.",
         Status.UNKNOWN, "none", surface_gaps[0].at_m)
     return [summary] + [f for f in unknowns if f.kind != "surface"]
+
+
+def _once_per_way(findings: List[Finding]) -> List[Finding]:
+    """Say a surface finding once per mapped way, where it is first met.
+
+    A long way is split into several sections when built, and each piece
+    repeats the same tag - so "Unpaved" appeared once per piece of one path.
+    A surface finding's source is the way it came from, which makes repeats
+    exact duplicates. Gradient findings are left alone: they come from the
+    terrain model per piece, and two climbs in two places are two climbs.
+    """
+    seen = set()
+    out: List[Finding] = []
+    for f in findings:
+        if f.kind == "surface":
+            key = (f.reason, f.source)
+            if key in seen:
+                continue
+            seen.add(key)
+        out.append(f)
+    return out
 
 
 def _first_meeting(findings: List[Finding], turn_m: float) -> List[Finding]:
@@ -275,19 +440,24 @@ def _first_meeting(findings: List[Finding], turn_m: float) -> List[Finding]:
 
 def assess_all(profile: str, setup, minutes: Optional[int] = None,
                routes: Optional[List[Route]] = None) -> List[Dict]:
-    """Every walk, assessed. Suitability first, then closeness to the wanted
-    duration - a manageable walk ten minutes long beats a blocked one that is
-    exactly the right length.
+    """Every walk, assessed and fitted to the time asked for.
 
-    Unsuitable walks are kept, not hidden: seeing that the riverside route is
-    blocked for your pram by steps is itself useful, and a list that silently
-    shrinks tells you nothing about why.
+    Out-and-back walks are shortened to the requested time by turning back
+    sooner; loops cannot be, and say how far off they are. Ordering: walks
+    with no known problems first (recorded or not - an unrecorded stretch is
+    shown, but is not a reason to rank a walk below one that is 40 minutes
+    off), then harder walks, then unsuitable ones; within each, closest to the
+    requested time first.
+
+    Unsuitable walks are kept, not hidden: seeing that a walk is blocked for
+    your pram by steps is itself useful, and a list that silently shrinks tells
+    you nothing about why.
     """
-    cards = [assess_route(r, profile, setup) for r in (routes if routes is not None
-                                                      else load_routes())]
-    rank = {"ok": 0, "unknown": 1, "difficult": 2, "blocked": 3}
+    cards = [assess_route(r, profile, setup, minutes)
+             for r in (routes if routes is not None else load_routes())]
+    tier = {"ok": 0, "unknown": 0, "difficult": 1, "blocked": 2}
     if minutes:
-        cards.sort(key=lambda c: (rank[c["verdict"]], abs(c["minutes"] - minutes)))
+        cards.sort(key=lambda c: (tier[c["verdict"]], abs(c["minutes"] - minutes)))
     else:
-        cards.sort(key=lambda c: rank[c["verdict"]])
+        cards.sort(key=lambda c: tier[c["verdict"]])
     return cards

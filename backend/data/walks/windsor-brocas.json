@@ -9,7 +9,7 @@
   "lng": -0.608115,
   "label": "Windsor Bridge, Windsor end"
  },
- "built_on": "2026-10-08",
+ "built_on": "2026-10-09",
  "sample": false,
  "notes": [
   "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
@@ -331,7 +331,7 @@
   },
   {
    "from_m": 235.0,
-   "to_m": 599.7,
+   "to_m": 417.3,
    "label": "Footpath",
    "surface": "unpaved",
    "access_restricted": false,
@@ -359,6 +359,43 @@
     [
      51.485863,
      -0.612931
+    ],
+    [
+     51.48590010671506,
+     -0.6133838393559339
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "unpaved",
+     "status": "mapped",
+     "source": "osm:way/25680955",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.1,
+    "steepest_down_pct": 0.5,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 417.3,
+   "to_m": 599.7,
+   "label": "Footpath",
+   "surface": "unpaved",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.48590010671506,
+     -0.6133838393559339
     ],
     [
      51.485917,
@@ -401,7 +438,7 @@
     "ascent_m": 0.0,
     "descent_m": 0.0,
     "steepest_up_pct": 0.3,
-    "steepest_down_pct": 0.5,
+    "steepest_down_pct": 0.1,
     "status": "modelled",
     "source": "eudem25m via Open Topo Data"
    }

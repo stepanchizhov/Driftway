@@ -1,0 +1,597 @@
+{
+ "id": "windsor-long-walk",
+ "name": "The Long Walk",
+ "area": "Windsor Great Park",
+ "summary": "Straight down the tree-lined avenue from the end of Park Street towards Snow Hill, and back the same way. Turn back whenever your time is up.",
+ "shape": "out_and_back",
+ "start": {
+  "lat": 51.480246,
+  "lng": -0.603639,
+  "label": "The Long Walk, at the end of Park Street"
+ },
+ "built_on": "2026-10-09",
+ "sample": false,
+ "notes": [
+  "Built from OpenStreetMap and a terrain model on the date shown. Nobody from Driftway has walked it yet, so surfaces are as mapped, not as found.",
+  "The map marks the Long Walk open to walkers by permission of the landowner. The stretch north of Park Street, towards the castle, is marked private and is not part of this walk.",
+  "Long and open: little shelter from wind or rain."
+ ],
+ "sources": [
+  {
+   "id": "osm",
+   "label": "OpenStreetMap",
+   "as_of": "2026-10-09T10:59:21Z",
+   "licence": "ODbL",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "id": "eudem25m",
+   "label": "EU-DEM 25 m terrain model via Open Topo Data",
+   "licence": "Copernicus",
+   "attribution": "Produced using Copernicus data and information funded by the European Union - EU-DEM layers",
+   "limitation": "25 m grid: sustained slopes only; short ramps and kerbs are not visible, and buildings or trees can distort values in town."
+  }
+ ],
+ "sections": [
+  {
+   "from_m": 0.0,
+   "to_m": 285.9,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.480246,
+     -0.603639
+    ],
+    [
+     51.480042,
+     -0.603671
+    ],
+    [
+     51.477815,
+     -0.604009
+    ],
+    [
+     51.477686258565626,
+     -0.6040296496162069
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23324541",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 8.4,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 6.6,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 285.9,
+   "to_m": 571.8,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.477686258565626,
+     -0.6040296496162069
+    ],
+    [
+     51.47731,
+     -0.60409
+    ],
+    [
+     51.47512773545999,
+     -0.6044403605856531
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23324541",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.8,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 571.8,
+   "to_m": 857.7,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.47512773545999,
+     -0.6044403605856531
+    ],
+    [
+     51.47256921619782,
+     -0.6048511285244925
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23324541",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 3.7,
+    "descent_m": 0.0,
+    "steepest_up_pct": 2.8,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 857.7,
+   "to_m": 1143.7,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.47256921619782,
+     -0.6048511285244925
+    ],
+    [
+     51.470608,
+     -0.605166
+    ],
+    [
+     51.470073,
+     -0.605249
+    ],
+    [
+     51.47001051492601,
+     -0.6052589182657132
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23324541",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 2.1,
+    "descent_m": 1.4,
+    "steepest_up_pct": 1.9,
+    "steepest_down_pct": 2.8,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1143.7,
+   "to_m": 1433.1,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.47001,
+     -0.605259
+    ],
+    [
+     51.46997,
+     -0.605266
+    ],
+    [
+     51.469226,
+     -0.605382
+    ],
+    [
+     51.46741919478556,
+     -0.6056699474211086
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 3.4,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 1.6,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1433.1,
+   "to_m": 1722.6,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.46741919478556,
+     -0.6056699474211086
+    ],
+    [
+     51.46482850564858,
+     -0.6060828210667728
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.2,
+    "steepest_down_pct": 0.9,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1722.6,
+   "to_m": 2012.1,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.46482850564858,
+     -0.6060828210667728
+    ],
+    [
+     51.463654,
+     -0.60627
+    ],
+    [
+     51.463297,
+     -0.606329
+    ],
+    [
+     51.463214,
+     -0.606342
+    ],
+    [
+     51.463188,
+     -0.606347
+    ],
+    [
+     51.463058,
+     -0.606367
+    ],
+    [
+     51.46273,
+     -0.606423
+    ],
+    [
+     51.462341,
+     -0.606485
+    ],
+    [
+     51.462238200717074,
+     -0.6065016133479536
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [
+    {
+     "kind": "gate",
+     "at_m": 1903,
+     "status": "mapped",
+     "source": "osm:node/1868636664",
+     "width_cm": null,
+     "step_count": null,
+     "has_ramp": null,
+     "note": null
+    }
+   ],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.9,
+    "steepest_down_pct": 0.4,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2012.1,
+   "to_m": 2301.6,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.462238200717074,
+     -0.6065016133479536
+    ],
+    [
+     51.4596478745883,
+     -0.6069202348408689
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 1.3,
+    "steepest_down_pct": 0.8,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2301.6,
+   "to_m": 2591.1,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.4596478745883,
+     -0.6069202348408689
+    ],
+    [
+     51.457057548459524,
+     -0.607338856333784
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 2.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 1.8,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2591.1,
+   "to_m": 2880.6,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.457057548459524,
+     -0.607338856333784
+    ],
+    [
+     51.45446722233075,
+     -0.6077574778266992
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 3.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 2.1,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2880.6,
+   "to_m": 3170.1,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.45446722233075,
+     -0.6077574778266992
+    ],
+    [
+     51.453146,
+     -0.607971
+    ],
+    [
+     51.45187711488453,
+     -0.6081795278438948
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 5.7,
+    "descent_m": 0.0,
+    "steepest_up_pct": 2.7,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 3170.1,
+   "to_m": 3459.6,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.45187711488453,
+     -0.6081795278438948
+    ],
+    [
+     51.450353,
+     -0.60843
+    ],
+    [
+     51.44928723963219,
+     -0.6086052061839804
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 1.2,
+    "steepest_down_pct": 0.4,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 3459.6,
+   "to_m": 3749.0,
+   "label": "The Long Walk",
+   "surface": "sealed",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.44928723963219,
+     -0.6086052061839804
+    ],
+    [
+     51.446904,
+     -0.608997
+    ],
+    [
+     51.446698,
+     -0.609039
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "asphalt",
+     "status": "mapped",
+     "source": "osm:way/23194641",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 15.7,
+    "descent_m": 0.0,
+    "steepest_up_pct": 11.4,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  }
+ ]
+}
