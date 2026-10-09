@@ -1,15 +1,30 @@
 # Walking with a pram or carrier — the experiment
 
-Status, 8 Oct 2026: **IMPLEMENTED behind a flag, not yet field-verified.**
-Two demonstrator walks in Windsor, built from map data. Nobody has walked them
-with the app yet, and the founder's own circuit is not in yet (see
+Status, 9 Oct 2026: **IMPLEMENTED behind a flag, enabled on production, not
+yet field-verified.** Four walks around Windsor, built from map data. The
+founder has opened the screen on a phone; nobody has walked a route with it
+yet, and the founder's own circuit is not in yet (see
 [Adding your own walk](#adding-your-own-walk)).
+
+It is the **Walk** tab, beside Still asleep, Plan a drive and Meet up - a
+founder decision on 9 Oct, after a header button made the navigation grow in
+two places. The tab exists only while the flag is on.
 
 ## What it does
 
 Pick **Pram** or **Carrier**, optionally describe the pram (wheel type, width,
 double) or the load (approximate weights, who carries the bag), and pick a
-rough duration. Each curated walk comes back judged for that setup:
+rough duration.
+
+**Fitting the time.** A there-and-back walk turns back early to fit the time
+asked for. Each stretch costs its length twice plus everything climbed on it
+in either direction, so a hilly stretch uses the time faster than a flat one.
+Obstacles beyond the turn no longer count; those before it still do. A loop
+cannot be shortened, so its card says how far off it is. Every card states the
+fit in one sentence - the first version only sorted by duration, so asking for
+60 minutes quietly returned 20-minute walks.
+
+Each walk comes back judged for that setup:
 
 | Verdict | Means |
 |---|---|
@@ -85,20 +100,19 @@ In `backend/core/walking/profiles.py`, one place to change them:
 Not modelled, deliberately: calories, heart rate, a "safe" carried weight.
 Manufacturer limits are specific to the carrier model.
 
-## The two demonstrator walks
+## The walks
 
-Both start at the Windsor end of Windsor Bridge and show the trade-off the
-brief asked for:
-
-| | The Brocas riverside meadow | Castle Hill and the old town |
-|---|---|---|
-| Shape | There and back, 1.2 km | Loop, 1.3 km |
-| Ground | Flat, river level | About 19 m of climbing, 7–8% in places |
-| Surface | Gravel, then unpaved | Asphalt and paving, setts in Church Lane |
-| Standard pram | Possible, with harder stretches | No known problems; 75 m not recorded |
+| Walk | Direction | Shape | One way | Character |
+|---|---|---|---|---|
+| The Brocas riverside meadow | west, across the bridge | there and back | 0.6 km | Flat; gravel then unpaved |
+| Castle Hill and the old town | the town | loop | 1.3 km round | Firm; about 19 m of climbing; setts |
+| The Long Walk | south, into the Great Park | there and back | 3.7 km | Mapped asphalt; gentle until Snow Hill (about 11%) at the far end |
+| Jubilee River Way | north-east | there and back | 1.4 km | Compacted gravel; level; about 560 m unrecorded |
 
 Castle Hill is curated to **avoid steps**: the shortest path climbs four
-flights, and no curator would offer that walk to someone with a pram.
+flights, and no curator would offer that walk to someone with a pram. The Long
+Walk starts where Park Street meets it; the stretch north of there, towards
+the castle, is mapped private and is not part of the walk.
 
 ## Adding your own walk
 
@@ -195,6 +209,9 @@ person.
   mislabelled stretches (a 23 m "Street" between two pieces of Brocas Street).
   A filter for one-point blips is in place for dense real traces, but has not
   been tried on one yet. Expect to review a GPX-built walk by eye.
+- **Sections are at most 300 m.** Long ways are split so a slope sits roughly
+  where it is; the first Long Walk build charged Snow Hill's climb to walkers
+  turning back long before it.
 - **No map view.** The strip shows where the hard stretches fall along the
   walk; there is no map yet.
 - **Navigation handoff.** "Directions to the start" opens Google Maps to the
