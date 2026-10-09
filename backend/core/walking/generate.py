@@ -29,6 +29,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
@@ -100,8 +101,42 @@ def target_length_m(minutes: int) -> float:
 CHARACTERS = ("any", "green", "quiet")
 
 
+#: How openrouteservice accepts a weighting, learnt from its answers. Its
+#: documentation describes the value as an integer but its own example sends
+#: {"factor": 0.8}; founder testing on 9 Oct found the example form failing.
+#: None until learnt; "none" once both forms have been refused.
+_WEIGHT_FORM: Optional[str] = None
+
+
+def _weight_forms(character: str) -> List[Optional[str]]:
+    """Weighting forms to try, best guess first; None means unweighted."""
+    if character not in ("green", "quiet") or _WEIGHT_FORM == "none":
+        return [None]
+    if _WEIGHT_FORM:
+        return [_WEIGHT_FORM, None]
+    return ["factor", "int", None]
+
+
+def _ors_error(resp: httpx.Response) -> str:
+    """openrouteservice's error code and message, with every number blanked.
+
+    Its error bodies can echo the request, coordinates included, and a log of
+    them would record where people were. Digits go; the words stay.
+    """
+    try:
+        err = resp.json().get("error")
+    except Exception:  # noqa: BLE001
+        return "(no readable body)"
+    if isinstance(err, dict):
+        code, msg = err.get("code"), str(err.get("message", ""))
+    else:
+        code, msg = None, str(err)
+    return f"code {code}: " + re.sub(r"-?\d+(\.\d+)?", "#", msg)[:200]
+
+
 def request_body(start: Tuple[float, float], profile: str, minutes: int,
-                 seed: int, character: str = "any") -> Tuple[str, Dict]:
+                 seed: int, character: str = "any",
+                 weight_form: Optional[str] = "factor") -> Tuple[str, Dict]:
     """The ORS profile and request body for one candidate walk.
 
     A pram normally gets wheelchair routing. Asking for a greener or quieter
@@ -109,7 +144,7 @@ def request_body(start: Tuple[float, float], profile: str, minutes: int,
     walking routing can weigh greenery or quiet; the pram rules still judge the
     result, and the walk says which routing made it.
     """
-    weighted = character in ("green", "quiet")
+    weighted = character in ("green", "quiet") and weight_form is not None
     ors_profile = "wheelchair" if profile == "pram" and not weighted else "foot-walking"
     body = {
         # ORS takes [longitude, latitude].
@@ -127,9 +162,8 @@ def request_body(start: Tuple[float, float], profile: str, minutes: int,
     if profile == "pram":
         body["options"]["avoid_features"] = ["steps"]
     if weighted:
-        # The form shown in the documentation's own example.
-        body["options"]["profile_params"] = {
-            "weightings": {character: {"factor": 1.0}}}
+        value = {"factor": 1.0} if weight_form == "factor" else 1
+        body["options"]["profile_params"] = {"weightings": {character: value}}
     return ors_profile, body
 
 
@@ -234,16 +268,24 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
     client = client or httpx.AsyncClient(timeout=20.0)
     try:
         async def one(seed: int):
-            ors_profile, body = request_body(start, profile, minutes, seed, character)
-            resp = await client.post(ORS_URL.format(profile=ors_profile), json=body,
-                                     headers={"Authorization": key})
-            if resp.status_code != 200:
-                # The detail can carry coordinates; log the status only.
-                log.warning("openrouteservice %s for a %s round trip",
-                            resp.status_code, ors_profile)
-                return None
-            feats = resp.json().get("features") or []
-            return feats[0] if feats else None
+            global _WEIGHT_FORM
+            for form in _weight_forms(character):
+                ors_profile, body = request_body(start, profile, minutes, seed,
+                                                 character, form)
+                resp = await client.post(ORS_URL.format(profile=ors_profile), json=body,
+                                         headers={"Authorization": key})
+                if resp.status_code == 200:
+                    if form is not None:
+                        _WEIGHT_FORM = form
+                    elif character in ("green", "quiet") and _WEIGHT_FORM is None:
+                        _WEIGHT_FORM = "none"
+                    feats = resp.json().get("features") or []
+                    return (feats[0] if feats else None), form
+                log.warning("openrouteservice %s for a %s round trip (weighting %s) - %s",
+                            resp.status_code, ors_profile, form, _ors_error(resp))
+                if resp.status_code != 400 or form is None:
+                    return None, form
+            return None, None
 
         results = await asyncio.gather(*(one(s) for s in SEEDS), return_exceptions=True)
     finally:
@@ -251,19 +293,26 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
             await client.aclose()
 
     routes = []
-    for n, feat in enumerate(results, start=1):
-        if isinstance(feat, Exception) or not feat:
+    for n, outcome in enumerate(results, start=1):
+        if isinstance(outcome, Exception) or not outcome[0]:
             continue
+        feat, form = outcome
+        weighted = character in ("green", "quiet")
+        if weighted and form is None:
+            note = (f"{'Greener' if character == 'green' else 'Quieter'} routing "
+                    "wasn't accepted by the route provider, so this is an "
+                    "ordinary walk.")
+        elif weighted and profile == "pram":
+            note = ("Made with walking routes, steps avoided, so it could favour "
+                    f"{'greener' if character == 'green' else 'quieter'} ways; "
+                    "wheelchair routing cannot weigh that.")
+        else:
+            note = None
         # "Walk", not "Loop": a round trip can retrace much of itself, and
         # the card names its real shape from the geometry.
         routes.append(route_from_ors(
             feat, walk_id=f"generated-{n}", name=f"Walk {n} from {start_label}",
-            start_label=start_label,
-            routing_note=(
-                "Made with walking routes, steps avoided, so it could favour "
-                f"{'greener' if character == 'green' else 'quieter'} ways; "
-                "wheelchair routing cannot weigh that."
-                if profile == "pram" and character in ("green", "quiet") else None)))
+            start_label=start_label, routing_note=note))
     if character in ("green", "quiet"):
         # Asked for less road: put the walks with the least of it first.
         routes.sort(key=lambda r: r.road_share if r.road_share is not None else 1.0)
@@ -351,8 +400,14 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
     key = api_key()
     if not key:
         raise GenerationUnavailable("Walk generation is not configured on this deployment.")
-    ors_profile, base = request_body(start, profile, 30, 1, character)
-    base["options"].pop("round_trip", None)
+    forms = _weight_forms(character)
+
+    def make_base(form):
+        p, b = request_body(start, profile, 30, 1, character, form)
+        b["options"].pop("round_trip", None)
+        return p, b
+
+    ors_profile, base = make_base(forms[0])
 
     def body(a, b, avoid=None):
         req = {**base, "coordinates": [[a[1], a[0]], [b[1], b[0]]],
@@ -364,9 +419,15 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
     own = client is None
     client = client or httpx.AsyncClient(timeout=20.0)
     try:
-        url = ORS_URL.format(profile=ors_profile)
         headers = {"Authorization": key}
-        r1 = await client.post(url, json=body(start, via), headers=headers)
+        for form in forms:
+            ors_profile, base = make_base(form)
+            url = ORS_URL.format(profile=ors_profile)
+            r1 = await client.post(url, json=body(start, via), headers=headers)
+            if r1.status_code != 400 or form is None:
+                break
+            log.warning("openrouteservice 400 for the way to a checkpoint "
+                        "(weighting %s) - %s", form, _ors_error(r1))
         if r1.status_code != 200 or not r1.json().get("features"):
             log.warning("openrouteservice %s for the way to a checkpoint", r1.status_code)
             raise GenerationUnavailable(

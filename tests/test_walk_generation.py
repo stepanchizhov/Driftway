@@ -269,3 +269,57 @@ class ViaTests(unittest.TestCase):
         card = assess_route(routes[0], "carrier", CarrierSetup(), minutes=10)
         self.assertNotEqual(card["fit"]["kind"], "turned")
         self.assertIn("via", [m["kind"] for m in card["markers"]])
+
+
+class WeightingFallbackTests(unittest.TestCase):
+    """Greener and quieter failed on production, 9 Oct, with the documented
+    example's {"factor": ...} form. Each form is tried in turn, and if the
+    provider takes neither, ordinary walks are made and say so."""
+
+    def setUp(self):
+        from core.walking import generate as gen
+        gen._WEIGHT_FORM = None
+        os.environ["ORS_API_KEY"] = "test-key"
+
+    def tearDown(self):
+        from core.walking import generate as gen
+        gen._WEIGHT_FORM = None
+        os.environ.pop("ORS_API_KEY", None)
+
+    def _run(self, accept):
+        """accept(body_text) -> bool decides whether a request succeeds."""
+        from core.walking import generate as gen
+        seen = []
+
+        def handler(request):
+            text = request.read().decode()
+            seen.append(text)
+            if not accept(text):
+                return httpx.Response(400, json={"error": {
+                    "code": 2003, "message": "Parameter 'weightings' value 0.8 at 52.1,13.2"}})
+            return httpx.Response(200, json={"features": [feature()]})
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        with self.assertLogs("driftway", level="WARNING") as logs:
+            routes = asyncio.run(gen.generate((52.0, 13.0), "carrier", 30, "x",
+                                              client, character="green"))
+            log = "\n".join(logs.output)
+        return routes, seen, log
+
+    def test_the_integer_form_is_tried_when_the_object_form_is_refused(self):
+        from core.walking import generate as gen
+        routes, seen, _ = self._run(lambda t: '"factor"' not in t)
+        self.assertEqual(len(routes), 3)
+        self.assertEqual(gen._WEIGHT_FORM, "int")
+        self.assertFalse(any("wasn't accepted" in n for n in routes[0].notes))
+
+    def test_if_no_form_is_accepted_ordinary_walks_say_so(self):
+        routes, _, _ = self._run(lambda t: "weightings" not in t)
+        self.assertEqual(len(routes), 3)
+        self.assertTrue(any("wasn't accepted" in n for n in routes[0].notes))
+
+    def test_the_logged_error_has_no_numbers_in_it(self):
+        _, _, log = self._run(lambda t: "weightings" not in t)
+        self.assertIn("code 2003", log)
+        self.assertNotIn("52.1", log)
+        self.assertNotIn("0.8", log)
