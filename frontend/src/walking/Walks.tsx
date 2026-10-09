@@ -806,6 +806,7 @@ function MakeWalks({
   const [start, setStart] = useState<Endpoint | null>(
     here ? { coord: here, label: "Your location", source: "current" } : null,
   );
+  const [via, setVia] = useState<Endpoint | null>(null);
   const [made, setMade] = useState<GeneratedWalks | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -830,6 +831,7 @@ function MakeWalks({
           minutes: setup.minutes,
           allow_out_and_back: setup.maxRetrace >= 0.5,
           character: setup.character,
+          ...(via ? { via: via.coord, via_label: via.label } : {}),
           start: start.coord,
           start_label: start.label,
           ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
@@ -857,12 +859,26 @@ function MakeWalks({
         currentLocationLabel="Where I am"
         placeholder="Where I am, or search a place"
       />
+      <PlaceSearch
+        legend="Via (optional)"
+        value={via}
+        onChange={setVia}
+        near={start?.coord ?? here}
+        placeholder="A place to walk through"
+      />
       <button className="btn-primary" disabled={!start || busy} onClick={() => void make()}>
-        {busy ? "Making walks…" : `Make walks of about ${duration(setup.minutes)}`}
+        {busy
+          ? "Making walks…"
+          : via
+            ? `Make a walk via ${via.label}`
+            : `Make walks of about ${duration(setup.minutes)}`}
       </button>
       <p className="walks-hint">
-        Up to three loops from mapped paths, judged for your setup. To plan them,
-        your start is sent to openrouteservice; it isn&rsquo;t stored.
+        {via
+          ? "Out to your checkpoint and back a different way where one exists; its length follows from where the checkpoint is."
+          : "Up to three walks from mapped paths, judged for your setup."}{" "}
+        To plan them, your start{via ? " and checkpoint are" : " is"} sent to
+        openrouteservice; nothing is stored.
       </p>
       {error && <p className="account-error">{error}</p>}
       {made && (

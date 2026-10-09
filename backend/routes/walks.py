@@ -178,6 +178,10 @@ class GenerateIn(AssessIn):
     start_label: str = Field("Your start", max_length=80)
     #: "green" or "quiet" ask openrouteservice to weigh those; "any" does not.
     character: Literal["any", "green", "quiet"] = "any"
+    #: A place to walk via. With it, the walk goes out to it and back a
+    #: different way; without it, round trips from the start.
+    via: Optional[Point] = None
+    via_label: str = Field("your checkpoint", max_length=80)
 
 
 #: Each generation is three provider calls. The free plan allows 40 a minute
@@ -229,9 +233,15 @@ async def generate_walks(
                              luggage_kg=c.luggage_kg, luggage_with=c.luggage_with)
 
     try:
-        routes = await gen.generate((body.start.lat, body.start.lng), body.profile,
-                                    minutes, body.start_label,
-                                    character=body.character)
+        if body.via is not None:
+            routes = await gen.via_walk((body.start.lat, body.start.lng),
+                                        (body.via.lat, body.via.lng), body.profile,
+                                        body.start_label, body.via_label,
+                                        character=body.character)
+        else:
+            routes = await gen.generate((body.start.lat, body.start.lng), body.profile,
+                                        minutes, body.start_label,
+                                        character=body.character)
     except gen.GenerationUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
 

@@ -38,6 +38,7 @@ const MARKER_LABEL: Record<string, string> = {
   bollard: "Bollards",
   other: "Barrier",
   turn_back: "Turn back here",
+  via: "Checkpoint",
 };
 
 export function WalkMap({ walk }: { walk: Walk }) {
@@ -88,7 +89,7 @@ export function WalkMap({ walk }: { walk: Walk }) {
     }).bindTooltip(`Start: ${walk.start.label}`).addTo(map);
 
     for (const m of walk.markers) {
-      const turn = m.kind === "turn_back";
+      const turn = m.kind === "turn_back" || m.kind === "via";
       L.circleMarker([m.lat, m.lng], {
         radius: turn ? 8 : 6,
         color: "#fff",
@@ -96,7 +97,7 @@ export function WalkMap({ walk }: { walk: Walk }) {
         fillColor: turn ? token("--accent", "#f2b179") : colour.difficult,
         fillOpacity: 1,
       })
-        .bindTooltip(MARKER_LABEL[m.kind] ?? m.kind)
+        .bindTooltip(m.label ? `${MARKER_LABEL[m.kind] ?? m.kind}: ${m.label}` : MARKER_LABEL[m.kind] ?? m.kind)
         .addTo(map);
     }
 

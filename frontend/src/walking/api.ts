@@ -36,6 +36,7 @@ export interface WalkSection {
 
 export interface WalkMarker {
   kind: string;
+  label?: string;
   lat: number;
   lng: number;
   at_m: number;
@@ -141,6 +142,8 @@ export async function generateWalks(body: {
   start: { lat: number; lng: number };
   start_label: string;
   character?: "any" | "green" | "quiet";
+  via?: { lat: number; lng: number };
+  via_label?: string;
   pram?: PramSetup;
   carrier?: CarrierSetup;
 }): Promise<GeneratedWalks> {

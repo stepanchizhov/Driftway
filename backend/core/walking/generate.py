@@ -272,3 +272,127 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
             "Couldn't make walks from here just now. Try again in a moment, "
             "or pick a nearby start.")
     return routes
+
+
+# ------------------------------------------------------------- via a place
+
+#: Half-width of the corridor the way back is asked to avoid.
+CORRIDOR_HALF_M = 25.0
+#: Left open at each end of the outward route, where the two must meet.
+CORRIDOR_OPEN_M = 150.0
+#: Most corridor pieces sent; the outward line is thinned to this many.
+CORRIDOR_PIECES = 40
+
+
+def corridor(coords: List[List[float]]) -> Optional[Dict]:
+    """A GeoJSON MultiPolygon hugging an outward route, for the way back to avoid.
+
+    Each piece is a thin rectangle around one stretch of the line. The first
+    and last CORRIDOR_OPEN_M are left out: the way back has to leave the
+    checkpoint and reach the start, both of which lie on the outward route.
+    `coords` are ORS [lng, lat, ...] points.
+    """
+    import math
+    pts = [(c[1], c[0]) for c in coords]
+    dist = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        dist.append(dist[-1] + _haversine(a, b))
+    total = dist[-1]
+    keep = [p for p, d in zip(pts, dist)
+            if CORRIDOR_OPEN_M <= d <= total - CORRIDOR_OPEN_M]
+    if len(keep) < 2:
+        return None
+    step = max(1, math.ceil((len(keep) - 1) / CORRIDOR_PIECES))
+    keep = keep[::step] + ([keep[-1]] if (len(keep) - 1) % step else [])
+    polys = []
+    for (la1, lo1), (la2, lo2) in zip(keep, keep[1:]):
+        k = math.cos(math.radians((la1 + la2) / 2))
+        dx, dy = (lo2 - lo1) * k, la2 - la1
+        n = math.hypot(dx, dy)
+        if n == 0:
+            continue
+        # Unit normal, in degrees of latitude per metre of half-width.
+        off = CORRIDOR_HALF_M / 111320.0
+        nx, ny = -dy / n * off, dx / n * off
+        ring = [[lo1 + nx / k, la1 + ny], [lo2 + nx / k, la2 + ny],
+                [lo2 - nx / k, la2 - ny], [lo1 - nx / k, la1 - ny],
+                [lo1 + nx / k, la1 + ny]]
+        polys.append([[[round(x, 6), round(y, 6)] for x, y in ring]])
+    return {"type": "MultiPolygon", "coordinates": polys} if polys else None
+
+
+def join_features(out: Dict, back: Dict) -> Dict:
+    """One feature from an outward and a return route, extras re-indexed."""
+    oc = out["geometry"]["coordinates"]
+    bc = back["geometry"]["coordinates"]
+    shift = len(oc) - 1                 # the checkpoint point is shared
+    extras: Dict = {}
+    for name in ("surface", "waytype"):
+        ov = out.get("properties", {}).get("extras", {}).get(name, {}).get("values", [])
+        bv = back.get("properties", {}).get("extras", {}).get(name, {}).get("values", [])
+        extras[name] = {"values": [list(v) for v in ov]
+                        + [[a + shift, b + shift, v] for a, b, v in bv]}
+    return {"type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": oc + bc[1:]},
+            "properties": {"extras": extras}}
+
+
+async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
+                   profile: str, start_label: str, via_label: str,
+                   character: str = "any",
+                   client: Optional[httpx.AsyncClient] = None) -> List[Route]:
+    """A walk out to a chosen place and back a different way, if one exists.
+
+    Founder request, 9 Oct: a checkpoint to build walks around. The way back
+    is asked to avoid a narrow corridor along the way out. If no such way back
+    exists, the walk is returned as an honest there-and-back with a note,
+    rather than nothing or a pretended loop.
+    """
+    key = api_key()
+    if not key:
+        raise GenerationUnavailable("Walk generation is not configured on this deployment.")
+    ors_profile, base = request_body(start, profile, 30, 1, character)
+    base["options"].pop("round_trip", None)
+
+    def body(a, b, avoid=None):
+        req = {**base, "coordinates": [[a[1], a[0]], [b[1], b[0]]],
+               "options": dict(base["options"])}
+        if avoid:
+            req["options"]["avoid_polygons"] = avoid
+        return req
+
+    own = client is None
+    client = client or httpx.AsyncClient(timeout=20.0)
+    try:
+        url = ORS_URL.format(profile=ors_profile)
+        headers = {"Authorization": key}
+        r1 = await client.post(url, json=body(start, via), headers=headers)
+        if r1.status_code != 200 or not r1.json().get("features"):
+            log.warning("openrouteservice %s for the way to a checkpoint", r1.status_code)
+            raise GenerationUnavailable(
+                f"Couldn't find a walking route to {via_label}.")
+        out = r1.json()["features"][0]
+
+        note = None
+        avoid = corridor(out["geometry"]["coordinates"])
+        back = None
+        if avoid:
+            r2 = await client.post(url, json=body(via, start, avoid), headers=headers)
+            if r2.status_code == 200 and r2.json().get("features"):
+                back = r2.json()["features"][0]
+        if back is None:
+            r3 = await client.post(url, json=body(via, start), headers=headers)
+            if r3.status_code != 200 or not r3.json().get("features"):
+                raise GenerationUnavailable(f"Couldn't find a way back from {via_label}.")
+            back = r3.json()["features"][0]
+            note = (f"No different way back from {via_label} was found, so this "
+                    "returns the way it came.")
+    finally:
+        if own:
+            await client.aclose()
+
+    route = route_from_ors(join_features(out, back), walk_id="via-1",
+                           name=f"Via {via_label}", start_label=start_label,
+                           routing_note=note)
+    route.via = {"lat": via[0], "lng": via[1], "label": via_label}
+    return [route]

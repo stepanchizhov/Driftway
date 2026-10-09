@@ -201,3 +201,71 @@ class CharacterTests(unittest.TestCase):
         r = route_from_ors(feature(), walk_id="g", name="x", start_label="x")
         # Way types: points 0-2 street (3), 2-3 steps, 3-5 path.
         self.assertAlmostEqual(r.road_share, 0.4, places=1)
+
+
+# A straight line north, ~1 km, points every ~100 m.
+LINE = [[13.0, 52.0 + i * 0.0009, 30] for i in range(11)]
+
+
+def line_feature(coords):
+    n = len(coords) - 1
+    return {"type": "Feature", "geometry": {"type": "LineString", "coordinates": coords},
+            "properties": {"extras": {"surface": {"values": [[0, n, 3]]},
+                                      "waytype": {"values": [[0, n, 7]]}}}}
+
+
+class ViaTests(unittest.TestCase):
+    """Walks out to a chosen place and back a different way - founder request."""
+
+    def test_the_corridor_leaves_both_ends_open(self):
+        from core.walking.generate import CORRIDOR_OPEN_M, corridor
+        poly = corridor(LINE)
+        lats = [pt[1] for p in poly["coordinates"] for pt in p[0]]
+        open_deg = CORRIDOR_OPEN_M / 111320.0
+        self.assertGreater(min(lats), 52.0 + open_deg * 0.8)
+        self.assertLess(max(lats), 52.009 - open_deg * 0.8)
+
+    def test_joining_reindexes_the_way_back(self):
+        from core.walking.generate import join_features
+        joined = join_features(line_feature(LINE), line_feature(LINE[::-1]))
+        self.assertEqual(len(joined["geometry"]["coordinates"]), 21)
+        self.assertEqual(joined["properties"]["extras"]["surface"]["values"][1][:2], [10, 20])
+
+    def _run(self, back_status):
+        from core.walking import generate as gen
+        seen = []
+
+        def handler(request):
+            seen.append(request)
+            body = request.read().decode()
+            if "avoid_polygons" in body and back_status != 200:
+                return httpx.Response(back_status, json={"error": "no route"})
+            coords = LINE if len(seen) == 1 else LINE[::-1]
+            return httpx.Response(200, json={"features": [line_feature(coords)]})
+
+        os.environ["ORS_API_KEY"] = "test-key"
+        try:
+            client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+            routes = asyncio.run(gen.via_walk((52.0, 13.0), (52.009, 13.0), "carrier",
+                                              "Home", "the bridge", client=client))
+        finally:
+            os.environ.pop("ORS_API_KEY", None)
+        return routes, seen
+
+    def test_the_way_back_is_asked_to_avoid_the_way_out(self):
+        routes, seen = self._run(200)
+        self.assertIn("avoid_polygons", seen[1].read().decode())
+        self.assertEqual(routes[0].via["label"], "the bridge")
+
+    def test_with_no_other_way_back_it_says_so(self):
+        routes, seen = self._run(404)
+        self.assertEqual(len(seen), 3)
+        self.assertTrue(any("No different way back" in n for n in routes[0].notes))
+
+    def test_a_via_walk_is_never_turned_back_before_the_checkpoint(self):
+        from core.walking.catalogue import assess_route
+        from core.walking.profiles import CarrierSetup
+        routes, _ = self._run(200)
+        card = assess_route(routes[0], "carrier", CarrierSetup(), minutes=10)
+        self.assertNotEqual(card["fit"]["kind"], "turned")
+        self.assertIn("via", [m["kind"] for m in card["markers"]])

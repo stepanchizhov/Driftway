@@ -88,8 +88,22 @@ at 10 generations a minute and 600 a day across everybody (three provider
 calls each, against the plan's 40 a minute and 2000 a day), and 4 a minute and
 30 an hour per account.
 
-**Status: built and tested against the documented response shape, not yet run
-against the live service.**
+**Status:** round trips confirmed working on production for pram and carrier
+by the founder, 9 Oct 2026.
+
+**Via a place (checkpoint).** Founder request, 9 Oct. With a checkpoint, the
+walk goes from the start to it, then back with openrouteservice's documented
+`avoid_polygons` set to a 25 m corridor along the way out (left open for
+150 m at each end, where the two routes must meet), so the way back is a
+different one. If no different way back exists the walk returns the way it
+came and says so. A via-walk is never shortened by turning back, which would
+turn round before the checkpoint; its length follows from where the
+checkpoint is. The provider's `alternative_routes` option was not used: it is
+documented only in forum threads, and its settings' meaning could not be
+confirmed. **Not yet run against the live service.**
+
+Map lines use saturated colours over a dark outline, chosen for a light map:
+the app's dark-theme pastels vanished over parks and fields.
 
 ## Access
 

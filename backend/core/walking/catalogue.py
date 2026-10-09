@@ -69,6 +69,8 @@ class Route:
     #: Share of the walk along streets and roads, where the source reports
     #: way types (generated walks); None when it is not known.
     road_share: Optional[float] = None
+    #: A place the walk goes through, chosen by the walker: {lat, lng, label}.
+    via: Optional[Dict] = None
 
     @property
     def outbound_m(self) -> float:
@@ -213,6 +215,9 @@ def _markers(route: Route) -> List[Dict]:
         end = route.sections[-1].geometry[-1]
         out.append({"kind": "turn_back", "lat": end[0], "lng": end[1],
                     "at_m": round(route.outbound_m), "basis": "modelled"})
+    if route.via:
+        out.append({"kind": "via", "lat": route.via["lat"], "lng": route.via["lng"],
+                    "at_m": None, "basis": "reported", "label": route.via.get("label")})
     return out
 
 
@@ -344,6 +349,10 @@ def _may_turn(route: Route, full: float, minutes: float,
     because walking the full loop is the better walk. A one-way walk to a
     destination cannot be fitted.
     """
+    if route.via:
+        # Turning back early would turn round before the place the walk was
+        # made to reach.
+        return False
     if route.shape == "out_and_back":
         return True
     if route.shape == "loop":
