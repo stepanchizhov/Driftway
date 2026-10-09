@@ -43,6 +43,15 @@ def ors_transport(status=200, seen=None):
     return httpx.MockTransport(handler)
 
 
+class _FreshBudget(unittest.TestCase):
+    """The provider call budget is process-wide by design; tests start clean."""
+
+    def setUp(self):
+        from core.walking import generate as gen
+        gen._CALL_BUDGET = None
+        gen._WEIGHT_FORM = None
+
+
 class TranslationTests(unittest.TestCase):
     def setUp(self):
         from core.walking.generate import route_from_ors
@@ -75,7 +84,7 @@ class TranslationTests(unittest.TestCase):
         self.assertEqual(card["verdict"], "blocked")        # the steps
 
 
-class RequestTests(unittest.TestCase):
+class RequestTests(_FreshBudget):
     def test_a_pram_asks_for_wheelchair_routing_without_steps(self):
         from core.walking.generate import request_body
         profile, body = request_body((52.0, 13.0), "pram", 60, 1)
@@ -173,7 +182,7 @@ class EndpointTests(unittest.TestCase):
         self.assertIn(429, codes)
 
 
-class CharacterTests(unittest.TestCase):
+class CharacterTests(_FreshBudget):
     """Greener and quieter walks - founder request, 9 Oct."""
 
     def test_a_greener_walk_asks_for_the_green_weighting(self):
@@ -214,7 +223,7 @@ def line_feature(coords):
                                       "waytype": {"values": [[0, n, 7]]}}}}
 
 
-class ViaTests(unittest.TestCase):
+class ViaTests(_FreshBudget):
     """Walks out to a chosen place and back a different way - founder request."""
 
     def test_the_corridor_leaves_both_ends_open(self):
@@ -259,7 +268,7 @@ class ViaTests(unittest.TestCase):
 
     def test_with_no_other_way_back_it_says_so(self):
         routes, seen = self._run(404)
-        self.assertEqual(len(seen), 3)
+        self.assertEqual(len(routes), 1)
         self.assertTrue(any("No different way back" in n for n in routes[0].notes))
 
     def test_a_via_walk_is_never_turned_back_before_the_checkpoint(self):
@@ -271,14 +280,13 @@ class ViaTests(unittest.TestCase):
         self.assertIn("via", [m["kind"] for m in card["markers"]])
 
 
-class WeightingFallbackTests(unittest.TestCase):
+class WeightingFallbackTests(_FreshBudget):
     """Greener and quieter failed on production, 9 Oct, with the documented
     example's {"factor": ...} form. Each form is tried in turn, and if the
     provider takes neither, ordinary walks are made and say so."""
 
     def setUp(self):
-        from core.walking import generate as gen
-        gen._WEIGHT_FORM = None
+        super().setUp()
         os.environ["ORS_API_KEY"] = "test-key"
 
     def tearDown(self):
@@ -323,3 +331,70 @@ class WeightingFallbackTests(unittest.TestCase):
         self.assertIn("code 2003", log)
         self.assertNotIn("52.1", log)
         self.assertNotIn("0.8", log)
+
+
+
+def offset_line(east_m):
+    """A different line between the same two ends, bowed east by east_m."""
+    import math
+    d = east_m / (111320.0 * math.cos(math.radians(52.0)))
+    pts = []
+    for i in range(11):
+        bow = d * math.sin(math.pi * i / 10)
+        pts.append([13.0 + bow, 52.0 + i * 0.0009, 30])
+    return pts
+
+
+class ViaAlternativesTests(_FreshBudget):
+    """More than one walk through a checkpoint - founder feedback, 9 Oct: a
+    known treeline route never came up because only one walk was made."""
+
+    def _run(self, distinct=True):
+        from core.walking import generate as gen
+        calls = []
+
+        def handler(request):
+            calls.append(request.read().decode())
+            n = len(calls)
+            # Each new request bows further east unless asked to repeat.
+            bow = (n * 120) if distinct else 0
+            line = offset_line(bow)
+            # Ways back run north to south.
+            if n % 2 == 0:
+                line = line[::-1]
+            return httpx.Response(200, json={"features": [line_feature(line)]})
+
+        os.environ["ORS_API_KEY"] = "test-key"
+        try:
+            client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+            return asyncio.run(gen.via_walk((52.0, 13.0), (52.009, 13.0), "carrier",
+                                            "Home", "the avenue", client=client)), calls
+        finally:
+            os.environ.pop("ORS_API_KEY", None)
+
+    def test_up_to_three_different_walks_are_offered(self):
+        routes, calls = self._run(distinct=True)
+        self.assertEqual(len(routes), 3)
+        self.assertEqual([r.name for r in routes],
+                         ["Via the avenue", "Via the avenue, option 2",
+                          "Via the avenue, option 3"])
+
+    def test_later_variants_avoid_the_paths_already_used(self):
+        _, calls = self._run(distinct=True)
+        self.assertNotIn("avoid_polygons", calls[0])          # first way out
+        self.assertTrue(all("avoid_polygons" in c for c in calls[1:]))
+
+    def test_a_repeat_of_an_earlier_walk_is_dropped(self):
+        routes, _ = self._run(distinct=False)
+        self.assertEqual(len(routes), 1)
+
+    def test_calls_stop_when_the_budget_is_spent(self):
+        from core.walking import generate as gen
+        gen.CALL_WINDOWS_SAVED = gen.CALL_WINDOWS
+        gen.CALL_WINDOWS = ((60, 2), (86400, 1800))
+        try:
+            routes, calls = self._run(distinct=True)
+        finally:
+            gen.CALL_WINDOWS = gen.CALL_WINDOWS_SAVED
+        self.assertEqual(len(calls), 2)          # refused after the budget
+        self.assertEqual(len(routes), 1)         # what was found is kept

@@ -80,6 +80,26 @@ class GenerationUnavailable(RuntimeError):
     """Generation cannot run - not configured, or the provider failed."""
 
 
+#: Every openrouteservice call, across everybody. The free plan allows 40 a
+#: minute and 2000 a day; a walk via a checkpoint can now take several calls,
+#: so the budget is counted in calls, not in walks requested.
+_CALL_BUDGET = None
+CALL_WINDOWS = ((60, 35), (86400, 1800))
+
+
+def _spend() -> None:
+    """Count one provider call, or refuse it if the budget is spent."""
+    global _CALL_BUDGET
+    from core.ratelimit import RateLimited, SlidingWindowLimiter, _Window
+    if _CALL_BUDGET is None:
+        _CALL_BUDGET = SlidingWindowLimiter()
+    try:
+        _CALL_BUDGET.check("*", [_Window(a, b) for a, b in CALL_WINDOWS], scope="service")
+    except RateLimited:
+        raise GenerationUnavailable(
+            "Lots of walks are being made just now. Please try again in a minute.")
+
+
 def api_key() -> str:
     return (os.getenv("ORS_API_KEY") or "").strip()
 
@@ -272,6 +292,7 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
             for form in _weight_forms(character):
                 ors_profile, body = request_body(start, profile, minutes, seed,
                                                  character, form)
+                _spend()
                 resp = await client.post(ORS_URL.format(profile=ors_profile), json=body,
                                          headers={"Authorization": key})
                 if resp.status_code == 200:
@@ -386,16 +407,46 @@ def join_features(out: Dict, back: Dict) -> Dict:
             "properties": {"extras": extras}}
 
 
+#: Different loops through one checkpoint to look for.
+VIA_VARIANTS = 3
+#: A candidate sharing more than this much of its line with one already found
+#: is the same walk again and is dropped.
+DUPLICATE_SHARE = 0.8
+
+
+def _overlap(a: List[List[float]], b: List[List[float]]) -> float:
+    """Share of line `a` (ORS [lng, lat] points) lying within 25 m of line `b`."""
+    if not a or not b:
+        return 0.0
+    step_a = max(1, len(a) // 80)
+    step_b = max(1, len(b) // 300)
+    pa = [(p[1], p[0]) for p in a[::step_a]]
+    pb = [(p[1], p[0]) for p in b[::step_b]]
+    near = sum(1 for x in pa if any(_haversine(x, y) <= 25.0 for y in pb))
+    return near / len(pa)
+
+
+def _merge(*polys: Optional[Dict]) -> Optional[Dict]:
+    pieces = [c for p in polys if p for c in p["coordinates"]]
+    return {"type": "MultiPolygon", "coordinates": pieces} if pieces else None
+
+
 async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
                    profile: str, start_label: str, via_label: str,
                    character: str = "any",
                    client: Optional[httpx.AsyncClient] = None) -> List[Route]:
-    """A walk out to a chosen place and back a different way, if one exists.
+    """Up to three different walks out to a chosen place and back.
 
-    Founder request, 9 Oct: a checkpoint to build walks around. The way back
-    is asked to avoid a narrow corridor along the way out. If no such way back
-    exists, the walk is returned as an honest there-and-back with a note,
-    rather than nothing or a pretended loop.
+    Founder requests, 9 Oct: a checkpoint to build walks around, and more than
+    one way to do it - a known route along a treeline never came up, because
+    only the shortest way out and the shortest different way back were asked
+    for. Each further variant is told to avoid the paths the earlier ones used
+    (openrouteservice's documented avoid_polygons, as narrow corridors left
+    open near the start and the checkpoint), so it comes back genuinely
+    different; a candidate that repeats an earlier one anyway is dropped.
+
+    The first variant may return the way it came if no other way back exists,
+    and says so. Later variants are only kept if they are real alternatives.
     """
     key = api_key()
     if not key:
@@ -407,9 +458,7 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         b["options"].pop("round_trip", None)
         return p, b
 
-    ors_profile, base = make_base(forms[0])
-
-    def body(a, b, avoid=None):
+    def body(base, a, b, avoid=None):
         req = {**base, "coordinates": [[a[1], a[0]], [b[1], b[0]]],
                "options": dict(base["options"])}
         if avoid:
@@ -418,42 +467,74 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
 
     own = client is None
     client = client or httpx.AsyncClient(timeout=20.0)
+    headers = {"Authorization": key}
+    found: List[Tuple[Dict, Optional[str]]] = []
+    used: List[Dict] = []        # corridors of every line found so far
+
+    async def post(url, req):
+        _spend()
+        return await client.post(url, json=req, headers=headers)
+
+    def feature(resp):
+        if resp.status_code == 200 and resp.json().get("features"):
+            return resp.json()["features"][0]
+        return None
+
     try:
-        headers = {"Authorization": key}
+        # The way out for the first variant, learning which weighting form works.
         for form in forms:
             ors_profile, base = make_base(form)
             url = ORS_URL.format(profile=ors_profile)
-            r1 = await client.post(url, json=body(start, via), headers=headers)
+            r1 = await post(url, body(base, start, via))
             if r1.status_code != 400 or form is None:
                 break
             log.warning("openrouteservice 400 for the way to a checkpoint "
                         "(weighting %s) - %s", form, _ors_error(r1))
-        if r1.status_code != 200 or not r1.json().get("features"):
-            log.warning("openrouteservice %s for the way to a checkpoint", r1.status_code)
-            raise GenerationUnavailable(
-                f"Couldn't find a walking route to {via_label}.")
-        out = r1.json()["features"][0]
+        first_out = feature(r1)
+        if first_out is None:
+            log.warning("openrouteservice %s for the way to a checkpoint - %s",
+                        r1.status_code, _ors_error(r1))
+            raise GenerationUnavailable(f"Couldn't find a walking route to {via_label}.")
 
-        note = None
-        avoid = corridor(out["geometry"]["coordinates"])
-        back = None
-        if avoid:
-            r2 = await client.post(url, json=body(via, start, avoid), headers=headers)
-            if r2.status_code == 200 and r2.json().get("features"):
-                back = r2.json()["features"][0]
-        if back is None:
-            r3 = await client.post(url, json=body(via, start), headers=headers)
-            if r3.status_code != 200 or not r3.json().get("features"):
-                raise GenerationUnavailable(f"Couldn't find a way back from {via_label}.")
-            back = r3.json()["features"][0]
-            note = (f"No different way back from {via_label} was found, so this "
-                    "returns the way it came.")
+        for k in range(VIA_VARIANTS):
+            if k == 0:
+                out = first_out
+            else:
+                out = feature(await post(url, body(base, start, via, _merge(*used))))
+                if out is None:
+                    break
+            out_line = corridor(out["geometry"]["coordinates"])
+            back = feature(await post(url, body(base, via, start, _merge(out_line, *used))))
+            if back is None and used:
+                back = feature(await post(url, body(base, via, start, out_line)))
+            note = None
+            if back is None and k == 0:
+                back = feature(await post(url, body(base, via, start)))
+                if back is None:
+                    raise GenerationUnavailable(f"Couldn't find a way back from {via_label}.")
+                note = (f"No different way back from {via_label} was found, so this "
+                        "returns the way it came.")
+            if back is None:
+                break
+            joined = join_features(out, back)
+            line = joined["geometry"]["coordinates"]
+            if any(_overlap(line, j["geometry"]["coordinates"]) > DUPLICATE_SHARE
+                   for j, _ in found):
+                break
+            found.append((joined, note))
+            used += [c for c in (out_line, corridor(back["geometry"]["coordinates"])) if c]
+    except GenerationUnavailable:
+        if not found:
+            raise
     finally:
         if own:
             await client.aclose()
 
-    route = route_from_ors(join_features(out, back), walk_id="via-1",
-                           name=f"Via {via_label}", start_label=start_label,
-                           routing_note=note)
-    route.via = {"lat": via[0], "lng": via[1], "label": via_label}
-    return [route]
+    routes = []
+    for n, (joined, note) in enumerate(found, start=1):
+        r = route_from_ors(joined, walk_id=f"via-{n}",
+                           name=f"Via {via_label}" + (f", option {n}" if n > 1 else ""),
+                           start_label=start_label, routing_note=note)
+        r.via = {"lat": via[0], "lng": via[1], "label": via_label}
+        routes.append(r)
+    return routes

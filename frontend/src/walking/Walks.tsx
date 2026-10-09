@@ -946,12 +946,12 @@ function MakeWalks({
         {busy
           ? "Making walks…"
           : via
-            ? `Make a walk via ${via.label}`
+            ? `Make walks via ${via.label}`
             : `Make walks of about ${duration(setup.minutes)}`}
       </button>
       <p className="walks-hint">
         {via
-          ? "Out to your checkpoint and back a different way where one exists; its length follows from where the checkpoint is."
+          ? "Up to three different walks out to your checkpoint and back, each avoiding the paths of the others. Their length follows from where the checkpoint is: a long street or park is placed at one point the search picked."
           : "Up to three walks from mapped paths, judged for your setup."}{" "}
         To plan them, your start{via ? " and checkpoint are" : " is"} sent to
         openrouteservice; nothing is stored.
