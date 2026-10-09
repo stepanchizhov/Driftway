@@ -93,16 +93,32 @@ def target_length_m(minutes: int) -> float:
     return minutes / 60.0 * PACE_KMH * 1000.0
 
 
+#: Walk characters openrouteservice can weigh. Documented for foot-* profiles
+#: only ("prefer ways through green areas", "prefer quiet ways"); wheelchair
+#: routing has no weightings. Rivers, canals, seaside and "town" are not
+#: offered by the provider and are not pretended here.
+CHARACTERS = ("any", "green", "quiet")
+
+
 def request_body(start: Tuple[float, float], profile: str, minutes: int,
-                 seed: int) -> Tuple[str, Dict]:
-    """The ORS profile and request body for one candidate loop."""
-    ors_profile = "wheelchair" if profile == "pram" else "foot-walking"
+                 seed: int, character: str = "any") -> Tuple[str, Dict]:
+    """The ORS profile and request body for one candidate walk.
+
+    A pram normally gets wheelchair routing. Asking for a greener or quieter
+    walk switches it to walking routing with steps still avoided, because only
+    walking routing can weigh greenery or quiet; the pram rules still judge the
+    result, and the walk says which routing made it.
+    """
+    weighted = character in ("green", "quiet")
+    ors_profile = "wheelchair" if profile == "pram" and not weighted else "foot-walking"
     body = {
         # ORS takes [longitude, latitude].
         "coordinates": [[start[1], start[0]]],
         "options": {
             "round_trip": {"length": round(target_length_m(minutes)),
-                           "points": 4, "seed": seed},
+                           # More points make rounder walks, per the
+                           # docs; fewer retraced stretches.
+                           "points": 5, "seed": seed},
         },
         "elevation": True,
         "extra_info": ["surface", "waytype"],
@@ -110,6 +126,10 @@ def request_body(start: Tuple[float, float], profile: str, minutes: int,
     }
     if profile == "pram":
         body["options"]["avoid_features"] = ["steps"]
+    if weighted:
+        # The form shown in the documentation's own example.
+        body["options"]["profile_params"] = {
+            "weightings": {character: {"factor": 1.0}}}
     return ors_profile, body
 
 
@@ -122,7 +142,7 @@ def _haversine(a, b) -> float:
 
 
 def route_from_ors(feature: Dict, *, walk_id: str, name: str,
-                   start_label: str) -> Route:
+                   start_label: str, routing_note: Optional[str] = None) -> Route:
     """Turn one ORS GeoJSON feature into a Route the catalogue can judge."""
     coords = feature["geometry"]["coordinates"]          # [lng, lat, ele]
     pts = [(c[1], c[0]) for c in coords]
@@ -175,6 +195,11 @@ def route_from_ors(feature: Dict, *, walk_id: str, name: str,
 
     attach_gradients(sections, dist, smooth(heights), HEIGHT_SOURCE)
 
+    # Along streets and roads: way types 1-3 (state road, road, street).
+    total = dist[-1] or 1.0
+    on_roads = sum(dist[min(b, len(dist) - 1)] - dist[a]
+                   for a, b, v in way_r if v in (1, 2, 3))
+
     return Route(
         id=walk_id, name=name, area="", shape="loop",
         summary="Made from your start along mapped paths.",
@@ -191,13 +216,14 @@ def route_from_ors(feature: Dict, *, walk_id: str, name: str,
             "There may be some.",
             "Heights come from a coarser model than the curated walks use, so "
             "short steep bits may not show.",
-        ],
+        ] + ([routing_note] if routing_note else []),
+        road_share=round(on_roads / total, 2) if way_r else None,
     )
 
 
 async def generate(start: Tuple[float, float], profile: str, minutes: int,
-                   start_label: str, client: Optional[httpx.AsyncClient] = None
-                   ) -> List[Route]:
+                   start_label: str, client: Optional[httpx.AsyncClient] = None,
+                   character: str = "any") -> List[Route]:
     """Up to three candidate loops. Raises GenerationUnavailable on failure -
     never invents a walk to fill the gap."""
     key = api_key()
@@ -208,7 +234,7 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
     client = client or httpx.AsyncClient(timeout=20.0)
     try:
         async def one(seed: int):
-            ors_profile, body = request_body(start, profile, minutes, seed)
+            ors_profile, body = request_body(start, profile, minutes, seed, character)
             resp = await client.post(ORS_URL.format(profile=ors_profile), json=body,
                                      headers={"Authorization": key})
             if resp.status_code != 200:
@@ -230,9 +256,17 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
             continue
         # "Walk", not "Loop": a round trip can retrace much of itself, and
         # the card names its real shape from the geometry.
-        routes.append(route_from_ors(feat, walk_id=f"generated-{n}",
-                                     name=f"Walk {n} from {start_label}",
-                                     start_label=start_label))
+        routes.append(route_from_ors(
+            feat, walk_id=f"generated-{n}", name=f"Walk {n} from {start_label}",
+            start_label=start_label,
+            routing_note=(
+                "Made with walking routes, steps avoided, so it could favour "
+                f"{'greener' if character == 'green' else 'quieter'} ways; "
+                "wheelchair routing cannot weigh that."
+                if profile == "pram" and character in ("green", "quiet") else None)))
+    if character in ("green", "quiet"):
+        # Asked for less road: put the walks with the least of it first.
+        routes.sort(key=lambda r: r.road_share if r.road_share is not None else 1.0)
     if not routes:
         raise GenerationUnavailable(
             "Couldn't make walks from here just now. Try again in a moment, "

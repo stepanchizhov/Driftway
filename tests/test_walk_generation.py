@@ -171,3 +171,33 @@ class EndpointTests(unittest.TestCase):
             codes = [self.client.post("/api/walks/generate", json=BODY,
                                       headers=self.auth).status_code for _ in range(6)]
         self.assertIn(429, codes)
+
+
+class CharacterTests(unittest.TestCase):
+    """Greener and quieter walks - founder request, 9 Oct."""
+
+    def test_a_greener_walk_asks_for_the_green_weighting(self):
+        from core.walking.generate import request_body
+        profile, body = request_body((52.0, 13.0), "carrier", 30, 1, "green")
+        self.assertEqual(profile, "foot-walking")
+        self.assertEqual(body["options"]["profile_params"],
+                         {"weightings": {"green": {"factor": 1.0}}})
+
+    def test_a_pram_wanting_quiet_walks_keeps_steps_avoided(self):
+        """Wheelchair routing has no weightings, so walking routing is used."""
+        from core.walking.generate import request_body
+        profile, body = request_body((52.0, 13.0), "pram", 30, 1, "quiet")
+        self.assertEqual(profile, "foot-walking")
+        self.assertEqual(body["options"]["avoid_features"], ["steps"])
+
+    def test_no_preference_sends_no_weighting(self):
+        from core.walking.generate import request_body
+        profile, body = request_body((52.0, 13.0), "pram", 30, 1)
+        self.assertEqual(profile, "wheelchair")
+        self.assertNotIn("profile_params", body["options"])
+
+    def test_the_share_along_roads_comes_from_the_way_types(self):
+        from core.walking.generate import route_from_ors
+        r = route_from_ors(feature(), walk_id="g", name="x", start_label="x")
+        # Way types: points 0-2 street (3), 2-3 steps, 3-5 path.
+        self.assertAlmostEqual(r.road_share, 0.4, places=1)

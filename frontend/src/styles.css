@@ -271,6 +271,8 @@ body {
   transform: scale(0.97);
 }
 .chip-label {
+  /* A label that wraps stays centred within its chip. */
+  text-align: center;
   font-family: var(--display);
   font-weight: 500;
   font-size: 19px;
@@ -1994,3 +1996,5 @@ body {
   font-size: 13px;
   color: var(--warn);
 }
+
+.walk-facts { font-size: 14px; color: var(--ink-dim); margin: 0 0 10px; }

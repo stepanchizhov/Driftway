@@ -3,7 +3,7 @@ import type { Walk } from "./api";
 import { groupWalks } from "./group";
 
 const HOME = { lat: 51.4697, lng: -0.6217 };   // a Windsor car park
-const ALL = { allowOutAndBack: true, allowTravel: true };
+const ALL = { maxRetrace: 1, allowTravel: true };
 
 function walk(
   id: string,
@@ -14,6 +14,7 @@ function walk(
   return {
     id,
     path_shape: shape,
+    retrace_share: shape === "there_and_back" ? 0.5 : shape === "lollipop" ? 0.12 : 0,
     start: { ...start, label: id },
     fit: {
       kind: kind as "turned",
@@ -33,6 +34,12 @@ const castle = walk("castle-hill", { lat: 51.4857, lng: -0.6081 }, "shorter", "t
 const berlin = walk("berlin", { lat: 52.4466, lng: 13.5636 }, "turned", "there_and_back");
 
 describe("groupWalks", () => {
+  it("lets a shared lead-in through under 'a little', but not under 'avoid'", () => {
+    const leadIn = walk("lead-in", { lat: 51.4699, lng: -0.6219 }, "about_right", "lollipop");
+    expect(groupWalks([leadIn], HOME, { ...ALL, maxRetrace: 0.15 }).doorstep.length).toBe(1);
+    expect(groupWalks([leadIn], HOME, { ...ALL, maxRetrace: 0.05 }).hidden.outAndBack).toBe(1);
+  });
+
   it("separates walks from your doorstep from ones that need travel", () => {
     const g = groupWalks([circuit, longWalk], HOME, ALL);
     expect(g.doorstep.map((w) => w.id)).toEqual(["snow-hill"]);
@@ -47,10 +54,7 @@ describe("groupWalks", () => {
   });
 
   it("hides there-and-back walks when asked, and says how many", () => {
-    const g = groupWalks([circuit, longWalk, castle], HOME, {
-      ...ALL,
-      allowOutAndBack: false,
-    });
+    const g = groupWalks([circuit, longWalk, castle], HOME, { ...ALL, maxRetrace: 0.15 });
     expect(g.doorstep.map((w) => w.id)).toEqual(["snow-hill"]);
     expect(g.hidden.outAndBack).toBe(2);
   });

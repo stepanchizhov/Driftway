@@ -66,6 +66,9 @@ class Route:
     #: never presented as a real walk.
     sample: bool = False
     notes: List[str] = field(default_factory=list)
+    #: Share of the walk along streets and roads, where the source reports
+    #: way types (generated walks); None when it is not known.
+    road_share: Optional[float] = None
 
     @property
     def outbound_m(self) -> float:
@@ -275,6 +278,40 @@ RETRACE_M = 20.0
 RETRACE_SAMPLE_M = 20.0
 
 
+def retrace_share(route: Route) -> float:
+    """The share of the walk spent on ground already walked, 0 to about 0.5.
+
+    A pure there-and-back scores about one half (the whole way back); a true
+    loop near zero; a loop with a shared lead-in somewhere between. Founder
+    feedback, 9 Oct: a shared first and last stretch is fine, so this is a
+    number a preference can set a limit on, not a yes/no.
+    """
+    if route.shape == "out_and_back":
+        return 0.5
+    if route.shape == "one_way":
+        return 0.0
+    line = [p for s in route.sections for p in s.geometry]
+    samples: List[List[float]] = []
+    walked = 0.0
+    next_at = 0.0
+    for a, b in zip(line, line[1:]):
+        d = _haversine(a, b)
+        while d > 0 and walked + d >= next_at:
+            t = (next_at - walked) / d
+            samples.append([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])])
+            next_at += RETRACE_SAMPLE_M
+        walked += d
+    if len(samples) < 10:
+        return 0.0
+    gap = int(3 * RETRACE_M / RETRACE_SAMPLE_M) + 2   # ignore immediate neighbours
+    again = 0
+    for i in range(gap, len(samples)):
+        if any(_haversine(samples[i], samples[j]) <= RETRACE_M
+               for j in range(0, i - gap)):
+            again += 1
+    return again / len(samples)
+
+
 def path_shape(route: Route) -> str:
     """What the walk is on the ground: "loop", "lollipop" or "there_and_back".
 
@@ -289,26 +326,7 @@ def path_shape(route: Route) -> str:
         return "there_and_back"
     if route.shape == "one_way":
         return "one_way"
-    line = [p for s in route.sections for p in s.geometry]
-    samples: List[List[float]] = []
-    walked = 0.0
-    next_at = 0.0
-    for a, b in zip(line, line[1:]):
-        d = _haversine(a, b)
-        while d > 0 and walked + d >= next_at:
-            t = (next_at - walked) / d
-            samples.append([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])])
-            next_at += RETRACE_SAMPLE_M
-        walked += d
-    if len(samples) < 10:
-        return "loop"
-    gap = int(3 * RETRACE_M / RETRACE_SAMPLE_M) + 2   # ignore immediate neighbours
-    again = 0
-    for i in range(gap, len(samples)):
-        if any(_haversine(samples[i], samples[j]) <= RETRACE_M
-               for j in range(0, i - gap)):
-            again += 1
-    share = again / len(samples)
+    share = retrace_share(route)
     if share >= 0.35:
         return "there_and_back"
     if share >= 0.1:
@@ -428,6 +446,8 @@ def assess_route(route: Route, profile: str,
         "summary": route.summary,
         "shape": route.shape,
         "path_shape": path_shape(route),
+        "retrace_share": round(retrace_share(route), 2),
+        "road_share": route.road_share,
         "sample": route.sample,
         "start": route.start,
         "verdict": verdict.value,

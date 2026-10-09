@@ -58,6 +58,10 @@ export interface Walk {
   shape: "loop" | "out_and_back" | "one_way";
   /** The shape on the ground, measured from the route, not declared. */
   path_shape: "loop" | "lollipop" | "there_and_back" | "one_way";
+  /** Share of the walk on ground already walked: 0 (loop) to ~0.5. */
+  retrace_share: number;
+  /** Share along streets and roads, where known (generated walks). */
+  road_share: number | null;
   sample: boolean;
   start: { lat: number; lng: number; label: string };
   verdict: Verdict;
@@ -136,6 +140,7 @@ export async function generateWalks(body: {
   allow_out_and_back?: boolean;
   start: { lat: number; lng: number };
   start_label: string;
+  character?: "any" | "green" | "quiet";
   pram?: PramSetup;
   carrier?: CarrierSetup;
 }): Promise<GeneratedWalks> {

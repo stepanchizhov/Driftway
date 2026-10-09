@@ -45,9 +45,17 @@ Founder decisions, 9 Oct 2026, after using it:
   partly walked twice* or *There and back*. Castle Hill, curated as a loop,
   measures as there-and-back: it goes up and comes back down the same streets.
   Generated walks are called "Walk", not "Loop", for the same reason.
-- **There-and-back walks can be avoided** (Walk preferences, kept on the
-  device). Avoiding them also stops a long loop being fitted to the time by
-  turning back, since that would make one.
+- **How much may be walked twice** (Walk preferences, kept on the device):
+  don't mind / a little (up to about 15%, enough for a shared first and last
+  stretch) / avoid. Founder feedback: a yes/no was too blunt. Anything but
+  "don't mind" also stops a long loop being shortened by turning back.
+- **Greener or quieter**, for walks made from your start: openrouteservice's
+  documented `green` and `quiet` weightings, which exist for walking routing
+  only. A pram asking for either gets walking routing with steps still
+  avoided, and the card says so. Rivers, canals, seaside and "town" are not
+  offered by the provider and are not pretended; waterside would need our own
+  check against mapped water. Each generated walk shows its share along
+  streets and roads, from the provider's way types.
 - **From your doorstep versus needing travel.** A walk starting within 1 km of
   you is from your doorstep; further ones are listed separately with their
   distance, and can be hidden.

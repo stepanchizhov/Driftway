@@ -156,7 +156,7 @@ export function Walks({
       assessWalks({
         profile: setup.profile,
         minutes: setup.minutes,
-        allow_out_and_back: setup.allowOutAndBack,
+        allow_out_and_back: setup.maxRetrace >= 0.5,
         ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
       })
         .then((r) => {
@@ -357,7 +357,8 @@ function PrefsPanel({
         Walk preferences
         <span className="walks-setup-now">
           {[
-            setup.allowOutAndBack ? null : "no there-and-back",
+            setup.maxRetrace >= 1 ? null : setup.maxRetrace > 0.1 ? "little retracing" : "no retracing",
+            setup.character === "any" ? null : setup.character === "green" ? "greener" : "quieter",
             setup.allowTravel ? null : "doorstep only",
           ]
             .filter(Boolean)
@@ -365,17 +366,34 @@ function PrefsPanel({
         </span>
       </summary>
       <ChipGroup
-        legend="There-and-back walks"
-        columns={2}
+        legend="Walking the same path twice"
+        columns={3}
         options={[
-          { value: "yes", label: "Show" },
-          { value: "no", label: "Avoid" },
+          { value: "1", label: "Don't mind" },
+          { value: "0.15", label: "A little", sub: "up to ~15%" },
+          { value: "0.05", label: "Avoid" },
         ]}
-        value={setup.allowOutAndBack ? "yes" : "no"}
-        onChange={(v) => update({ allowOutAndBack: v === "yes" })}
+        value={String(setup.maxRetrace)}
+        onChange={(v) => update({ maxRetrace: Number(v) })}
       />
       <p className="walks-hint">
-        Avoiding them also stops a long loop being shortened by turning back.
+        A shared first and last stretch is common. Anything but "Don't mind"
+        also stops a long loop being shortened by turning back.
+      </p>
+      <ChipGroup
+        legend="Kind of walk (for walks made from your start)"
+        columns={3}
+        options={[
+          { value: "any", label: "Any" },
+          { value: "green", label: "Greener", sub: "parks, fields" },
+          { value: "quiet", label: "Quieter", sub: "less traffic" },
+        ]}
+        value={setup.character}
+        onChange={(v) => update({ character: v as WalkSetup["character"] })}
+      />
+      <p className="walks-hint">
+        Rivers, canals and the seaside can&rsquo;t be chosen yet: the route
+        provider doesn&rsquo;t offer them.
       </p>
       <ChipGroup
         legend="Walks that need travel to the start"
@@ -561,6 +579,23 @@ function WalkCard({
         </div>
       </dl>
 
+      {(walk.path_shape === "lollipop" || walk.road_share !== null) && (
+        <p className="walk-facts">
+          {[
+            walk.path_shape === "lollipop"
+              ? `About ${Math.round(walk.retrace_share * 100)}% walked twice`
+              : "",
+            walk.road_share !== null
+              ? `about ${Math.round(walk.road_share * 100)}% along streets and roads`
+              : "",
+          ]
+            .filter(Boolean)
+            .join("; ")
+            .replace(/^a/, "A")}
+          .
+        </p>
+      )}
+
       {fitSentence(walk, units) && (
         <p className={`walk-fit fit-${walk.fit?.kind}`}>{fitSentence(walk, units)}</p>
       )}
@@ -702,7 +737,7 @@ function WalkGroups({
   );
   const hiddenNote = [
     g.hidden.outAndBack
-      ? `${g.hidden.outAndBack} there-and-back walk${g.hidden.outAndBack > 1 ? "s" : ""}`
+      ? `${g.hidden.outAndBack} walk${g.hidden.outAndBack > 1 ? "s" : ""} going over the same path more than you'd like`
       : "",
     g.hidden.travel
       ? `${g.hidden.travel} walk${g.hidden.travel > 1 ? "s" : ""} needing travel to the start`
@@ -793,7 +828,8 @@ function MakeWalks({
         await generateWalks({
           profile: setup.profile,
           minutes: setup.minutes,
-          allow_out_and_back: setup.allowOutAndBack,
+          allow_out_and_back: setup.maxRetrace >= 0.5,
+          character: setup.character,
           start: start.coord,
           start_label: start.label,
           ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
@@ -834,19 +870,18 @@ function MakeWalks({
           <h3 className="walks-group-title">From {start?.label ?? "your start"}</h3>
           <div className="walks-list">
             {made.walks
-              .filter((w) => setup.allowOutAndBack || w.path_shape !== "there_and_back")
+              .filter((w) => w.retrace_share <= setup.maxRetrace + 0.02)
               .map((w) => (
                 <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
               ))}
           </div>
-          {!setup.allowOutAndBack &&
-            made.walks.some((w) => w.path_shape === "there_and_back") && (
-              <p className="walks-hint">
-                Hidden by your preferences:{" "}
-                {made.walks.filter((w) => w.path_shape === "there_and_back").length}{" "}
-                that went out and back the same way.
-              </p>
-            )}
+          {made.walks.some((w) => w.retrace_share > setup.maxRetrace + 0.02) && (
+            <p className="walks-hint">
+              Hidden by your preferences:{" "}
+              {made.walks.filter((w) => w.retrace_share > setup.maxRetrace + 0.02).length}{" "}
+              that went over the same path more than you&rsquo;d like.
+            </p>
+          )}
           <p className="walks-attrib">{made.attribution}</p>
           <h3 className="walks-group-title">Curated walks</h3>
         </>

@@ -15,8 +15,14 @@ const KEY = "driftway.walk.v1";
 export interface WalkSetup {
   profile: "pram" | "carrier";
   minutes: number;
-  /** Show walks that go out and come back the same way. */
-  allowOutAndBack: boolean;
+  /**
+   * Most of a walk that may go over ground already walked: 1 = don't mind,
+   * 0.15 = a shared lead-in is fine, 0.05 = avoid. Founder feedback, 9 Oct:
+   * a yes/no was too blunt - a shared first and last stretch is fine.
+   */
+  maxRetrace: number;
+  /** For walks made from your start: what openrouteservice should favour. */
+  character: "any" | "green" | "quiet";
   /** Show walks that need driving or travelling to the start. */
   allowTravel: boolean;
   pram: PramSetup;
@@ -26,7 +32,8 @@ export interface WalkSetup {
 const DEFAULTS: WalkSetup = {
   profile: "pram",
   minutes: 30,
-  allowOutAndBack: true,
+  maxRetrace: 1,
+  character: "any",
   allowTravel: true,
   pram: { wheels: "standard", width_cm: null, double: false },
   carrier: {
@@ -44,6 +51,10 @@ function load(): WalkSetup {
     if (!raw) return DEFAULTS;
     const saved = JSON.parse(raw);
     // Merge over defaults so a field added later does not arrive undefined.
+    // The first version stored a yes/no; "no" meant "a little at most".
+    if (saved && saved.maxRetrace === undefined && saved.allowOutAndBack === false) {
+      saved.maxRetrace = 0.15;
+    }
     return {
       ...DEFAULTS,
       ...saved,

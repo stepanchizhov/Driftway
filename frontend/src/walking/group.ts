@@ -15,9 +15,12 @@ export const DOORSTEP_KM = 1;
  */
 export const MAX_KM = 60;
 
+/** Rounding room: 15% means "about 15%", not a hard 0.150. */
+const RETRACE_SLACK = 0.02;
+
 export interface WalkPrefs {
-  /** Show walks that go out and come back the same way. */
-  allowOutAndBack: boolean;
+  /** Most of a walk that may retrace ground already walked (0 to 1). */
+  maxRetrace: number;
   /** Show walks that need driving or travelling to the start. */
   allowTravel: boolean;
 }
@@ -62,7 +65,7 @@ export function groupWalks(walks: Walk[], here: Coord | null, prefs: WalkPrefs):
   for (const w of walks) {
     const km = here ? kmBetween(here, w.start) : null;
     if (km !== null && km > MAX_KM) continue;
-    if (!prefs.allowOutAndBack && w.path_shape === "there_and_back") {
+    if (w.retrace_share > prefs.maxRetrace + RETRACE_SLACK) {
       g.hidden.outAndBack += 1;
       continue;
     }

@@ -176,6 +176,8 @@ class GenerateIn(AssessIn):
     #: Shown on the card ("Your location", or the place searched for). Never
     #: sent to the routing provider.
     start_label: str = Field("Your start", max_length=80)
+    #: "green" or "quiet" ask openrouteservice to weigh those; "any" does not.
+    character: Literal["any", "green", "quiet"] = "any"
 
 
 #: Each generation is three provider calls. The free plan allows 40 a minute
@@ -228,7 +230,8 @@ async def generate_walks(
 
     try:
         routes = await gen.generate((body.start.lat, body.start.lng), body.profile,
-                                    minutes, body.start_label)
+                                    minutes, body.start_label,
+                                    character=body.character)
     except gen.GenerationUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
 
