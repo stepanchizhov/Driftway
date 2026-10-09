@@ -4,6 +4,8 @@ import type { Units } from "../hooks/useSettings";
 import {
   NotAdmitted,
   assessWalks,
+  generateWalks,
+  type GeneratedWalks,
   type Basis,
   type Verdict,
   type Walk,
@@ -14,6 +16,7 @@ import { useWalkSetup, type WalkSetup } from "./useWalkSetup";
 import { WalkMap } from "./WalkMap";
 import { NEAR_KM, groupWalks } from "./group";
 import type { Coord } from "../types";
+import { PlaceSearch, type Endpoint } from "../components/PlaceSearch";
 import { useDriftwayAuth } from "../auth/AuthProvider";
 
 /**
@@ -117,11 +120,14 @@ function numberOrNull(raw: string): number | null {
 export function Walks({
   units,
   here,
+  canGenerate,
   onOpenSettings,
 }: {
   units: Units;
   /** Your position, if known. Used on this device only, to group walks. */
   here: Coord | null;
+  /** Whether this deployment can make walks from any start. */
+  canGenerate: boolean;
   onOpenSettings: () => void;
 }) {
   const { setup, update } = useWalkSetup();
@@ -216,6 +222,9 @@ export function Walks({
             </p>
           )}
 
+          {canGenerate && (
+            <MakeWalks setup={setup} here={here} units={units} handoff={result.handoff} />
+          )}
           <WalkGroups
             walks={result.walks}
             here={here}
@@ -628,6 +637,101 @@ function WalkGroups({
         </details>
       )}
     </>
+  );
+}
+
+
+/**
+ * Make walks from a start you choose - where you are, or anywhere you search.
+ *
+ * Founder testing showed curated walks starting at fixed public places are the
+ * wrong shape for real use: a tester walked eight minutes to the start of her
+ * own regular route. Generated loops start where you are.
+ */
+function MakeWalks({
+  setup,
+  here,
+  units,
+  handoff,
+}: {
+  setup: WalkSetup;
+  here: Coord | null;
+  units: Units;
+  handoff: string;
+}) {
+  const [start, setStart] = useState<Endpoint | null>(
+    here ? { coord: here, label: "Your location", source: "current" } : null,
+  );
+  const [made, setMade] = useState<GeneratedWalks | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Walks made for a different setup or time are no longer the answer.
+  useEffect(() => setMade(null), [setup]);
+
+  // Location usually arrives after the screen opens. Use it then - unless a
+  // place has already been chosen, which it must not overwrite.
+  useEffect(() => {
+    if (here && !start) setStart({ coord: here, label: "Your location", source: "current" });
+  }, [here, start]);
+
+  async function make() {
+    if (!start) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setMade(
+        await generateWalks({
+          profile: setup.profile,
+          minutes: setup.minutes,
+          start: start.coord,
+          start_label: start.label,
+          ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
+        }),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't make walks just now.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="walks-make">
+      <PlaceSearch
+        legend="Start from"
+        value={start}
+        onChange={setStart}
+        near={here}
+        onUseCurrentLocation={
+          here
+            ? () => setStart({ coord: here, label: "Your location", source: "current" })
+            : undefined
+        }
+        currentLocationLabel="Where I am"
+        placeholder="Where I am, or search a place"
+      />
+      <button className="btn-primary" disabled={!start || busy} onClick={() => void make()}>
+        {busy ? "Making walks…" : `Make walks of about ${duration(setup.minutes)}`}
+      </button>
+      <p className="walks-hint">
+        Up to three loops from mapped paths, judged for your setup. To plan them,
+        your start is sent to openrouteservice; it isn&rsquo;t stored.
+      </p>
+      {error && <p className="account-error">{error}</p>}
+      {made && (
+        <>
+          <h3 className="walks-group-title">From {start?.label ?? "your start"}</h3>
+          <div className="walks-list">
+            {made.walks.map((w) => (
+              <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
+            ))}
+          </div>
+          <p className="walks-attrib">{made.attribution}</p>
+          <h3 className="walks-group-title">Curated walks</h3>
+        </>
+      )}
+    </section>
   );
 }
 

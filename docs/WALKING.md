@@ -36,6 +36,32 @@ Each walk comes back judged for that setup:
 A blocking obstacle is never averaged away by the pleasant stretch around it,
 and an unknown is never shown as fine.
 
+## Walks made from your start
+
+With `ORS_API_KEY` set on the API (`/api/health` reports
+`"walk_generation": true`), the Walk tab offers **Start from**: where you are,
+or any place you search. It asks openrouteservice for three round trips of the
+length your time allows - wheelchair routing with steps avoided for a pram,
+walking routing for a carrier - and judges each with exactly the same rules,
+findings and map as the curated walks.
+
+What generated walks can and cannot say. Surfaces and path types come from
+openrouteservice's per-stretch information; heights from its SRTM model, which
+is coarser than the 25 m model the curated walks use. **Gates, stiles and kerbs
+are not reported**, and every generated walk says so. Nobody has checked a
+generated walk on foot.
+
+Terms (openrouteservice Standard plan, reviewed by the founder 9 Oct 2026):
+results are CC-BY-SA 4.0 with attribution shown under the walks; personal data
+must not be sent, so requests go from the server with the start point only,
+the point is not logged, and generated walks are not stored. Usage is capped
+at 10 generations a minute and 600 a day across everybody (three provider
+calls each, against the plan's 40 a minute and 2000 a day), and 4 a minute and
+30 an hour per account.
+
+**Status: built and tested against the documented response shape, not yet run
+against the live service.**
+
 ## Access
 
 - `WALKING_ENABLED` on the API, default **off**. Off means the endpoint answers

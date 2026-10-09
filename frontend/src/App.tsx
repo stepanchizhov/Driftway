@@ -541,6 +541,7 @@ export default function App() {
         <Walks
           units={settings.units}
           here={liveCoord}
+          canGenerate={features.walkGeneration}
           onOpenSettings={() => setScreen({ name: "settings" })}
         />
       )}

@@ -46,6 +46,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.walking.evidence import (  # noqa: E402
     Barrier, BarrierKind, Evidence, Gradient, Section, Status, Surface,
 )
+from core.walking.terrain import attach_gradients, smooth  # noqa: E402
 from core.walking.osm import (  # noqa: E402
     access_forbidden, barrier_from_node, steps_barrier, surface_from_tags,
 )
@@ -64,13 +65,8 @@ ELEVATION = "https://api.opentopodata.org/v1/eudem25m"
 
 #: Distance between elevation samples along the route.
 SAMPLE_M = 20.0
-#: Shortest stretch a gradient is measured over. A 25 m terrain grid cannot
-#: resolve anything shorter, so it is not asked to.
-GRADE_WINDOW_M = 50.0
-#: Ignore elevation wobble smaller than this when summing ascent; the model's
-#: noise would otherwise add phantom metres on flat ground.
-ASCENT_HYSTERESIS_M = 1.0
-#: How far a GPX point may be from a mapped path and still count as on it.
+#: Gradient thresholds live in core/walking/terrain.py, shared with generated
+#: walks. How far a GPX point may be from a mapped path and still count as on it.
 MATCH_M = 15.0
 
 #: Ways a walker can use. Main roads are included because, in UK towns, the
@@ -486,42 +482,9 @@ def _resample(sections: List[Section]) -> List[Tuple[float, Tuple[float, float]]
 
 def _attach_gradients(sections: List[Section]) -> None:
     samples = _resample(sections)
-    elev = fetch_elevations([p for _, p in samples])
-    dists = [d for d, _ in samples]
-    # Light smoothing: the model is noisy at the metre scale.
-    smooth = [sum(elev[max(0, i - 1):i + 2]) / len(elev[max(0, i - 1):i + 2])
-              for i in range(len(elev))]
-
-    for s in sections:
-        idx = [i for i, d in enumerate(dists) if s.from_m - 1e-6 <= d <= s.to_m + 1e-6]
-        if len(idx) < 2:
-            # Shorter than the sample spacing: borrow the nearest window.
-            centre = (s.from_m + s.to_m) / 2
-            near = min(range(len(dists)), key=lambda i: abs(dists[i] - centre))
-            idx = [max(0, near - 1), min(len(dists) - 1, near + 1)]
-        ascent = descent = 0.0
-        anchor = smooth[idx[0]]
-        for i in idx[1:]:
-            delta = smooth[i] - anchor
-            if abs(delta) >= ASCENT_HYSTERESIS_M:
-                ascent += max(0.0, delta)
-                descent += max(0.0, -delta)
-                anchor = smooth[i]
-        up = down = 0.0
-        # Steepness over a window at least GRADE_WINDOW_M long, centred on the
-        # section, so a short section is judged by its surroundings rather than
-        # by noise between two adjacent samples.
-        lo = max(0.0, (s.from_m + s.to_m) / 2 - max(GRADE_WINDOW_M, s.length_m) / 2)
-        hi = lo + max(GRADE_WINDOW_M, s.length_m)
-        window = [i for i, d in enumerate(dists) if lo - 1e-6 <= d <= hi + 1e-6]
-        for i in window:
-            for j in window:
-                span = dists[j] - dists[i]
-                if span >= GRADE_WINDOW_M - 1e-6:
-                    g = (smooth[j] - smooth[i]) / span * 100
-                    up, down = max(up, g), max(down, -g)
-        s.gradient = Gradient(ascent, descent, up, down, Status.MODELLED,
-                              "eudem25m via Open Topo Data")
+    heights = smooth(fetch_elevations([p for _, p in samples]))
+    attach_gradients(sections, [d for d, _ in samples], heights,
+                     "eudem25m via Open Topo Data")
 
 
 # --------------------------------------------------------------- observations

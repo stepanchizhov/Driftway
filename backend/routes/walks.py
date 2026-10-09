@@ -153,3 +153,82 @@ def assess_walks(
         "carried_kg": carried,
         "handoff": HANDOFF,
     }
+
+
+# ---------------------------------------------------------------- generated
+
+from core.ratelimit import RateLimited, SlidingWindowLimiter, _Window  # noqa: E402
+from core.walking import generate as gen  # noqa: E402
+from core.walking.catalogue import assess_route  # noqa: E402
+
+
+class Point(BaseModel):
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+
+
+class GenerateIn(AssessIn):
+    start: Point
+    #: Shown on the card ("Your location", or the place searched for). Never
+    #: sent to the routing provider.
+    start_label: str = Field("Your start", max_length=80)
+
+
+#: Each generation is three provider calls. The free plan allows 40 a minute
+#: and 2000 a day; these keep Driftway well inside both, across everybody.
+_generate_global = SlidingWindowLimiter()
+_generate_caller = SlidingWindowLimiter()
+GLOBAL_WINDOWS = [_Window(60, 10), _Window(86400, 600)]
+CALLER_WINDOWS = [_Window(60, 4), _Window(3600, 30)]
+
+
+@router.post("/walks/generate")
+async def generate_walks(
+    body: GenerateIn,
+    request: Request,
+    driftway_staging_session: Optional[str] = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    """Loops from a chosen start, judged like every other walk.
+
+    The start point goes to openrouteservice and nowhere else: it is not
+    logged, and the walks are not stored. Nothing identifying the parent is
+    sent with it.
+    """
+    if not walking_enabled():
+        raise HTTPException(status_code=404, detail="Not found.")
+    if not storage_available():
+        raise HTTPException(status_code=503, detail="Walks are temporarily unavailable.")
+    account = _require_admitted(request, session, driftway_staging_session)
+    if not gen.is_configured():
+        raise HTTPException(status_code=503,
+                            detail="Making walks from your location isn't switched on yet.")
+    try:
+        _generate_global.check("*", GLOBAL_WINDOWS, scope="service")
+        _generate_caller.check(f"account:{account.id}", CALLER_WINDOWS, scope="caller")
+    except RateLimited as limited:
+        raise HTTPException(
+            status_code=429,
+            detail="That's a lot of walks in a short time. Please wait a moment.",
+            headers={"Retry-After": str(limited.retry_after)},
+        )
+
+    minutes = body.minutes or 30
+    if body.profile == "pram":
+        p = body.pram or PramIn()
+        setup = PramSetup(wheels=p.wheels, width_cm=p.width_cm, double=p.double)
+    else:
+        c = body.carrier or CarrierIn()
+        setup = CarrierSetup(kind=c.kind, child_kg=c.child_kg, carrier_kg=c.carrier_kg,
+                             luggage_kg=c.luggage_kg, luggage_with=c.luggage_with)
+
+    try:
+        routes = await gen.generate((body.start.lat, body.start.lng), body.profile,
+                                    minutes, body.start_label)
+    except gen.GenerationUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    return {
+        "walks": [assess_route(r, body.profile, setup, minutes) for r in routes],
+        "attribution": gen.ATTRIBUTION,
+    }

@@ -118,6 +118,50 @@ export interface CarrierSetup {
   luggage_with: "carrier_adult" | "companion";
 }
 
+export interface GeneratedWalks {
+  walks: Walk[];
+  attribution: string;
+}
+
+/**
+ * Loops made from a chosen start. The start goes to our server, which asks
+ * openrouteservice; nothing identifying you goes with it, and the walks are
+ * not stored. Errors are reported, never replaced by an invented walk.
+ */
+export async function generateWalks(body: {
+  profile: "pram" | "carrier";
+  minutes: number;
+  start: { lat: number; lng: number };
+  start_label: string;
+  pram?: PramSetup;
+  carrier?: CarrierSetup;
+}): Promise<GeneratedWalks> {
+  let res: Response;
+  try {
+    res = await authFetch(`${API_BASE}/api/walks/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Can't reach Driftway. Check your connection.");
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new NotAdmitted("Walks are part of the closed beta.");
+  }
+  if (!res.ok) {
+    let detail = "Couldn't make walks just now.";
+    try {
+      const b = await res.json();
+      if (typeof b?.detail === "string") detail = b.detail;
+    } catch {
+      /* keep default */
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
 /** Not in the beta, as opposed to broken. */
 export class NotAdmitted extends Error {}
 

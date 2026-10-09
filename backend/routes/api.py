@@ -54,6 +54,11 @@ def _retention_status() -> dict | None:
         return None
 
 
+def _walk_generation() -> bool:
+    from core.walking.generate import is_configured
+    return is_configured()
+
+
 def _pending_schema() -> list:
     """Outstanding migration steps, or [] when up to date."""
     if not storage_available():
@@ -222,6 +227,9 @@ async def health():
         # Whether the walking experiment exists on this deployment. The
         # frontend shows its entry point only when this is true.
         "walking": walking_enabled(),
+        # Whether walks can be made from any start (an openrouteservice key is
+        # configured). Reports configuration, not that the service is up.
+        "walk_generation": _walk_generation(),
         # The client uses this to decide whether to offer the staging entry
         # point at all, rather than showing a button that 404s.
         "meet_halfway": meet_halfway_enabled(),

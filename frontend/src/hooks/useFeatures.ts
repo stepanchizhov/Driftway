@@ -21,9 +21,11 @@ const KEY = "driftway.features.v1";
 export interface Features {
   meetHalfway: boolean;
   walking: boolean;
+  /** Walks can be made from any start (an openrouteservice key is set). */
+  walkGeneration: boolean;
 }
 
-const NONE: Features = { meetHalfway: false, walking: false };
+const NONE: Features = { meetHalfway: false, walking: false, walkGeneration: false };
 
 function cached(): Features {
   try {
@@ -46,6 +48,7 @@ export function useFeatures(): Features {
         const live: Features = {
           meetHalfway: Boolean(body.meet_halfway),
           walking: Boolean(body.walking),
+          walkGeneration: Boolean(body.walk_generation),
         };
         setFeatures(live);
         try {
