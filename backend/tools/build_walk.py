@@ -583,8 +583,27 @@ def build(spec_path: str) -> str:
     if "gpx" in spec:
         pts = _walk_from_gpx(graph, gpx)
         sections = _sections(graph, pts, matched_by_proximity=True)
+        if spec.get("start_at"):
+            # The walk begins at a named public place a little before the
+            # recording does; join the two along mapped paths.
+            lead = _routed_leg(graph, [spec["start_at"], pts[0][0]], 0.0,
+                               "the mapped way from the start to where the "
+                               "recording begins")
+            shift = lead[-1].to_m if lead else 0.0
+            for s in sections:
+                s.from_m += shift
+                s.to_m += shift
+                for b in s.barriers:
+                    b.at_m += shift
+            sections = lead + sections
         if spec.get("close_loop"):
-            sections += _closing_leg(graph, pts[-1][0], pts[0][0], sections[-1].to_m)
+            via = spec.get("close_via", [])
+            sections += _routed_leg(
+                graph, [pts[-1][0], *via, spec.get("start_at") or pts[0][0]],
+                sections[-1].to_m,
+                "the way back after the recording stopped, through the places "
+                "the walker named" if via else
+                "the shortest mapped way back to the start")
     else:
         pts = _walk_from_waypoints(graph, spec["waypoints"])
         sections = _sections(graph, pts, matched_by_proximity=False)
@@ -628,26 +647,27 @@ def build(spec_path: str) -> str:
     return out
 
 
-def _closing_leg(graph: "Graph", end, start, offset_m: float) -> List[Section]:
-    """Join the end of a recording back to its start along mapped paths.
+def _routed_leg(graph: "Graph", waypoints, offset_m: float, how: str) -> List[Section]:
+    """A stretch that was not recorded, filled in along mapped paths.
 
-    For a circuit whose recording stopped early - a phone battery, a late
-    start. The joining stretch is the shortest mapped route, which may not be
-    the way actually walked, so every section of it says so in its label and
-    on each piece of evidence. It is never presented as recorded.
+    For a recording that started late or stopped early - a phone battery, say.
+    It follows mapped paths through the given points, which may still not be
+    the exact way walked, so every section says so in its label and on each
+    piece of evidence. It is never presented as recorded.
     """
-    pts = _walk_from_waypoints(graph, [end, start])
-    closing = _sections(graph, pts, matched_by_proximity=False)
-    for s in closing:
+    if haversine(tuple(waypoints[0]), tuple(waypoints[-1])) < 5 and len(waypoints) == 2:
+        return []
+    pts = _walk_from_waypoints(graph, waypoints)
+    leg = _sections(graph, pts, matched_by_proximity=False)
+    for s in leg:
         s.from_m += offset_m
         s.to_m += offset_m
         for b in s.barriers:
             b.at_m += offset_m
         s.label = f"{s.label} (completed from the map)"
         for e in s.evidence:
-            e.note = ((e.note + "; ") if e.note else "") + \
-                "not recorded - the shortest mapped way back to the start"
-    return closing
+            e.note = ((e.note + "; ") if e.note else "") + f"not recorded - {how}"
+    return leg
 
 
 def _trim_start(sections: List[Section], trim_m: float) -> List[Section]:

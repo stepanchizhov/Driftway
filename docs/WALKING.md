@@ -108,6 +108,7 @@ Manufacturer limits are specific to the carrier model.
 | Castle Hill and the old town | the town | loop | 1.3 km round | Firm; about 19 m of climbing; setts |
 | The Long Walk | south, into the Great Park | there and back | 3.7 km | Mapped asphalt; gentle until Snow Hill (about 11%) at the far end |
 | Jubilee River Way | north-east | there and back | 1.4 km | Compacted gravel; level; about 560 m unrecorded |
+| Snow Hill circuit | south-west, Great Park | circuit | 7.85 km round | **The founder's own walk**, recorded 9 Oct; field path, park roads, steep descent from Snow Hill; turn back early for shorter |
 | Westward past Ostritzer Straße | Köpenick, Berlin | there and back | 2.0 km | Level; most of the far half mapped as soft ground |
 | Through Alt-Köpenick | Köpenick, Berlin | there and back | 2.0 km | Firm; about 900 m of setts; bollards, one gate |
 | To the Müggelsee shore | Köpenick, Berlin | one way | 4.3 km | Mostly sealed, a stretch of soft path; ends at the Seglergemeinschaft am Müggelsee |
