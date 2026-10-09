@@ -38,6 +38,7 @@ from .profiles import (
     Verdict,
     assess_carrier,
     assess_pram,
+    assess_walker,
 )
 
 log = logging.getLogger("driftway")
@@ -410,7 +411,8 @@ def assess_route(route: Route, profile: str,
     if route.shape == "out_and_back":
         legs += _return_leg(route)
 
-    judge = assess_pram if profile == "pram" else assess_carrier
+    judge = {"pram": assess_pram, "carrier": assess_carrier,
+             "walker": assess_walker}[profile]
     assessed: List[SectionAssessment] = [judge(s, setup) for s in legs]
 
     findings: List[Finding] = [f for a in assessed for f in a.findings]

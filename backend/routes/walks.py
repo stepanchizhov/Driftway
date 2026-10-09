@@ -51,7 +51,9 @@ class CarrierIn(BaseModel):
 
 
 class AssessIn(BaseModel):
-    profile: Literal["pram", "carrier"]
+    #: "walker" is an adult on foot with nothing to push or carry - founder
+    #: decision, 9 Oct: people without children, or parents walking alone.
+    profile: Literal["pram", "carrier", "walker"]
     minutes: Optional[int] = Field(None, ge=10, le=240)
     pram: Optional[PramIn] = None
     carrier: Optional[CarrierIn] = None
@@ -137,6 +139,8 @@ def assess_walks(
     if body.profile == "pram":
         p = body.pram or PramIn()
         setup = PramSetup(wheels=p.wheels, width_cm=p.width_cm, double=p.double)
+    elif body.profile == "walker":
+        setup = None            # nothing to push or carry
     else:
         c = body.carrier or CarrierIn()
         setup = CarrierSetup(kind=c.kind, child_kg=c.child_kg, carrier_kg=c.carrier_kg,
@@ -227,6 +231,8 @@ async def generate_walks(
     if body.profile == "pram":
         p = body.pram or PramIn()
         setup = PramSetup(wheels=p.wheels, width_cm=p.width_cm, double=p.double)
+    elif body.profile == "walker":
+        setup = None            # nothing to push or carry
     else:
         c = body.carrier or CarrierIn()
         setup = CarrierSetup(kind=c.kind, child_kg=c.child_kg, carrier_kg=c.carrier_kg,

@@ -163,7 +163,11 @@ export function Walks({
         profile: applied.profile,
         minutes: applied.minutes,
         allow_out_and_back: applied.maxRetrace >= 0.5,
-        ...(applied.profile === "pram" ? { pram: applied.pram } : { carrier: applied.carrier }),
+        ...(applied.profile === "pram"
+          ? { pram: applied.pram }
+          : applied.profile === "carrier"
+            ? { carrier: applied.carrier }
+            : {}),
       })
         .then((r) => {
           if (!alive) return;
@@ -205,13 +209,14 @@ export function Walks({
 
       <ChipGroup
         legend="Going with"
-        columns={2}
+        columns={3}
         options={[
           { value: "pram", label: "Pram" },
           { value: "carrier", label: "Carrier" },
+          { value: "walker", label: "Just me" },
         ]}
         value={setup.profile}
-        onChange={(v) => update({ profile: v as "pram" | "carrier" })}
+        onChange={(v) => update({ profile: v as WalkSetup["profile"] })}
       />
 
       <SetupPanel setup={setup} update={update} />
@@ -466,6 +471,8 @@ function SetupPanel({
   setup: WalkSetup;
   update: (patch: Partial<WalkSetup>) => void;
 }) {
+  // Nothing to push or carry, so nothing to describe.
+  if (setup.profile === "walker") return null;
   if (setup.profile === "pram") {
     const p = setup.pram;
     return (
@@ -883,7 +890,11 @@ function MakeWalks({
           ...(via ? { via: via.coord, via_label: via.label } : {}),
           start: start.coord,
           start_label: start.label,
-          ...(setup.profile === "pram" ? { pram: setup.pram } : { carrier: setup.carrier }),
+          ...(setup.profile === "pram"
+            ? { pram: setup.pram }
+            : setup.profile === "carrier"
+              ? { carrier: setup.carrier }
+              : {}),
         }),
       );
     } catch (e) {

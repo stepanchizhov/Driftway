@@ -13,7 +13,7 @@ import type { CarrierSetup, PramSetup } from "./api";
 const KEY = "driftway.walk.v1";
 
 export interface WalkSetup {
-  profile: "pram" | "carrier";
+  profile: "pram" | "carrier" | "walker";
   minutes: number;
   /**
    * Most of a walk that may go over ground already walked: 1 = don't mind,

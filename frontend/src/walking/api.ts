@@ -136,7 +136,7 @@ export interface GeneratedWalks {
  * not stored. Errors are reported, never replaced by an invented walk.
  */
 export async function generateWalks(body: {
-  profile: "pram" | "carrier";
+  profile: "pram" | "carrier" | "walker";
   minutes: number;
   allow_out_and_back?: boolean;
   start: { lat: number; lng: number };
@@ -177,7 +177,7 @@ export async function generateWalks(body: {
 export class NotAdmitted extends Error {}
 
 export async function assessWalks(body: {
-  profile: "pram" | "carrier";
+  profile: "pram" | "carrier" | "walker";
   minutes: number;
   allow_out_and_back?: boolean;
   pram?: PramSetup;

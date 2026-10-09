@@ -386,3 +386,31 @@ class PathShapeTests(unittest.TestCase):
                             allow_out_and_back=False)
         self.assertEqual(card["fit"]["kind"], "longer")
         self.assertEqual(card["path_shape"], "loop")
+
+
+class WalkerTests(unittest.TestCase):
+    """'Just me' - founder decision, 9 Oct: people without children, or
+    parents walking alone."""
+
+    def test_steps_and_stiles_are_notes_not_obstacles(self):
+        from core.walking.profiles import assess_walker
+        a = assess_walker(section(barriers=[steps(count=40),
+                                            gate(kind=BarrierKind.STILE)]))
+        self.assertEqual(a.verdict, Verdict.OK)
+
+    def test_only_a_very_steep_climb_is_harder_going(self):
+        from core.walking.profiles import assess_walker
+        moderate = Gradient(20, 0, 12, 0, Status.MODELLED, "m")
+        steep = Gradient(40, 0, 18, 0, Status.MODELLED, "m")
+        self.assertEqual(assess_walker(section(gradient=moderate)).verdict, Verdict.OK)
+        self.assertEqual(assess_walker(section(gradient=steep)).verdict, Verdict.DIFFICULT)
+
+    def test_an_unrecorded_surface_does_not_make_a_walk_unknown(self):
+        card = assess_route(route(section(0, 800, surface=Surface.UNKNOWN)), "walker", None)
+        self.assertEqual(card["verdict"], "ok")
+        self.assertEqual(card["coverage"]["surface_known_share"], 0)
+
+    def test_a_walk_blocked_for_a_pram_is_fine_on_foot(self):
+        r = route(section(0, 500, barriers=[steps(250, count=20)]))
+        self.assertEqual(assess_route(r, "pram", PramSetup())["verdict"], "blocked")
+        self.assertEqual(assess_route(r, "walker", None)["verdict"], "ok")

@@ -296,6 +296,52 @@ def _pram_gradient(section: Section) -> List[Finding]:
 
 # ---------------------------------------------------------------- carrier
 
+#: HYPOTHESIS. Slope (%) that is hard going for an adult on foot with nothing
+#: to push or carry.
+WALKER_GRADE_DIFFICULT = 15.0
+
+
+def assess_walker(section: Section, setup=None) -> SectionAssessment:
+    """An adult on foot, nothing to push or carry.
+
+    Founder decision, 9 Oct 2026: a third profile for people without children,
+    or parents walking alone. Steps and stiles are notes, not obstacles. An
+    unrecorded surface is not reported as a finding for this profile: it does
+    not decide whether someone on foot can do the walk, and flagging it on
+    every stretch would bury what does matter. It is still stated in the
+    walk's coverage line.
+    """
+    findings = _common(section)
+    for b in section.barriers:
+        if b.kind is BarrierKind.STEPS:
+            count = f"{b.step_count} steps" if b.step_count else "Steps"
+            findings.append(Finding(Verdict.OK, "barrier", f"{count}.",
+                                    b.status, b.source, b.at_m, preference=True))
+        elif b.kind is BarrierKind.STILE:
+            findings.append(Finding(Verdict.OK, "barrier", "A stile to climb.",
+                                    b.status, b.source, b.at_m, preference=True))
+    g = section.gradient
+    steep = g is not None and g.steepest_pct >= PRAM_GRADE_DIFFICULT
+    if section.surface in (Surface.LOOSE, Surface.SOFT, Surface.UNPAVED):
+        src = section.strongest("surface")
+        findings.append(Finding(
+            Verdict.OK, "surface",
+            "Loose or soft ground on a slope - watch your footing." if steep
+            else "Loose or soft ground - can be muddy after rain.",
+            section.surface_basis(), src.source if src else "none",
+            section.from_m, preference=True))
+    if g is not None:
+        if g.steepest_up_pct >= WALKER_GRADE_DIFFICULT:
+            findings.append(Finding(Verdict.DIFFICULT, "gradient",
+                                    f"Steep climb, about {g.steepest_up_pct:.0f}%.",
+                                    g.status, g.source, section.from_m))
+        elif g.steepest_up_pct >= PRAM_GRADE_DIFFICULT:
+            findings.append(Finding(Verdict.OK, "gradient",
+                                    f"Climb of about {g.steepest_up_pct:.0f}%.",
+                                    g.status, g.source, section.from_m, preference=True))
+    return SectionAssessment(section, findings)
+
+
 def assess_carrier(section: Section, setup: CarrierSetup) -> SectionAssessment:
     findings = _common(section)
 

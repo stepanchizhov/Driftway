@@ -36,6 +36,26 @@ Each walk comes back judged for that setup:
 A blocking obstacle is never averaged away by the pleasant stretch around it,
 and an unknown is never shown as fine.
 
+## Who is walking
+
+**Pram**, **Carrier**, or **Just me** - the third added by founder decision on
+9 Oct 2026, for people without children or parents walking alone. It goes
+beyond the Bible's pram-and-carrier scope on purpose. For someone on foot,
+steps and stiles are notes rather than obstacles, a climb counts as harder
+going only above 15% (HYPOTHESIS), loose or soft ground is a footing note, and
+an unrecorded surface does not make the verdict "unknown" - it does not decide
+whether the walk is possible - though the coverage line still states it. Walks
+made from your start use ordinary walking routing, steps allowed.
+
+## Settings and updating
+
+Changing a setting, the time or the start no longer recalculates anything by
+itself: an **Update walks** bar appears while the settings differ from those the
+walks were made with, and one tap recalculates the curated walks and re-makes
+the made ones. Walks made from your start come first; if no curated walk starts
+at your doorstep and fits the time, they are made as soon as your location is
+known. Curated walks fold into their own section.
+
 ## Shapes, distance and preferences
 
 Founder decisions, 9 Oct 2026, after using it:
