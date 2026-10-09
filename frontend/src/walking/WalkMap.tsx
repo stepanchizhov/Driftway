@@ -48,12 +48,16 @@ export function WalkMap({ walk }: { walk: Walk }) {
     const map = L.map(box.current, { zoomControl: true, attributionControl: true });
     L.tileLayer(TILES, { maxZoom: 19, attribution: ATTRIBUTION }).addTo(map);
 
+    // Colours for a LIGHT map, not the app's dark-theme pastels: founder
+    // feedback, 9 Oct - pale green vanished into parks and amber into fields.
+    // Saturated colours over a dark casing read on any map background.
     const colour = {
-      ok: token("--ok", "#8fd3a6"),
-      unknown: token("--ink-dim", "#9aa3cc"),
-      difficult: token("--warn", "#e8c36b"),
-      blocked: token("--danger", "#e89090"),
+      ok: "#14a04f",
+      unknown: "#6b7aa6",
+      difficult: "#f08c00",
+      blocked: "#d62f2f",
     };
+    const CASING = "#10162e";
 
     // Only the way out is drawn on a there-and-back walk: the way back is the
     // same line, and drawing it twice hides nothing but costs clarity.
@@ -65,11 +69,13 @@ export function WalkMap({ walk }: { walk: Walk }) {
     for (const s of half) {
       if (s.geometry.length < 2) continue;
       const line = s.geometry.map(([a, b]) => L.latLng(a, b));
+      // A dark outline first, then the coloured line on top of it.
+      L.polyline(line, { color: CASING, weight: 10, opacity: 0.85 }).addTo(map);
       L.polyline(line, {
         color: colour[s.verdict],
         weight: 6,
-        opacity: 0.9,
-        dashArray: s.verdict === "unknown" ? "6 8" : undefined,
+        opacity: 1,
+        dashArray: s.verdict === "unknown" ? "8 8" : undefined,
       })
         .bindTooltip(`${s.label}: ${s.surface}`)
         .addTo(map);
