@@ -324,6 +324,15 @@ def _bearer(request: Request) -> str:
     return header[7:].strip()
 
 
+def _own_account(request: Request, session: Session, cookie: Optional[str]):
+    """The caller's own account, even if disabled: for export and erasure."""
+    from core.current_user import own_account
+    try:
+        return own_account(request, session, cookie)
+    except CredentialsRejected as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
 def _current_account(request: Request, session: Session, cookie: Optional[str]):
     """The signed-in account, or None for an anonymous request.
 
@@ -393,7 +402,7 @@ def export_my_data(
     not yours to receive.
     """
     _require_storage()
-    account = _current_account(request, session, driftway_staging_session)
+    account = _own_account(request, session, driftway_staging_session)
     if account is None:
         raise HTTPException(status_code=401, detail="Sign in first.")
     return export_account(session, account.id)
@@ -408,7 +417,9 @@ def erase_my_account(
 ):
     """Delete your account and everything linked to it. Not reversible."""
     _require_storage()
-    account = _current_account(request, session, driftway_staging_session)
+    # Any existing account may be deleted by its owner - also a disabled one,
+    # and never needing a new invitation.
+    account = _own_account(request, session, driftway_staging_session)
     if account is None:
         raise HTTPException(status_code=401, detail="Sign in first.")
     removed = erase_account(session, account.id)

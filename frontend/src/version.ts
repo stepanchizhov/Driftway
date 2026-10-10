@@ -31,7 +31,8 @@ export const RELEASES: Release[] = [
     changes: [
       "Pram walks always keep pram routing. Greener and Quieter are no longer offered with a pram: they used walking routes that dropped the pram's rules on surface, slope and kerbs.",
       "A Feedback button at the top of every screen. It says which screen you were on and which version you have.",
-      "A privacy policy, and a guide for testers, linked from Settings.",
+      "A privacy policy, a guide for testers, and a page on deleting your account without the app, all linked from Settings.",
+      "You can download or delete your account even if it has been disabled. No invitation is needed.",
       "Driftway's server logs no longer record what you search for, your position, or the private part of meetup links.",
       "A proper app icon for Android, and an app description that includes walks and meetups.",
       "The app no longer keeps a growing copy of every map image you've seen.",

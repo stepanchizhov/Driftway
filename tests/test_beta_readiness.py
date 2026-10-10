@@ -110,3 +110,45 @@ class ProviderErrorLogTests(unittest.TestCase):
         from core.router import _no_numbers
         self.assertEqual(_no_numbers("No route between points (51.4816, -0.6105)"),
                          "No route between points (#, #)")
+
+
+class OwnDataTests(unittest.TestCase):
+    """Play's account-deletion rules, and plain fairness: downloading or
+    deleting your own data must not depend on your account being active."""
+
+    def setUp(self):
+        self.client, _ = _fresh()
+
+    def tearDown(self):
+        self.client.close()
+
+    def _admitted(self, sub):
+        minted = self.client.post("/api/admin/beta-invites",
+                                  headers={"X-Admin-Token": ADMIN}).json()
+        token = _token(sub=sub)
+        auth = {"Authorization": f"Bearer {token}"}
+        self.client.post("/api/auth/accept-beta-invite",
+                         json={"invite_token": minted["invite_token"]}, headers=auth)
+        return auth
+
+    def test_a_disabled_account_can_still_download_and_delete_itself(self):
+        auth = self._admitted("auth0|gone")
+        me = self.client.get("/api/account/export", headers=auth).json()["account"]
+        self.client.post(f"/api/admin/accounts/{me['id']}/disable",
+                         headers={"X-Admin-Token": ADMIN})
+        # Disabled: no features...
+        self.assertIsNone(self.client.get("/api/auth/me", headers=auth).json())
+        # ...but its own data is still its owner's.
+        self.assertEqual(self.client.get("/api/account/export", headers=auth).status_code, 200)
+        gone = self.client.delete("/api/account", headers=auth)
+        self.assertEqual(gone.status_code, 200)
+        self.assertEqual(self.client.get("/api/account/export", headers=auth).status_code, 401)
+
+    def test_deletion_needs_no_new_invitation(self):
+        auth = self._admitted("auth0|leaving")
+        self.assertEqual(self.client.delete("/api/account", headers=auth).status_code, 200)
+
+    def test_someone_else_cannot_delete_by_being_signed_in(self):
+        self._admitted("auth0|owner")
+        stranger = {"Authorization": f"Bearer {_token(sub='auth0|stranger')}"}
+        self.assertEqual(self.client.delete("/api/account", headers=stranger).status_code, 401)

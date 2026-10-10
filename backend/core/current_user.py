@@ -100,6 +100,32 @@ def current_account(
     return account_for_session(session, cookie)
 
 
+def own_account(request: Request, session: Session,
+                cookie: Optional[str]) -> Optional[UserAccount]:
+    """The caller's own account whatever its status - for downloading or
+    deleting it, and nothing else.
+
+    current_account() returns nothing for a disabled account, which is right
+    for every feature, but it also stopped the owner of a disabled account
+    from downloading or deleting their own data. Those are the person's
+    rights, not features of the beta (0.8, Play's account deletion rules).
+    Matched on the verified (provider, subject), exactly as at sign-in.
+    """
+    token = bearer_token(request)
+    if token and identity_configured():
+        from sqlalchemy import select
+        from .identity import PROVIDER
+        try:
+            identity = verify_access_token(token)
+        except IdentityError as e:
+            raise CredentialsRejected(str(e))
+        return session.execute(
+            select(UserAccount).where(UserAccount.auth_provider == PROVIDER,
+                                      UserAccount.auth_subject == identity.subject)
+        ).scalars().first()
+    return current_account(request, session, cookie)
+
+
 def owner_for_write(
     account: Optional[UserAccount], device_owner: Optional[str]
 ) -> str:

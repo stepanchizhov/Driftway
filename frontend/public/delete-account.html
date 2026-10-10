@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delete your Driftway account</title>
+<meta name="description" content="How to delete your Driftway account and the data kept with it, with or without the app.">
+<style>
+  :root { --ground:#161c36; --surface:#1f2747; --line:#36406e; --ink:#edeffa; --dim:#9aa3cc; --accent:#f2b179; color-scheme: dark; }
+  @media (prefers-color-scheme: light) {
+    :root { --ground:#f2f3f8; --surface:#ffffff; --line:#c9cee1; --ink:#191f38; --dim:#55608a; --accent:#b8681f; color-scheme: light; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink);
+         font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         padding: 24px 16px 64px; }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 30px 0 8px; }
+  p, li { max-width: 66ch; }
+  li { margin-bottom: 6px; }
+  .meta { color: var(--dim); margin: 0 0 20px; }
+  a { color: var(--accent); }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .go { display: inline-block; margin-top: 4px; padding: 10px 16px; border-radius: 10px;
+        background: var(--accent); color: #161c36; font-weight: 600; text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Delete your Driftway account</h1>
+  <p class="meta">Driftway, by iBookBinding Ltd · you don't need the Android app for this</p>
+
+  <div class="box">
+    <h2 style="margin-top:0">On the web, now</h2>
+    <ol>
+      <li>Open Driftway in your browser and sign in with the account you want
+        to delete.</li>
+      <li>Open <strong>Settings</strong> (⚙ at the top), then
+        <strong>Delete my account</strong>, and confirm.</li>
+    </ol>
+    <p><a class="go" href="/">Open Driftway</a></p>
+    <p>This works even if your account has been disabled. It needs no
+    invitation. If you'd like a copy first, use <strong>Download my
+    data</strong> on the same screen.</p>
+  </div>
+
+  <h2>Or by email</h2>
+  <p>If you can't sign in, write to
+  <a href="mailto:stepan@ibookbinding.com?subject=Delete%20my%20Driftway%20account">stepan@ibookbinding.com</a>
+  from the email address you signed in with, asking for your Driftway account
+  to be deleted. We'll confirm when it's done. We may ask a question to
+  check the request is really yours.</p>
+
+  <h2>What is deleted</h2>
+  <ul>
+    <li>Your Driftway account: your sign-in id, email address and display
+      name.</li>
+    <li>Drives you saved to your account.</li>
+    <li>Feedback you sent while signed in.</li>
+    <li>Your place in meetups: your starting point, preferences and votes. Meetups
+      you organised are deleted entirely.</li>
+    <li>Your sessions.</li>
+  </ul>
+
+  <h2>What is kept, and why</h2>
+  <ul>
+    <li><strong>The record that an invitation was issued and used</strong> is
+      kept, with the link to you removed, so the beta's invitations stay
+      accountable.</li>
+    <li><strong>Things saved on a device before you signed in</strong> are
+      not linked to your account, so they cannot be found from it. Clear
+      Driftway's site data on that device, or uninstall the app, to remove
+      them. To have feedback you sent without an account removed, email us
+      roughly when you sent it.</li>
+    <li><strong>Your sign-in with Auth0</strong> (our sign-in provider) is
+      held by Auth0. Ask us by email and we'll delete it there too.</li>
+    <li><strong>Our hosting provider's request logs</strong> (time, IP
+      address and the address requested) expire on that provider's own
+      schedule. They hold no search text, positions or meetup link
+      secrets.</li>
+  </ul>
+  <p>Deleting your account doesn't change anything held by apps you opened
+  routes in, such as Google Maps.</p>
+
+  <p class="meta" style="margin-top:24px">
+    <a href="/privacy.html">Privacy policy</a> · <a href="/beta.html">Guide for testers</a>
+  </p>
+</main>
+</body>
+</html>

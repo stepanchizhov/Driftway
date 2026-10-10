@@ -92,7 +92,10 @@ function AccountPanel() {
       )}
 
       {isAuthenticated && checked && !account && (
-        <Admission mode={mode} onJoined={setAccount} onSignOut={signOut} />
+        <>
+          <Admission mode={mode} onJoined={setAccount} onSignOut={signOut} />
+          <ExistingAccountData />
+        </>
       )}
 
       {isAuthenticated && account && (
@@ -307,3 +310,63 @@ function SignedIn({
     </>
   );
 }
+
+
+/**
+ * Download or delete an account the app can't otherwise show - a disabled
+ * one looks here exactly like "not admitted". Downloading and deleting your
+ * own data never depend on the account being active or on an invitation
+ * (0.8; Google Play's account deletion rules). The server decides whether
+ * this sign-in has an account at all.
+ */
+function ExistingAccountData() {
+  const [busy, setBusy] = useState<null | "export" | "erase">(null);
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function run(what: "export" | "erase") {
+    setBusy(what);
+    setMessage(null);
+    try {
+      if (what === "export") await downloadMyData();
+      else {
+        await eraseMyAccount();
+        setConfirming(false);
+        setMessage("Your Driftway account and everything kept with it have been deleted.");
+      }
+    } catch (e) {
+      const text = e instanceof AccountError ? e.message : "";
+      setMessage(
+        text === "Sign in first." || !text
+          ? "There's no Driftway account for this sign-in."
+          : text,
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <details className="account-existing">
+      <summary>Already had a Driftway account?</summary>
+      <p className="set-hint">
+        If your account was disabled, you can still download your data or delete
+        the account here. No invitation is needed.
+      </p>
+      {message && <p className="set-hint">{message}</p>}
+      <button className="btn-quiet" disabled={busy !== null} onClick={() => void run("export")}>
+        {busy === "export" ? "Preparing…" : "Download my data"}
+      </button>{" "}
+      {!confirming ? (
+        <button className="btn-quiet" disabled={busy !== null} onClick={() => setConfirming(true)}>
+          Delete my account
+        </button>
+      ) : (
+        <button className="btn-quiet" disabled={busy !== null} onClick={() => void run("erase")}>
+          {busy === "erase" ? "Deleting…" : "Yes, delete everything"}
+        </button>
+      )}
+    </details>
+  );
+}
+

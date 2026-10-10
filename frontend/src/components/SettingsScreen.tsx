@@ -160,6 +160,10 @@ export function SettingsScreen({ settings, update, server }: Props) {
           ·{" "}
           <a href="/privacy.html" target="_blank" rel="noopener noreferrer">
             Privacy policy
+          </a>{" "}
+          ·{" "}
+          <a href="/delete-account.html" target="_blank" rel="noopener noreferrer">
+            Deleting your account
           </a>
         </p>
 
