@@ -48,10 +48,13 @@ def fc(coords):
                                                     "waytype": {"values": [[0, n, 7]]}}}}]}
 
 
-def ors_error(code, point):
-    return {"error": {"code": code,
-                      "message": f"Could not find point {point}: 13.0 52.009 within "
-                                 "a radius of 150.0 meters."}}
+def ors_error(code, point, live=True):
+    """The provider's "point not found" body. `live` is the wording seen from
+    the public API on 10 Oct 2026; the other is an older release's."""
+    msg = (f"Could not find routable point within a radius of 150.0 meters of "
+           f"specified coordinate {point}: 13.0000000 52.0090000." if live
+           else f"Could not find point {point}: 13.0 52.009 within a radius of 150.0 meters.")
+    return {"error": {"code": code, "message": msg}}
 
 
 class _Base(unittest.TestCase):
@@ -159,6 +162,12 @@ class FailureTests(_Base):
         self.assertEqual(e.exception.code, "unreachable")
         self.assertIn("a pram", str(e.exception))
         self.assertIn("150 m", str(e.exception))
+
+    def test_the_older_wording_is_read_too(self):
+        from core.walking.generate import CheckpointProblem
+        with self.assertRaises(CheckpointProblem) as e:
+            self.run_via(lambda r, n: httpx.Response(404, json=ors_error(2010, 1, live=False)))
+        self.assertEqual(e.exception.code, "unreachable")
 
     def test_no_route_to_the_checkpoint_is_said_plainly(self):
         from core.walking.generate import CheckpointProblem

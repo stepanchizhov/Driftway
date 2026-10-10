@@ -9,6 +9,7 @@ key is in place, and recorded separately.
 """
 
 import asyncio
+import json
 import os
 import sys
 import unittest
@@ -152,6 +153,9 @@ class EndpointTests(unittest.TestCase):
                           lambda **kw: real(transport=ors_transport(status)))
 
     def test_without_a_key_it_says_it_is_not_switched_on(self):
+        # A developer's backend/.env may hold a real key (loaded by main.py);
+        # this test is about its absence, and must never reach the provider.
+        os.environ.pop("ORS_API_KEY", None)
         r = self.client.post("/api/walks/generate", json=BODY, headers=self.auth)
         self.assertEqual(r.status_code, 503)
         self.assertFalse(self.client.get("/api/health").json()["walk_generation"])
@@ -189,8 +193,10 @@ class CharacterTests(_FreshBudget):
         from core.walking.generate import request_body
         profile, body = request_body((52.0, 13.0), "carrier", 30, 1, "green")
         self.assertEqual(profile, "foot-walking")
-        self.assertEqual(body["options"]["profile_params"],
-                         {"weightings": {"green": {"factor": 1.0}}})
+        # The integer form: the only one the live API accepted, 10 Oct 2026.
+        self.assertEqual(body["options"]["profile_params"], {"weightings": {"green": 1}})
+        # ... and the data behind it, so a walk can say when it was flat.
+        self.assertIn("green", body["extra_info"])
 
     def test_a_pram_wanting_quiet_walks_keeps_steps_avoided(self):
         """Wheelchair routing has no weightings, so walking routing is used."""
@@ -314,12 +320,45 @@ class WeightingFallbackTests(_FreshBudget):
             log = "\n".join(logs.output)
         return routes, seen, log
 
-    def test_the_integer_form_is_tried_when_the_object_form_is_refused(self):
+    def test_the_object_form_is_tried_when_the_integer_form_is_refused(self):
         from core.walking import generate as gen
-        routes, seen, _ = self._run(lambda t: '"factor"' not in t)
+        routes, seen, _ = self._run(lambda t: '"factor"' in t)
         self.assertEqual(len(routes), 3)
-        self.assertEqual(gen._WEIGHT_FORM, "int")
+        self.assertEqual(gen._WEIGHT_FORM, "factor")
         self.assertFalse(any("wasn't accepted" in n for n in routes[0].notes))
+
+    def test_the_integer_form_goes_first(self):
+        from core.walking import generate as gen
+        seen = []
+
+        def handler(request):
+            seen.append(request.read().decode())
+            return httpx.Response(200, json={"features": [feature()]})
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        asyncio.run(gen.generate((52.0, 13.0), "carrier", 30, "x", client, character="green"))
+        self.assertEqual(len(seen), 3)                       # one call per walk
+        self.assertTrue(all(json.loads(t)["options"]["profile_params"]
+                            == {"weightings": {"green": 1}} for t in seen))
+        self.assertEqual(gen._WEIGHT_FORM, "int")
+
+    def test_a_walk_says_when_the_data_behind_a_weighting_is_flat(self):
+        from core.walking import generate as gen
+        flat = feature()
+        flat["properties"]["extras"]["noise"] = {"values": [[0, 5, 7]]}
+        varied = feature()
+        varied["properties"]["extras"]["noise"] = {"values": [[0, 2, 7], [2, 5, 3]]}
+        self.assertTrue(gen.flat_weight_data(flat, "quiet"))
+        self.assertFalse(gen.flat_weight_data(varied, "quiet"))
+        self.assertFalse(gen.flat_weight_data(feature(), "quiet"))   # not sent: no claim
+
+        def handler(request):
+            return httpx.Response(200, json={"features": [flat]})
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        routes = asyncio.run(gen.generate((52.0, 13.0), "carrier", 30, "x", client,
+                                          character="quiet"))
+        self.assertTrue(any("doesn't vary along this walk" in n for n in routes[0].notes))
 
     def test_if_no_form_is_accepted_ordinary_walks_say_so(self):
         routes, _, _ = self._run(lambda t: "weightings" not in t)

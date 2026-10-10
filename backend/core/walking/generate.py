@@ -128,8 +128,11 @@ CHARACTERS = ("any", "green", "quiet")
 
 #: How openrouteservice accepts a weighting, learnt from its answers. Its
 #: documentation describes the value as an integer but its own example sends
-#: {"factor": 0.8}; founder testing on 9 Oct found the example form failing.
-#: None until learnt; "none" once both forms have been refused.
+#: {"factor": 0.8}. Measured live on 10 Oct 2026: {"factor": 1.0} is refused
+#: (400, code 2002) in Windsor, Heidelberg and Berlin alike; the integer form
+#: {"green": 1} is accepted. So the integer form goes first, and the other is
+#: kept only as a fallback should the provider change. None until learnt;
+#: "none" once both forms have been refused.
 _WEIGHT_FORM: Optional[str] = None
 
 
@@ -139,7 +142,30 @@ def _weight_forms(character: str) -> List[Optional[str]]:
         return [None]
     if _WEIGHT_FORM:
         return [_WEIGHT_FORM, None]
-    return ["factor", "int", None]
+    return ["int", "factor", None]
+
+
+#: The provider's own per-stretch data behind each weighting, asked for with
+#: weighted walks so a walk can say when there was nothing to weigh.
+WEIGHT_DATA = {"green": "green", "quiet": "noise"}
+
+
+def flat_weight_data(feature: Dict, character: str) -> bool:
+    """True when the provider's data behind a weighting is one value along the
+    whole walk - so the weighting had nothing to choose between.
+
+    Measured 10 Oct 2026: around Windsor the "green" and "noise" values came
+    back as a single range over 1.7 and 3.4 km routes through park and town,
+    and greener and quieter routes were identical to ordinary ones; in Berlin
+    and Heidelberg they varied stretch by stretch and the routes changed. A
+    walk wholly inside one park could also be flat, so this only says the
+    weighting may have changed nothing, never that the data is missing.
+    """
+    name = WEIGHT_DATA.get(character)
+    if not name:
+        return False
+    values = feature.get("properties", {}).get("extras", {}).get(name, {}).get("values")
+    return bool(values) and len({v[2] for v in values}) <= 1
 
 
 def _ors_error(resp: httpx.Response) -> str:
@@ -161,7 +187,7 @@ def _ors_error(resp: httpx.Response) -> str:
 
 def request_body(start: Tuple[float, float], profile: str, minutes: int,
                  seed: int, character: str = "any",
-                 weight_form: Optional[str] = "factor") -> Tuple[str, Dict]:
+                 weight_form: Optional[str] = "int") -> Tuple[str, Dict]:
     """The ORS profile and request body for one candidate walk.
 
     A pram normally gets wheelchair routing. Asking for a greener or quieter
@@ -189,6 +215,7 @@ def request_body(start: Tuple[float, float], profile: str, minutes: int,
     if weighted:
         value = {"factor": 1.0} if weight_form == "factor" else 1
         body["options"]["profile_params"] = {"weightings": {character: value}}
+        body["extra_info"] = body["extra_info"] + [WEIGHT_DATA[character]]
     return ors_profile, body
 
 
@@ -324,16 +351,19 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
             continue
         feat, form = outcome
         weighted = character in ("green", "quiet")
+        wanted = "greener" if character == "green" else "quieter"
+        notes = []
         if weighted and form is None:
-            note = (f"{'Greener' if character == 'green' else 'Quieter'} routing "
-                    "wasn't accepted by the route provider, so this is an "
-                    "ordinary walk.")
-        elif weighted and profile == "pram":
-            note = ("Made with walking routes, steps avoided, so it could favour "
-                    f"{'greener' if character == 'green' else 'quieter'} ways; "
-                    "wheelchair routing cannot weigh that.")
-        else:
-            note = None
+            notes.append(f"{wanted.capitalize()} routing wasn't accepted by the route "
+                         "provider, so this is an ordinary walk.")
+        elif weighted and flat_weight_data(feat, character):
+            what = "greenery" if character == "green" else "traffic-noise"
+            notes.append(f"The route provider's {what} data doesn't vary along this "
+                         f"walk, so asking for a {wanted} walk may not have changed it.")
+        if weighted and form is not None and profile == "pram":
+            notes.append("Made with walking routes, steps avoided, so it could favour "
+                         f"{wanted} ways; wheelchair routing cannot weigh that.")
+        note = " ".join(notes) or None
         # "Walk", not "Loop": a round trip can retrace much of itself, and
         # the card names its real shape from the geometry.
         routes.append(route_from_ors(
@@ -495,7 +525,10 @@ def _ors_failure(resp: httpx.Response) -> Tuple[Optional[int], Optional[int]]:
         return None, None
     if not isinstance(err, dict):
         return None, None
-    m = re.search(r"point (\d+)", str(err.get("message", "")))
+    # Live wording, 10 Oct 2026: "Could not find routable point within a
+    # radius of 150.0 meters of specified coordinate 1: <lng> <lat>." Older
+    # releases said "Could not find point 1: ..."; both are read.
+    m = re.search(r"(?:specified coordinate|point) (\d+)", str(err.get("message", "")))
     return err.get("code"), (int(m.group(1)) if m else None)
 
 

@@ -474,8 +474,13 @@ function PrefsPanel({
         onChange={(v) => update({ character: v as WalkSetup["character"] })}
       />
       <p className="walks-hint">
-        Rivers, canals and the seaside can&rsquo;t be chosen yet: the route
-        provider doesn&rsquo;t offer them.
+        Greener and Quieter ask the route provider to prefer parks or quiet
+        ways. They depend on its greenery and traffic-noise data, which it
+        doesn&rsquo;t have everywhere: in testing on 10 Oct they changed walks
+        in Berlin and Heidelberg but made no difference around Windsor. A walk
+        says when the data along it doesn&rsquo;t vary. Rivers, canals and the
+        seaside can&rsquo;t be chosen yet: the provider doesn&rsquo;t offer
+        them.
       </p>
       <ChipGroup
         legend="Walks that need travel to the start"
