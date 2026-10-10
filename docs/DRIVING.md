@@ -77,6 +77,11 @@ had one from all four.
 - **Not adopted: `routeType=thrilling`.** It does not reduce repeated road,
   routes through more signals, and does no better than B on turn-arounds.
 
+**Status:** IMPLEMENTED in `ab48c32` and unit-tested. The numbers above are
+developer measurements against TomTom's live API. Nobody has driven a route
+made with this change, so nothing here is a road test. No claim is made that
+drives are smoother: the measured jolts and stops did not change.
+
 ### What it does not fix
 
 - **Turn-arounds remain** on about half of routes. Most come from hard

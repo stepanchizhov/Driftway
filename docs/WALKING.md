@@ -72,10 +72,13 @@ Founder decisions, 9 Oct 2026, after using it:
 - **Greener or quieter**, for walks made from your start: openrouteservice's
   documented `green` and `quiet` weightings, which exist for walking routing
   only. A pram asking for either gets walking routing with steps still
-  avoided, and the card says so. Rivers, canals, seaside and "town" are not
-  offered by the provider and are not pretended; waterside would need our own
-  check against mapped water. Each generated walk shows its share along
-  streets and roads, from the provider's way types.
+  avoided, and the card says so - so for a pram, part of any difference comes
+  from the change of routing, not the weighting. Rivers, canals, seaside and
+  "town" are not offered by the provider and are not pretended; waterside
+  would need our own check against mapped water. Each generated walk shows its
+  share along streets and roads, from the provider's way types. **What they do
+  in practice is measured below** (Greener and quieter, 10 Oct): around
+  Windsor, nothing.
 - **From your doorstep versus needing travel.** A walk starting within 1 km of
   you is from your doorstep; further ones are listed separately with their
   distance, and can be hidden.
@@ -101,29 +104,143 @@ are not reported**, and every generated walk says so. Nobody has checked a
 generated walk on foot.
 
 Terms (openrouteservice Standard plan, reviewed by the founder 9 Oct 2026):
-results are CC-BY-SA 4.0 with attribution shown under the walks; personal data
-must not be sent, so requests go from the server with the start point only,
-the point is not logged, and generated walks are not stored. Usage is capped
+results are CC-BY-SA 4.0 with attribution shown under the walks.
+
+**What openrouteservice receives, exactly.** From Driftway's server, never
+the phone: the start point and, for a walk via a checkpoint, the checkpoint,
+both as precise coordinates; the walk options (routing profile, length,
+weighting, areas to avoid). No name, account, device id, label or search text
+goes with them. A precise start can still be someone's home, so it is location
+data about a person, and the earlier wording here ("personal data must not be
+sent... the start point only") overstated the position. Driftway does not
+store or log those points - provider error messages are logged with every
+number blanked, and validation errors no longer echo submitted values - and
+generated walks are not stored. What openrouteservice does with a request is
+governed by its terms, not by Driftway. Usage is capped
 at 10 generations a minute and 600 a day across everybody (three provider
 calls each, against the plan's 40 a minute and 2000 a day), and 4 a minute and
 30 an hour per account.
 
 **Status:** round trips confirmed working on production for pram and carrier
-by the founder, 9 Oct 2026.
+by the founder, 9 Oct 2026 (founder-tested). "Just me" is implemented and
+deployed, not founder-tested.
 
-**Via a place (checkpoint).** Founder request, 9 Oct. With a checkpoint, the
-walk goes from the start to it, then back with openrouteservice's documented
-`avoid_polygons` set to a 25 m corridor along the way out (left open for
-150 m at each end, where the two routes must meet), so the way back is a
-different one. If no different way back exists the walk returns the way it
-came and says so. A via-walk is never shortened by turning back, which would
-turn round before the checkpoint; its length follows from where the
-checkpoint is. The provider's `alternative_routes` option was not used: it is
-documented only in forum threads, and its settings' meaning could not be
-confirmed. **Not yet run against the live service.**
+## Checkpoints
+
+A checkpoint means **"visit this point"**, not "follow this avenue". Founder
+request, 9 Oct: a walk via the Long Walk went to the single midpoint the place
+search returned, not the stretch along the treeline the founder meant. Since
+10 Oct the checkpoint can be placed on the map. Multiple checkpoints, drawn
+corridors and dragging the route itself are LATER.
+
+**Choosing it** (IMPLEMENTED, `frontend/src/walking/checkpoint.ts`,
+`CheckpointPicker.tsx`):
+
+- "Choose on map" opens an explicit selection mode. Inside it a tap places
+  the one draft marker and dragging moves it; panning and zooming never do
+  (Leaflet reports a click only when the finger did not drag). The cross at
+  the centre with "Place at centre" does the same without precise gestures,
+  and from the keyboard.
+- "Use this point" confirms it as "Point on map"; "Cancel" restores the
+  checkpoint that was there before. "Remove checkpoint" clears it. Search
+  and map edit the same checkpoint.
+- The map is centred once, when it opens, and never re-fitted while choosing.
+- No provider is called while choosing - no routing and no reverse geocoding.
+  A confirmed or removed checkpoint is a changed setting: the Update bar
+  appears, and walks are made only on "Update walks", with the profile,
+  time and preferences unchanged.
+- The checkpoint is not remembered on the device after the page closes.
+- While settings are being edited, the walks on screen stay, marked as made
+  for the previous settings. An answer arriving for older settings is dropped
+  rather than shown.
+
+**What the provider does with it, and the policy** (DECISION, 10 Oct;
+`backend/core/walking/generate.py`):
+
+- Coordinates are checked finite and in range on both sides, and sent as
+  [lng, lat]. The provider snaps each point to the nearest way the profile may
+  use - for a pram, wheelchair routing, so never onto steps - and both legs of
+  the walk keep the profile's access options.
+- Within **25 m** of the parent's marker, the walk visits the marker. The 25 m
+  is a HYPOTHESIS: about a path's width plus a marker placed by finger.
+- Snapped further, up to **150 m**, the walks are made but not shown until the
+  parent has seen both points on the map and accepted the moved one, or moved
+  their marker. Distance alone does not show two places are equivalent: the
+  nearest path can be across a river, behind a fence or on the wrong side of a
+  wall. Accepting needs no new request, because the walks already go there.
+- Beyond 150 m, or with no route to the point, nothing is routed and the
+  parent is told why and asked to move it. No connector is ever drawn across
+  unmapped ground.
+- Every walk kept passes within 25 m of the routed point; a variant that
+  snapped elsewhere is dropped.
+- A checkpoint whose straight-line distance there and back already exceeds
+  the time (with the usual tolerance, 15% or 5 minutes) is refused before any
+  provider call, with the minimum time. Walks that turn out longer than asked
+  are shown with "longer than you asked for", plus an offer of a longer time
+  or a nearer checkpoint. A walk via a checkpoint is never shortened before
+  it gets there, and the time is never changed for the parent.
+- The way back avoids a 25 m corridor along the way out, left open for 150 m
+  at each end. If no wholly different way back exists - a single bridge, gate
+  or path can force that - the walk goes over some ground twice and says so,
+  with the share measured. If that is more than the retracing preference
+  allows, the walk is hidden with a count and a "Show it anyway" button,
+  never silently dropped.
+- The provider's `alternative_routes` option is still not used: it is
+  documented only in forum threads.
+
+**Live check, 10 Oct 2026** (developer, public points: the Long Walk's Park
+Street end to its midpoint, from the curated walk's own data; 15 calls):
+
+| Case | Result |
+|---|---|
+| Pram, 60 min | 1 walk, visits the point (0 m), 82 min, flagged longer. There and back: no wheelchair way back avoiding the avenue, and it says so |
+| Carrier, 60 min | 1 walk, 0 m, 78 min, a loop, flagged longer |
+| Just me, 60 min | 1 walk, 0 m, 78 min, a loop, flagged longer |
+| Just me, a marker about 80 m east of the avenue | Snapped 60 m: confirmation required |
+| Pram, the middle of Queen Mother Reservoir | "No mapped way suitable for a pram within 150 m" - after fixing the parser for the live error wording, which differs from the older one in forum threads |
+| Just me, 20 min | Refused before any call: "at least 57 minutes" |
+
+Only one walk came back per profile here: further variants either found no
+route avoiding the earlier ones or repeated them. Whether the founder's
+treeline is reachable this way needs the founder's own point - not guessed
+from a screenshot. Status: IMPLEMENTED, live-checked by the developer, **not
+founder-tested**, not yet seen on a phone.
 
 Map lines use saturated colours over a dark outline, chosen for a light map:
 the app's dark-theme pastels vanished over parks and fields.
+
+## Greener and quieter, measured (10 Oct 2026)
+
+The founder saw "all three modes rotate the same three routes". A controlled
+comparison, holding start, profile (carrier), length and seed constant
+(about 60 calls, public points in Windsor, Heidelberg and Berlin):
+
+- **The option reached the provider - in one form only.** `{"factor": 1.0}`
+  is refused (400, code 2002) in all three cities; the integer form
+  `{"green": 1}` is accepted. The integer form now goes first.
+- **Around Windsor, the geometry did not change.** It was identical to the
+  ordinary route in all four pairs tried: two point-to-point routes, one
+  through the town centre, and two loops. The provider's own per-stretch green
+  and noise values came back as one constant range along each Windsor route,
+  even through town. In Berlin and Heidelberg they vary stretch by stretch,
+  and the routes changed: Berlin greener shared 36% of its line with the
+  ordinary route, quieter 63%; Heidelberg quieter 37%; Heidelberg greener was
+  identical in the one pair tried.
+- **Not shown: that any route is greener or quieter.** A changed line proves
+  the weighting acted, not that the walk is better. The provider's values
+  were not checked against anything on the ground.
+- **Why the same three walks came back:** round-trip seeds (1, 2, 3) set the
+  directions of the three loops whatever the character. With no data to weigh,
+  the walks were the same, and greener or quieter re-sorted them by their
+  share along roads.
+
+So: no wiring or caching defect beyond the refused form. HYPOTHESIS: the
+public service has no green or noise data for Great Britain. Weighted walks
+now ask for that data and say when it does not vary along the walk, and the
+preference explains that it depends on the provider's data. The smallest next
+experiment, if the option is to mean something in the UK: score candidate
+walks against mapped parks and main roads ourselves (OSM), rather than rely
+on provider weighting.
 
 ## Access
 
@@ -328,12 +445,14 @@ person.
   map is the way to follow a walk; the checkpoint link says so.
 - **Navigation handoff.** "Directions to the start" opens Google Maps to the
   start point only. It will not follow the walk and the screen says so.
-- **Not yet seen rendered.** Typechecked and built; the founder's phone is the
-  first look.
+- **The checkpoint picker has not been seen on a phone.** Typechecked, built
+  and its rules unit-tested; the founder's phone is the first look. The rest
+  of the Walk tab has been used on the founder's phone since 9 Oct.
 
 ## Next
 
-1. The founder's circuit, from GPX and notes.
+1. The founder places a checkpoint on the treeline route on a phone (see the
+   checklist in the handover).
 2. The two Windsor walks walked once and annotated, so at least one walk has
    `reported` evidence end to end.
 3. Feedback from a few parents with different equipment, per the Bible's first

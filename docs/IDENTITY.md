@@ -109,6 +109,23 @@ Staging-only, HttpOnly, `SameSite=Lax`, `Secure` when the request is HTTPS.
 shape for these endpoints. **A real provider integration should revisit this
 properly** rather than inherit the assumption.
 
+### Auth0 sessions on the phone — what is and isn't verified (10 Oct 2026)
+
+| Item | State |
+|---|---|
+| The app asks for refresh tokens and keeps them in `localStorage` (`AuthProvider.tsx`) | IMPLEMENTED, deployed |
+| Refresh-token rotation on the SPA application | Founder-reported enabled in the Auth0 dashboard (screenshot, 9 Oct). Not inspected by the developer |
+| "Allow Offline Access" on the API | **Unverified.** The toggle could not be found in the current dashboard |
+| The phone staying signed in | Being watched by the founder |
+
+If the phone stays signed in, that shows **observed session continuity**. It
+does not show which mechanism provides it. A refresh token would do it, but so
+could Auth0's own session being renewed silently. So "Allow Offline Access"
+stays unverified until someone finds and inspects the setting, or until a
+refresh-token grant is seen in the browser's network log. Rotation limits the
+damage of a stolen refresh token; it does not remove the `localStorage`
+exposure.
+
 ### Disabling and deletion
 
 `POST /api/admin/accounts/{id}/disable` (admin token) disables an account and
