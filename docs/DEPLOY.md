@@ -550,3 +550,49 @@ broken.
   none for 5 minutes.
 - With the real keys, `run_checks` found every provider answering.
 
+### Fallback audit (0.8, 10 Oct 2026)
+
+Checked against the product rule that a stand-in may change the provider,
+never the request, and must say what it cannot do.
+
+- **What the stand-in keeps.** Drives keep their mode (car), start,
+  destination, shaping points and "avoid motorways" (TomTom
+  `avoid=motorways`, openrouteservice `avoid_features: highways`). The
+  navigation link is built from the same points, as before. The time is a
+  typical one, and the card says so: "route and time from openrouteservice
+  ... without live traffic".
+- **Meet Halfway.** One matrix call answers a whole comparison, so its
+  times never mix traffic-aware and typical estimates. When the stand-in
+  answered, the meetup says so ("typical ones without live traffic ...
+  compared on the same basis"). The note is stored with the results, so a
+  results link opened later says it too. Tested in
+  `tests/test_meet_halfway_m5.py`. A comparison made before a TomTom outage
+  and one made during it can differ; each is labelled.
+- **What does not stand down TomTom.** "No route between these points" (a
+  4xx about the request). Only refusals (401, 403), throttling after
+  retries (429), server errors (5xx) and network failure do. TomTom gets at
+  most 3 attempts per route. openrouteservice's second address gets one
+  try, and only for a refusal, throttle, server error or network failure.
+  A failed TomTom search goes to the stand-in for that search alone; search
+  has no cooldown.
+- **Walks have no stand-in.** If openrouteservice fails, only curated walks
+  work, and the Walk tab says the provider isn't making walks. Map images
+  have no stand-in either. "Every provider has a stand-in" would be wrong.
+- **Budgets and state are per process.** These all live in memory in each
+  API process:
+  - openrouteservice call budgets (`core/ors.py`);
+  - TomTom's stood-down state (`core/router.py`);
+  - the provider-check cache.
+
+  The Render API runs one instance today (founder: Pro plan). With
+  several, each would count and remember separately, allowing up to that
+  many times the budget. Nothing here is enforced across instances; the
+  provider's own quota is the final limit.
+- **The daily check is meaningful, and bounded.** A result is at most 6
+  hours old, and `checked_at` says when it was taken. The public endpoint
+  can cause at most 4 real checks a day per process, about 7 provider calls
+  each.
+- **Routine tests never reach a provider.** `tests/__init__.py` blanks
+  `ORS_API_KEY` before `backend/.env` can supply it. Every provider test
+  uses a mocked transport.
+

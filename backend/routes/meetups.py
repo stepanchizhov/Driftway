@@ -770,6 +770,12 @@ async def generate_candidates(
         [Coord(lat=v.lat, lng=v.lng) for v in venues],
         road_profile,
     )
+    # One matrix call answers the whole comparison, so every time in it has
+    # the same basis. When the stand-in answered it (TomTom unavailable, see
+    # core/router.py), the times are typical ones without live traffic, and
+    # the meetup says so - also later, from the results link.
+    basis = ({"travel_basis": NO_LIVE_TRAFFIC}
+             if getattr(routing, "name", "") == "openrouteservice" else {})
 
     needs = [
         ParticipantNeed(
@@ -805,11 +811,11 @@ async def generate_candidates(
         venue.total_travel_minutes = sc.total_burden
         venue.max_travel_minutes = sc.max_burden
         venue.score = float(len(result.ordered) - rank)
-        venue.score_breakdown = json.dumps(sc.breakdown)
+        venue.score_breakdown = json.dumps({**sc.breakdown, **basis})
     for sc in scores:
         if sc.unroutable:
             venues[sc.venue_index].score = -1.0
-            venues[sc.venue_index].score_breakdown = json.dumps(sc.breakdown)
+            venues[sc.venue_index].score_breakdown = json.dumps({**sc.breakdown, **basis})
     meetup.status = "ready" if result.ordered else "collecting"
     repo.save()
 
@@ -910,12 +916,26 @@ def vote(
     return _view(repo, meetup, viewer_id=participant.id)
 
 
+#: Stored with each candidate when the stand-in measured the travel times.
+NO_LIVE_TRAFFIC = "no_live_traffic"
+NO_LIVE_TRAFFIC_NOTE = (
+    "Travel times here are typical ones without live traffic, from "
+    "openrouteservice by HeiGIT (map data © OpenStreetMap contributors), "
+    "because our usual route provider wasn't answering. They are compared on "
+    "the same basis, but real times on the day may differ."
+)
+
+
 def _view(repo, meetup, *, viewer_id, include_slug: bool = False,
           notice: Optional[str] = None, no_fit: bool = False) -> MeetupPublic:
+    candidates = repo.candidates(meetup.id)
+    if any(f'"travel_basis": "{NO_LIVE_TRAFFIC}"' in (c.score_breakdown or "")
+           for c in candidates):
+        notice = f"{notice} {NO_LIVE_TRAFFIC_NOTE}" if notice else NO_LIVE_TRAFFIC_NOTE
     return meetup_public(
         meetup,
         repo.participants(meetup.id),
-        repo.candidates(meetup.id),
+        candidates,
         repo.votes(meetup.id),
         viewer_id=viewer_id,
         include_results_slug=include_slug,

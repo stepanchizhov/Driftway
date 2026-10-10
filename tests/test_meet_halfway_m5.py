@@ -203,3 +203,50 @@ class DelayedArrivalHandoffTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TravelBasisTests(unittest.TestCase):
+    """0.8: when TomTom is unavailable the stand-in measures a meetup's travel
+    times without live traffic. One matrix call answers the whole comparison,
+    so the basis is consistent - but the parents are told, then and later."""
+
+    def setUp(self):
+        self.client = _fresh_app()
+
+    def tearDown(self):
+        self.client.close()
+
+    def _run(self, provider_name):
+        from unittest import mock
+        import routes.meetups as meetups
+
+        class FakeRouter:
+            name = provider_name
+
+            async def travel_matrix(self, origins, destinations, profile):
+                return [[20.0 for _ in destinations] for _ in origins]
+
+        made = self.client.post("/api/meetups", json={
+            "mode": "explore", "categories": [],
+            "organiser": {"start": ORIGIN_A, "display_name": "A"},
+        }).json()
+        mid, a, b = (made["meetup_id"], made["your_join_token"],
+                     made["participant_invite_token"])
+        self.client.post(f"/api/meetups/{mid}/participants/{b}",
+                         json={"start": ORIGIN_B, "display_name": "B"})
+        self.client.post(f"/api/meetups/{mid}/venues/{a}",
+                         json={"name": "The Park", "coord": VENUE})
+        with mock.patch.object(meetups, "get_router", lambda: FakeRouter()):
+            ranked = self.client.post(f"/api/meetups/{mid}/candidates/{a}").json()
+        later = self.client.get(f"/api/meetups/{mid}/{a}").json()
+        return ranked, later
+
+    def test_times_from_the_stand_in_say_they_have_no_live_traffic(self):
+        ranked, later = self._run("openrouteservice")
+        self.assertIn("without live traffic", ranked["notice"] or "")
+        self.assertIn("without live traffic", later["notice"] or "")
+
+    def test_live_traffic_times_carry_no_such_note(self):
+        ranked, later = self._run("tomtom")
+        self.assertNotIn("without live traffic", ranked.get("notice") or "")
+        self.assertNotIn("without live traffic", later.get("notice") or "")
