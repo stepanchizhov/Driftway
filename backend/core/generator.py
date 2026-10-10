@@ -343,8 +343,21 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         extra_minutes=extra,
         is_direct=is_direct,
         simulated=simulated,
-        caveat=_caveat(ev, finish, req) if not is_direct else None,
+        caveat=_with_traffic_note(ev, _caveat(ev, finish, req) if not is_direct else None),
     )
+
+
+#: Said on a route whose time has no live traffic in it - one made by the
+#: stand-in provider while TomTom is unavailable.
+NO_TRAFFIC_NOTE = ("route and time from openrouteservice by HeiGIT (map data © "
+                   "OpenStreetMap contributors), without live traffic, because "
+                   "our usual route provider isn't answering")
+
+
+def _with_traffic_note(ev: EvaluatedRoute, caveat: Optional[str]) -> Optional[str]:
+    if ev.live_traffic:
+        return caveat
+    return f"{caveat}; {NO_TRAFFIC_NOTE}" if caveat else NO_TRAFFIC_NOTE
 
 
 def _notice(options: List[RouteOption], req: GenerateRequest,

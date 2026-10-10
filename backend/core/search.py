@@ -11,6 +11,9 @@ server. A key shipped to the browser is a key anyone can lift from devtools.
 Providers mirror the routing adapter pattern in router.py:
   - MockSearch:   a handful of fixed places, so the app runs with no key.
   - TomTomSearch: Fuzzy Search, verified against the live UK dataset.
+  - PeliasSearch: openrouteservice's place search - the stand-in when TomTom
+                  cannot answer (10 Oct 2026).
+  - FailoverSearch: TomTom first, then the stand-in.
 
 Verified against api.tomtom.com/search/2 on 9 Sep 2026:
   - "SL4 1NJ" and "sl41nj" both resolve; the endpoint is already tolerant of
@@ -268,18 +271,121 @@ class SearchUnavailable(RuntimeError):
 
 
 # --------------------------------------------------------------------------
+# openrouteservice place search (Pelias): the stand-in
+# --------------------------------------------------------------------------
+
+# Pelias layer -> (our kind, approximate). Checked live 10 Oct 2026 on
+# api.heigit.org/pelias/v1: "SL4 1NJ" came back as layer "postalcode" with
+# name "SL4 1NJ"; "windsor leisure" as layer "venue".
+_PELIAS_KIND = {
+    "venue": ("poi", False),
+    "address": ("address", False),
+    "street": ("street", True),
+    "postalcode": ("postcode", False),
+}
+
+
+class PeliasSearch:
+    """openrouteservice's autocomplete, with the key walks already use.
+
+    Coverage is OpenStreetMap plus open address data, not TomTom's: fewer
+    shop names and house numbers, so results can be thinner. Shares the
+    geocoding quota (3000 a day) counted in core/ors.py.
+    """
+
+    name = "openrouteservice"
+
+    def __init__(self, client: Optional[httpx.AsyncClient] = None):
+        self._client = client or httpx.AsyncClient(timeout=8.0)
+
+    async def search(self, query: str, near: Optional[Coord], limit: int) -> List[Place]:
+        from core import ors
+        clean = normalise_query(query)
+        if len(clean) < 2:
+            return []
+        params = {"text": clean, "size": min(max(limit * 2, limit), 20)}
+        if near is not None:
+            params["focus.point.lat"] = f"{near.lat:.6f}"
+            params["focus.point.lon"] = f"{near.lng:.6f}"
+        else:
+            params["boundary.country"] = default_country()
+        try:
+            resp = await ors.request(self._client, "GET", "/autocomplete", "geocode",
+                                     params=params)
+        except ors.OrsBudgetSpent as e:
+            raise SearchUnavailable("Address search is busy. Try again in a moment.") from e
+        except httpx.HTTPError as e:
+            log.warning("place search transport error: %s", type(e).__name__)
+            raise SearchUnavailable("Could not reach the address search.") from e
+        if resp.status_code != 200:
+            log.warning("place search HTTP %s", resp.status_code)
+            raise SearchUnavailable("Address search failed.")
+        places: List[Place] = []
+        for f in resp.json().get("features") or []:
+            props = f.get("properties") or {}
+            coords = (f.get("geometry") or {}).get("coordinates") or []
+            if len(coords) < 2:
+                continue
+            coord = Coord(lat=coords[1], lng=coords[0])
+            label = props.get("name") or "Unnamed place"
+            detail = str(props.get("label") or "")
+            if detail.startswith(label + ", "):
+                detail = detail[len(label) + 2:]
+            detail = detail.removesuffix(", United Kingdom")
+            kind, approximate = _PELIAS_KIND.get(props.get("layer"), ("place", True))
+            if kind == "postcode" and not _POSTCODE_RE.match(label):
+                kind, approximate = "postcode_area", True
+            if any(p.label == label and haversine_km(p.coord, coord) < _DEDUPE_KM
+                   for p in places):
+                continue
+            places.append(Place(id=str(props.get("gid") or f"{coord.lat:.5f},{coord.lng:.5f}"),
+                                label=label, detail=detail, coord=coord, kind=kind,
+                                approximate=approximate))
+            if len(places) >= limit:
+                break
+        return places
+
+
+class FailoverSearch:
+    """TomTom first; if it cannot answer, openrouteservice's place search.
+    "No matches" is an answer and is not asked again elsewhere."""
+
+    def __init__(self, primary, backup):
+        self.primary = primary
+        self.backup = backup
+        self.name = primary.name
+
+    async def search(self, query: str, near: Optional[Coord], limit: int) -> List[Place]:
+        try:
+            return await self.primary.search(query, near, limit)
+        except SearchUnavailable:
+            log.warning("TomTom search unavailable; using openrouteservice place search")
+            self.name = self.backup.name
+            return await self.backup.search(query, near, limit)
+
+
+# --------------------------------------------------------------------------
 # Factory
 # --------------------------------------------------------------------------
 
 def get_search() -> SearchProvider:
+    """TomTom, with openrouteservice's place search standing in when TomTom
+    cannot answer - if an openrouteservice key is set."""
+    from core import ors
     provider = os.getenv("SEARCH_PROVIDER", os.getenv("ROUTING_PROVIDER", "mock")).lower()
     if provider == "tomtom":
         key = os.getenv("TOMTOM_API_KEY", "").strip()
         if not key:
+            if ors.configured():
+                log.warning("TOMTOM_API_KEY is empty; searching with openrouteservice")
+                return PeliasSearch()
             log.warning(
                 "search provider is tomtom but TOMTOM_API_KEY is empty; "
                 "using the built-in sample places instead"
             )
             return MockSearch()
-        return TomTomSearch(api_key=key)
+        primary = TomTomSearch(api_key=key)
+        return FailoverSearch(primary, PeliasSearch()) if ors.configured() else primary
+    if provider == "openrouteservice" and ors.configured():
+        return PeliasSearch()
     return MockSearch()

@@ -60,7 +60,8 @@ def ors_error(code, point, live=True):
 class _Base(unittest.TestCase):
     def setUp(self):
         from core.walking import generate as gen
-        gen._CALL_BUDGET = None
+        from core import ors
+        ors.reset_budgets()
         gen._WEIGHT_FORM = None
         os.environ["ORS_API_KEY"] = "test-key"
 
@@ -317,7 +318,8 @@ class EndpointTests(unittest.TestCase):
         os.environ["WALKING_ENABLED"] = "true"
         os.environ["ORS_API_KEY"] = "test-key"
         from core.walking import generate as gen
-        gen._CALL_BUDGET = None
+        from core import ors
+        ors.reset_budgets()
         gen._WEIGHT_FORM = None
         self.client, _ = _fresh()
         minted = self.client.post("/api/admin/beta-invites",

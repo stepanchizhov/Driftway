@@ -491,3 +491,62 @@ with the organisation id, the endpoint (`POST /v2/directions/{profile}/geojson`)
 the times, and the response body. Never post the key itself. A separate
 developer key would still be good hygiene, but this incident was not caused
 by quota use.
+
+## Providers and contingency (10 Oct 2026)
+
+Founder request after openrouteservice moved its API: a plan for losing any
+outside service, free where possible. What is in place, and what is not:
+
+| Service | Carries | If it fails | Stand-in now | Paid options (founder decision) |
+|---|---|---|---|---|
+| TomTom | Drives, Meet Halfway travel times, place search | Stands down for 5 minutes after a refusal (key, quota), throttling, a server error or no network, then is tried again | **openrouteservice** driving routes, matrix and place search, with the key walks already use. Routes say their time has no live traffic and credit openrouteservice; search results credit it too | A paid TomTom plan (to confirm), or GraphHopper (Basic listed at about €56 a month; to confirm) |
+| openrouteservice | Walks made from a start; and now TomTom's stand-in | Walks say the provider isn't making walks; curated walks still work | A **second openrouteservice address** can be set (`ORS_FALLBACK_BASE_URL`, `ORS_FALLBACK_API_KEY`) and is tried when the first refuses or fails. None is set yet | A self-hosted openrouteservice for Great Britain on a rented server (memory and price to measure before choosing); GraphHopper (its free plan is non-commercial only) |
+| Auth0 | Sign-in, beta admission | Signed-out use carries on: planning, saved-on-device, meetups by link. Beta features wait | None needed | - |
+| OpenStreetMap map images | The walk map | Blank map; the walk card and its findings still show | None yet | A paid map image service, if the beta grows (OSM's tile policy allows light use only) |
+| Render | The API, the site, the database | Database outages already degrade, not crash (`storage` on `/api/health`) | - | - |
+| GitHub Actions | Retention, provider check | A missed run catches up the next day | A local scheduled task (see Retention) | - |
+
+Free substitutes that were checked and **not** adopted:
+
+- **FOSSGIS Valhalla:** its public server is for development and testing only.
+- **GraphHopper's free plan:** non-commercial use only.
+
+**Knowing before a parent does:**
+
+- `/api/health/providers` makes one small real call to each provider. It is
+  cached for 6 hours, so this public endpoint cannot spend their quotas.
+- `.github/workflows/providers.yml` calls it daily at 06:40 UTC. The run fails
+  - and GitHub emails the repository owner - when any provider does not
+  answer. It warns, without failing, when a provider sends a `Deprecation` or
+  `Sunset` header.
+- `/api/health` now has `fallbacks`: what stands in for TomTom, whether it is
+  standing in right now, and whether a second openrouteservice address is set.
+
+**Quotas the stand-in shares** (openrouteservice Standard plan, read from its
+dashboard and headers on 10 Oct 2026): directions 2000 a day, matrix 500,
+place search 3000, at 40 / 40 / 100 a minute. Walks and the TomTom stand-in
+share these, so Driftway counts them in one place (`backend/core/ors.py`),
+just under each limit. A long TomTom outage on a busy day could exhaust
+them. That is the point at which a paid plan or a self-hosted openrouteservice
+is worth buying.
+
+**Watching announcements:** providers announce changes on their own channels.
+
+- openrouteservice: ask.openrouteservice.org, Announcements.
+- TomTom: its developer portal news.
+- Auth0: its status page and changelog.
+
+The daily check catches what these miss, but only once something has already
+broken.
+
+**Live check, 10 Oct 2026**, with TomTom given a wrong key on purpose:
+
+- A 30-minute loop came back with three real routes, each with a navigation
+  link and the no-live-traffic note.
+- "SL4 1NJ" resolved through the stand-in's place search.
+- The matrix answered.
+- The first request sent its eight candidates to TomTom at once, before the
+  first refusal stood it down: one burst of refused calls per outage, then
+  none for 5 minutes.
+- With the real keys, `run_checks` found every provider answering.
+

@@ -51,14 +51,16 @@ log = logging.getLogger("driftway")
 #: deprecated from 28 Apr 2026, cut to 10% of plan quota from 27 Aug, due off
 #: 28 Sep). Driftway kept calling the old host, and from 10 Oct every request
 #: was refused "Quota exceeded" while the dashboard - which counts the new
-#: host - showed the quota unused. Overridable with ORS_BASE_URL so the next
-#: move is a setting, not a deploy.
-ORS_BASE_DEFAULT = "https://api.heigit.org/openrouteservice"
+#: host - showed the quota unused. The address, a fallback address and the
+#: shared call budget live in core/ors.py; ORS_BASE_URL changes the address
+#: without a deploy.
+from core import ors  # noqa: E402
+
+DIRECTIONS_PATH = "/v2/directions/{profile}/geojson"
 
 
 def _ors_url() -> str:
-    base = (os.getenv("ORS_BASE_URL") or ORS_BASE_DEFAULT).strip().rstrip("/")
-    return base + "/v2/directions/{profile}/geojson"
+    return ors.base_url() + DIRECTIONS_PATH
 
 
 ORS_URL = _ors_url()
@@ -100,24 +102,21 @@ class GenerationUnavailable(RuntimeError):
     """Generation cannot run - not configured, or the provider failed."""
 
 
-#: Every openrouteservice call, across everybody. The free plan allows 40 a
-#: minute and 2000 a day; a walk via a checkpoint can now take several calls,
-#: so the budget is counted in calls, not in walks requested.
-_CALL_BUDGET = None
-CALL_WINDOWS = ((60, 35), (86400, 1800))
-
-
 def _spend() -> None:
-    """Count one provider call, or refuse it if the budget is spent."""
-    global _CALL_BUDGET
-    from core.ratelimit import RateLimited, SlidingWindowLimiter, _Window
-    if _CALL_BUDGET is None:
-        _CALL_BUDGET = SlidingWindowLimiter()
+    """Count one provider call against the directions budget shared with the
+    driving fallback (core/ors.py), or refuse it if that is spent. Counted in
+    calls, not walks: a walk via a checkpoint can take several."""
     try:
-        _CALL_BUDGET.check("*", [_Window(a, b) for a, b in CALL_WINDOWS], scope="service")
-    except RateLimited:
+        ors.spend("directions")
+    except ors.OrsBudgetSpent:
         raise GenerationUnavailable(
             "Lots of walks are being made just now. Please try again in a minute.")
+
+
+async def _post(client: httpx.AsyncClient, ors_profile: str, body: Dict) -> httpx.Response:
+    """One directions call, already counted, with the fallback address."""
+    return await ors.request(client, "POST", DIRECTIONS_PATH.format(profile=ors_profile),
+                             "directions", count=False, json=body)
 
 
 class ProviderRefused(GenerationUnavailable):
@@ -368,8 +367,7 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
                 ors_profile, body = request_body(start, profile, minutes, seed,
                                                  character, form)
                 _spend()
-                resp = await client.post(ORS_URL.format(profile=ors_profile), json=body,
-                                         headers={"Authorization": key})
+                resp = await _post(client, ors_profile, body)
                 if resp.status_code == 200:
                     if form is not None:
                         _WEIGHT_FORM = form
@@ -746,14 +744,13 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
 
     own = client is None
     client = client or httpx.AsyncClient(timeout=20.0)
-    headers = {"Authorization": key}
     found: List[Tuple[Dict, Optional[str]]] = []
     used: List[Dict] = []        # corridors of every line found so far
     dropped = 0
 
-    async def post(url, req):
+    async def post(ors_profile, req):
         _spend()
-        return await client.post(url, json=req, headers=headers)
+        return await _post(client, ors_profile, req)
 
     def feature(resp):
         if resp.status_code == 200 and resp.json().get("features"):
@@ -764,7 +761,7 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         # The way out for the first variant, learning which weighting form works.
         for form in forms:
             ors_profile, base = make_base(form)
-            url = ORS_URL.format(profile=ors_profile)
+            url = ors_profile
             r1 = await post(url, body(base, start, via))
             if r1.status_code != 400 or form is None:
                 break

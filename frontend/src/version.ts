@@ -35,6 +35,7 @@ export const RELEASES: Release[] = [
       "Greener and Quieter now reach the route provider in the form it accepts. A walk says when the provider has no data to make a difference, as around Windsor.",
       "Walks can be made again: the route provider had moved to a new address.",
       "When the route provider refuses to make walks, the Walk tab says so, instead of saying a place can't be reached.",
+      "If our usual route provider stops answering, drives, Meet Halfway and place search carry on with a stand-in, and say their times have no live traffic.",
       "Drives try not to use the same road twice: fewer turn-arounds in testing.",
       "This version history, and the version and build shown in Settings.",
     ],

@@ -92,7 +92,7 @@ export async function searchPlaces(
   query: string,
   near: { lat: number; lng: number } | null,
   signal?: AbortSignal,
-): Promise<Place[]> {
+): Promise<{ places: Place[]; provider: string }> {
   const params = new URLSearchParams({ q: query });
   if (near) {
     params.set("lat", String(near.lat));
@@ -117,7 +117,9 @@ export async function searchPlaces(
     );
   }
   const body: SearchResponse = await res.json();
-  return body.places;
+  // The provider is returned so results from the stand-in can carry its
+  // attribution, which its terms require wherever they are shown.
+  return { places: body.places, provider: body.provider ?? "" };
 }
 
 export async function sendFeedback(fb: FeedbackRequest): Promise<void> {

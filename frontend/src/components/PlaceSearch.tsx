@@ -65,6 +65,7 @@ export function PlaceSearch({
   const [status, setStatus] = useState<"idle" | "loading" | "empty" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [provider, setProvider] = useState("");
 
   // Monotonic request id. Only the newest may write to state.
   const latestRequest = useRef(0);
@@ -80,9 +81,10 @@ export function PlaceSearch({
       setStatus("loading");
       setMessage(null);
       try {
-        const places = await searchPlaces(text, near ?? null, controller.signal);
+        const { places, provider } = await searchPlaces(text, near ?? null, controller.signal);
         if (seq !== latestRequest.current) return; // a newer query superseded this
         setResults(places);
+        setProvider(provider);
         setStatus(places.length ? "idle" : "empty");
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -224,6 +226,13 @@ export function PlaceSearch({
             </li>
           ))}
         </ul>
+      )}
+      {results.length > 0 && provider === "openrouteservice" && (
+        // Shown when the usual search provider isn't answering and the
+        // stand-in found these; its terms require the attribution.
+        <p className="ps-note">
+          Results from openrouteservice by HeiGIT · © OpenStreetMap contributors
+        </p>
       )}
     </div>
   );

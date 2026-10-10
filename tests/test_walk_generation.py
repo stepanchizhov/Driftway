@@ -49,7 +49,8 @@ class _FreshBudget(unittest.TestCase):
 
     def setUp(self):
         from core.walking import generate as gen
-        gen._CALL_BUDGET = None
+        from core import ors
+        ors.reset_budgets()
         gen._WEIGHT_FORM = None
 
 
@@ -429,12 +430,13 @@ class ViaAlternativesTests(_FreshBudget):
 
     def test_calls_stop_when_the_budget_is_spent(self):
         from core.walking import generate as gen
-        gen.CALL_WINDOWS_SAVED = gen.CALL_WINDOWS
-        gen.CALL_WINDOWS = ((60, 2), (86400, 1800))
+        from core import ors
+        saved = ors.WINDOWS["directions"]
+        ors.WINDOWS["directions"] = ((60, 2), (86400, 1800))
         try:
             routes, calls = self._run(distinct=True)
         finally:
-            gen.CALL_WINDOWS = gen.CALL_WINDOWS_SAVED
+            ors.WINDOWS["directions"] = saved
         self.assertEqual(len(calls), 2)          # refused after the budget
         self.assertEqual(len(routes), 1)         # what was found is kept
 

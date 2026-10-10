@@ -198,6 +198,29 @@ def feedback(
     return {"ok": True, "id": row.id}
 
 
+def _fallbacks() -> dict:
+    from core import ors
+    from core.router import tomtom_status
+    return {
+        "driving_and_search": "openrouteservice" if ors.configured() else None,
+        "tomtom_stood_down": not tomtom_status()["available"],
+        "walks_second_address": bool(ors.fallback()),
+    }
+
+
+@router.get("/health/providers")
+async def health_providers():
+    """One small real call to each outside service, at most every few hours.
+
+    Run daily by .github/workflows/providers.yml, whose run fails - and so
+    emails the repository owner - when any provider is not answering. Added
+    10 Oct 2026, after openrouteservice moved its API and walks failed for a
+    day before anyone knew. See core/provider_check.py.
+    """
+    from core.provider_check import cached_checks
+    return await cached_checks()
+
+
 @router.get("/health")
 async def health():
     # Storage is reported separately from overall health on purpose: the API
@@ -208,6 +231,8 @@ async def health():
         # Which release and commit is answering, so a tester can tell whether
         # the app on their phone and the server are from the same build.
         "version": {"app": APP_VERSION, "build": build()},
+        # What stands in when TomTom fails, and whether it is standing in now.
+        "fallbacks": _fallbacks(),
         "provider": get_router().name,
         "search": get_search().name,
         "storage": "ok" if storage_available() else "unavailable",

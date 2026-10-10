@@ -1,0 +1,47 @@
+# Daily check that every outside service Driftway depends on still answers.
+#
+# Added 10 Oct 2026: openrouteservice moved its API to a new address, the old
+# one began refusing every request, and walks failed for a day before anyone
+# noticed. This calls the API's provider check, which makes one small real
+# call to each provider (TomTom routing and search, openrouteservice
+# directions, place search and matrix, Auth0, OpenStreetMap map images). If
+# any is not answering - or the check cannot be reached - the run fails, and
+# GitHub emails the repository owner about a failed scheduled run.
+#
+# No secrets: the check runs on the API with the API's own keys, and the
+# endpoint is public but answers from a cache, so it cannot be used to spend
+# the providers' quotas. See backend/core/provider_check.py.
+
+name: Provider check
+
+on:
+  schedule:
+    # 06:40 UTC: before the day's use, away from the top of the hour (GitHub
+    # delays and can drop scheduled runs there), and after retention at 03:15.
+    - cron: "40 6 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the API whether each provider answers
+        env:
+          API: https://driftway.onrender.com
+        run: |
+          body=$(curl --fail-with-body --silent --show-error \
+            --max-time 120 --retry 2 --retry-delay 30 --retry-all-errors \
+            "$API/api/health/providers")
+          echo "$body" | jq .
+          if [ "$(echo "$body" | jq -r '.ok')" != "true" ]; then
+            echo "::error::A provider is not answering:"
+            echo "$body" | jq -r '.providers | to_entries[] | select(.value.ok != true) | "\(.key): \(.value.status) \(.value.detail // "")"'
+            exit 1
+          fi
+          warnings=$(echo "$body" | jq -r '.providers | to_entries[] | select(.value.warning) | "\(.key): \(.value.warning)"')
+          if [ -n "$warnings" ]; then
+            echo "::warning::A provider is announcing a change: $warnings"
+          fi

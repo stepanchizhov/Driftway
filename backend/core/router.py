@@ -9,6 +9,9 @@ Implementations:
   - MockRouter:   no API key needed. Estimates duration/distance from geometry
                   so the whole pipeline runs end-to-end on your laptop.
   - TomTomRouter: real traffic-aware routing via TomTom Calculate Route.
+  - ORSRouter:    openrouteservice driving routes and matrix - real roads, but
+                  no live traffic. The stand-in when TomTom cannot answer.
+  - FailoverRouter: TomTom first; openrouteservice while TomTom is failing.
 
 Both return the same EvaluatedRoute shape.
 """
@@ -40,6 +43,9 @@ class EvaluatedRoute:
     geometry: List[Coord] = field(default_factory=list)  # full path, if provided
     has_uturn: bool = False
     raw: Optional[dict] = None
+    #: False when the time comes from a provider without live traffic; the
+    #: route then says so rather than presenting a guess as a live estimate.
+    live_traffic: bool = True
 
 
 class Router(Protocol):
@@ -154,6 +160,34 @@ class _RateLimiter:
 _TOMTOM_RATE = 4.0
 _TOMTOM_MAX_RETRIES = 3
 
+#: How long TomTom is treated as down after it refuses or fails, before it is
+#: tried again. Module-level because a router is made per request, and the
+#: whole point is that the next request does not wait on a dead provider.
+TOMTOM_COOLDOWN_S = 300.0
+_tomtom_down_until = 0.0
+_tomtom_down_reason = ""
+
+
+def tomtom_available() -> bool:
+    import time
+    return time.monotonic() >= _tomtom_down_until
+
+
+def _tomtom_failed(reason: str) -> None:
+    """TomTom refused (key, quota) or broke (5xx, network): stand it down."""
+    global _tomtom_down_until, _tomtom_down_reason
+    import time
+    if tomtom_available():
+        log.error("TomTom unavailable (%s); using the fallback for %.0f s",
+                  reason, TOMTOM_COOLDOWN_S)
+    _tomtom_down_until = time.monotonic() + TOMTOM_COOLDOWN_S
+    _tomtom_down_reason = reason
+
+
+def tomtom_status() -> dict:
+    return {"available": tomtom_available(),
+            "reason": None if tomtom_available() else _tomtom_down_reason}
+
 
 class TomTomRouter:
     name = "tomtom"
@@ -197,18 +231,23 @@ class TomTomRouter:
             params["routeType"] = "fastest"
 
         data = None
+        failure = None          # why TomTom itself failed, if it did
         for attempt in range(_TOMTOM_MAX_RETRIES):
             await self._limiter.wait()
             try:
                 resp = await self._client.get(url, params=params)
             except httpx.HTTPError as e:
-                log.warning("TomTom request error: %s", e)
+                # The type only: an httpx error's text includes the URL, and
+                # the URL carries the key.
+                log.warning("TomTom request error: %s", type(e).__name__)
+                failure = f"network: {type(e).__name__}"
                 continue  # transient; retry
 
             if resp.status_code == 429:
                 # Throttled. Back off a little and retry.
                 wait_s = 0.5 * (attempt + 1)
                 log.warning("TomTom 429 (throttled); backing off %.1fs", wait_s)
+                failure = "throttled (429)"
                 await asyncio.sleep(wait_s)
                 continue
             if resp.status_code in (401, 403):
@@ -219,9 +258,17 @@ class TomTomRouter:
                     resp.status_code,
                     resp.text,
                 )
+                _tomtom_failed(f"refused ({resp.status_code})")
                 return None
-            if resp.status_code >= 400:
+            if resp.status_code >= 500:
                 log.warning("TomTom %s: %.200s", resp.status_code, resp.text)
+                failure = f"server error ({resp.status_code})"
+                continue
+            if resp.status_code >= 400:
+                # About this request (no route between these points), not
+                # about TomTom: not a reason to stand it down.
+                log.warning("TomTom %s: %.200s", resp.status_code, resp.text)
+                failure = None
                 continue
             try:
                 data = resp.json()
@@ -231,6 +278,8 @@ class TomTomRouter:
                 continue
 
         if data is None:
+            if failure:
+                _tomtom_failed(failure)
             return None  # all attempts failed; caller treats as "candidate failed"
 
         routes = data.get("routes") or []
@@ -285,10 +334,13 @@ class TomTomRouter:
             )
         except httpx.HTTPError as e:
             log.warning("TomTom matrix transport error: %s", type(e).__name__)
+            _tomtom_failed(f"network: {type(e).__name__}")
             return grid
 
         if resp.status_code >= 400:
             log.warning("TomTom matrix HTTP %s: %.160s", resp.status_code, resp.text)
+            if resp.status_code in (401, 403, 429) or resp.status_code >= 500:
+                _tomtom_failed(f"matrix {resp.status_code}")
             return grid
 
         try:
@@ -307,6 +359,134 @@ class TomTomRouter:
             if 0 <= i < len(origins) and 0 <= j < len(destinations):
                 grid[i][j] = round(secs / 60.0, 1)
         return grid
+
+
+# --------------------------------------------------------------------------
+# openrouteservice: the stand-in
+# --------------------------------------------------------------------------
+
+#: openrouteservice instruction type for a U-turn (documented list:
+#: giscience.github.io/openrouteservice/api-reference/endpoints/directions/instruction-types).
+_ORS_UTURN = 9
+#: How far an anchor may be from a road. Anchors are generated points and can
+#: land in a field; checked live 10 Oct 2026 with 1000 m.
+_ORS_SNAP_M = 1000
+
+
+class ORSRouter:
+    """Driving routes and travel times from openrouteservice.
+
+    Real roads and real geometry, but no live traffic: its times are typical
+    ones. Every route it makes is marked live_traffic=False and says so on
+    its card. Checked live 10 Oct 2026 on api.heigit.org: waypoints, "avoid
+    motorways" (avoid_features: highways) and the matrix all answer with the
+    key walks already use. It shares that key's quotas with walking - see
+    core/ors.py.
+    """
+
+    name = "openrouteservice"
+
+    def __init__(self, client: Optional[httpx.AsyncClient] = None):
+        self._client = client or httpx.AsyncClient(timeout=20.0)
+
+    async def evaluate(self, start, finish, anchors, profile):
+        from core import ors
+        pts = [start, *anchors, finish]
+        body = {
+            "coordinates": [[p.lng, p.lat] for p in pts],
+            "radiuses": [_ORS_SNAP_M] * len(pts),
+            "instructions": True,
+        }
+        if profile == "quiet":
+            body["options"] = {"avoid_features": ["highways"]}
+        try:
+            resp = await ors.request(self._client, "POST",
+                                     "/v2/directions/driving-car/geojson",
+                                     "directions", json=body)
+        except ors.OrsBudgetSpent:
+            log.warning("openrouteservice driving budget spent")
+            return None
+        except httpx.HTTPError as e:
+            log.warning("openrouteservice driving transport error: %s", type(e).__name__)
+            return None
+        if resp.status_code != 200:
+            # The body can echo coordinates: status only.
+            log.warning("openrouteservice driving %s", resp.status_code)
+            return None
+        feats = resp.json().get("features") or []
+        if not feats:
+            return None
+        props = feats[0].get("properties", {})
+        summary = props.get("summary", {})
+        steps = [st for seg in props.get("segments", []) for st in seg.get("steps", [])]
+        return EvaluatedRoute(
+            anchors=anchors,
+            minutes=round(summary.get("duration", 0) / 60.0, 1),
+            distance_km=round(summary.get("distance", 0) / 1000.0, 1),
+            road_mix=_infer_mix(profile),
+            geometry=[Coord(lat=c[1], lng=c[0])
+                      for c in feats[0]["geometry"]["coordinates"]],
+            has_uturn=any(st.get("type") == _ORS_UTURN for st in steps),
+            raw=summary,
+            live_traffic=False,
+        )
+
+    async def travel_matrix(self, origins, destinations, profile):
+        from core import ors
+        grid: List[List[Optional[float]]] = [[None] * len(destinations) for _ in origins]
+        if not origins or not destinations:
+            return []
+        body = {
+            "locations": [[p.lng, p.lat] for p in [*origins, *destinations]],
+            "sources": list(range(len(origins))),
+            "destinations": list(range(len(origins), len(origins) + len(destinations))),
+            "metrics": ["duration"],
+        }
+        try:
+            resp = await ors.request(self._client, "POST", "/v2/matrix/driving-car",
+                                     "matrix", json=body)
+        except (ors.OrsBudgetSpent, httpx.HTTPError) as e:
+            log.warning("openrouteservice matrix unavailable: %s", type(e).__name__)
+            return grid
+        if resp.status_code != 200:
+            log.warning("openrouteservice matrix %s", resp.status_code)
+            return grid
+        for i, row in enumerate(resp.json().get("durations") or []):
+            for j, secs in enumerate(row or []):
+                if secs is not None and i < len(origins) and j < len(destinations):
+                    grid[i][j] = round(secs / 60.0, 1)
+        return grid
+
+
+class FailoverRouter:
+    """TomTom first; openrouteservice while TomTom is refusing or failing.
+
+    A route TomTom simply cannot find is TomTom's answer, not a failure, and
+    is not asked again elsewhere. When TomTom stands down (see
+    _tomtom_failed) every call goes to the stand-in until the cooldown ends.
+    """
+
+    def __init__(self, primary, backup):
+        self.primary = primary
+        self.backup = backup
+
+    @property
+    def name(self) -> str:
+        return self.primary.name if tomtom_available() else self.backup.name
+
+    async def evaluate(self, start, finish, anchors, profile):
+        if tomtom_available():
+            route = await self.primary.evaluate(start, finish, anchors, profile)
+            if route is not None or tomtom_available():
+                return route
+        return await self.backup.evaluate(start, finish, anchors, profile)
+
+    async def travel_matrix(self, origins, destinations, profile):
+        if tomtom_available():
+            grid = await self.primary.travel_matrix(origins, destinations, profile)
+            if tomtom_available():
+                return grid
+        return await self.backup.travel_matrix(origins, destinations, profile)
 
 
 def _has_uturn(route: dict) -> bool:
@@ -329,16 +509,25 @@ def _infer_mix(profile: str) -> RoadMix:
 # --------------------------------------------------------------------------
 
 def get_router() -> Router:
+    """TomTom, with openrouteservice standing in whenever TomTom fails - if an
+    openrouteservice key is set. Without either key, simulated routing, so the
+    alpha still runs end-to-end on a laptop."""
+    from core import ors
     provider = os.getenv("ROUTING_PROVIDER", "mock").lower()
     if provider == "tomtom":
         key = os.getenv("TOMTOM_API_KEY", "").strip()
         if not key:
-            # Misconfiguration should degrade, not 500 on every request. The
-            # alpha is meant to run end-to-end on a laptop with no key at all.
+            if ors.configured():
+                log.warning("TOMTOM_API_KEY is empty; routing with openrouteservice")
+                return ORSRouter()
+            # Misconfiguration should degrade, not 500 on every request.
             log.warning(
                 "ROUTING_PROVIDER=tomtom but TOMTOM_API_KEY is empty; "
                 "using simulated routing instead"
             )
             return MockRouter()
-        return TomTomRouter(api_key=key)
+        primary = TomTomRouter(api_key=key)
+        return FailoverRouter(primary, ORSRouter()) if ors.configured() else primary
+    if provider == "openrouteservice" and ors.configured():
+        return ORSRouter()
     return MockRouter()
