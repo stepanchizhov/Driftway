@@ -1,7 +1,7 @@
 # Google Play Data safety: Driftway's answers
 
 Reviewable answers for the Data safety form in Play Console, drawn from the
-inventory behind `frontend/public/privacy.html` (version 1.1, 10 Oct 2026).
+inventory behind `frontend/public/privacy.html` (version 1.2, 10 Oct 2026).
 That inventory was checked against the code: stored tables, device storage,
 logs, and every outside host, which `tests/test_privacy_inventory.py` keeps
 honest.
@@ -31,7 +31,7 @@ form as it is on the day; these are the facts to answer with.
 | Play data type | Collected? | Shared? | Ephemeral? | Required or optional | Purposes | Driftway's facts |
 |---|---|---|---|---|---|---|
 | **Location: precise** | Yes | No (service providers) | Partly: drive, walk and search requests are processed in memory and discarded. Meetup starting points are stored | Optional for most features. Location access can be refused; a place can be searched instead | App functionality | Start points, checkpoints and destinations go to the server, then to TomTom or openrouteservice to route. Meetup origins are stored until the meetup expires (30 days after its date, or 60 days after creation), and never shown to the other parent |
-| **Location: approximate** | Yes | No | No | Not avoidable | App functionality; security (rate limits) | IP addresses reach the server (rate limits, in memory for at most a day, not stored) and the hosting provider's request logs. The device fetches map images and fonts directly from OpenStreetMap and Google Fonts |
+| **Location: approximate** | Yes | No | No | Not avoidable | App functionality; security (rate limits) | IP addresses reach the server (rate limits, in memory for at most a day, not stored) and the hosting provider's request logs. The device fetches map images directly from OpenStreetMap. Fonts come with the app (0.8) |
 | **Personal info: email address** | Yes | No (service provider: Auth0) | No | Optional (only to sign in) | Account management | Stored on the account only if Auth0 has verified it |
 | **Personal info: name** | Yes | No | No | Optional | Account management; app functionality (meetups) | An optional display name for the account or a meetup |
 | **Personal info: user IDs** | Yes | No | No | Optional (only to sign in) | Account management | The sign-in id from Auth0; a random device id for things saved without an account |

@@ -34,8 +34,6 @@ RECIPIENTS = {
     "api.tomtom.com": "TomTom",
     "api.heigit.org": "openrouteservice",
     "tile.openstreetmap.org": "OpenStreetMap",
-    "fonts.googleapis.com": "Google Fonts",
-    "fonts.gstatic.com": "Google Fonts",
     "auth0.com": "Auth0",
     "onrender.com": "Render",
     # Opened by the parent's choice, with the route's points in the link.

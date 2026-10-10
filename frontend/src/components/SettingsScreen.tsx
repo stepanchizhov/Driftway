@@ -86,15 +86,17 @@ export function SettingsScreen({ settings, update, server }: Props) {
       <div className="settings-about">
         <h3 className="settings-about-title">About Driftway</h3>
         <p>
-          Driftway makes circular drives of a length you choose and brings you
-          home — for when a little one sleeps best on the move. Pick a duration
-          and road style, get three loops, and start one in Google Maps.
+          Driftway is for when a little one sleeps best on the move: drives of
+          the length you choose that bring you home, walks checked against your
+          pram or carrier, and a fair place to meet another parent. Each one
+          says what&rsquo;s known about it and what isn&rsquo;t.
         </p>
         <p className="settings-safety">
           Car seats are designed for safe travel rather than routine sleep. On
           longer journeys, take regular breaks, follow your child-seat
           manufacturer's instructions, and take extra care with very young or
-          premature babies. This doesn't replace advice from a healthcare
+          premature babies. For slings and carriers, follow the TICKS guidance
+          in the Walk tab. This doesn't replace advice from a healthcare
           professional.
         </p>
 
@@ -168,11 +170,18 @@ export function SettingsScreen({ settings, update, server }: Props) {
         </p>
 
         <h3 className="settings-about-title">What's coming</h3>
+        <p className="settings-note">
+          What we&rsquo;re working towards. These aren&rsquo;t promises, and the
+          order may change.
+        </p>
         <ul className="settings-roadmap">
-          <li>Smoother routing that avoids speed bumps and traffic lights</li>
+          <li>Driftway as an app from Google Play, for beta testers first</li>
+          <li>Calmer drives that steer away from mapped speed bumps</li>
+          <li>Drives that turn around less often</li>
           <li>More saved places, not just Home</li>
-          <li>"A bit more" extensions while you're out</li>
-          <li>Native apps and in-car (Android Auto, CarPlay)</li>
+          <li>Your own walking pace, for walk times</li>
+          <li>Walks by rivers and canals</li>
+          <li>Later: in the car (Android Auto), and iPhone</li>
         </ul>
 
         <p className="settings-feedback">
