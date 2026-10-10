@@ -20,6 +20,7 @@ import { SafetyNote } from "./components/SafetyNote";
 import { Feedback } from "./components/Feedback";
 import { Favourites } from "./components/Favourites";
 import { SettingsScreen } from "./components/SettingsScreen";
+import { AppFeedback } from "./components/AppFeedback";
 import { PlaceSearch } from "./components/PlaceSearch";
 import { MeetHalfway } from "./meetup/MeetHalfway";
 import { StillAsleep } from "./components/StillAsleep";
@@ -102,6 +103,8 @@ export default function App() {
   const { places, defaultPlace, saveHome } = usePlaces();
   const { recent, remember } = useRecentDestination();
   const owner = useOwner();
+  // Feedback about the app, from any tab (0.8, for the beta).
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   // A meetup link opens the meetup directly. Checked once, from the URL,
   // before anything renders, so a shared link never lands on the wrong job.
@@ -299,6 +302,13 @@ export default function App() {
 
   return (
     <div className={`app${isSecondary ? "" : " app-tabbed"}`}>
+      {feedbackOpen && (
+        <AppFeedback
+          context={isSecondary ? "settings" : tab === "plan" ? "plan" : tab}
+          owner={owner}
+          onClose={() => setFeedbackOpen(false)}
+        />
+      )}
       <header className="masthead">
         <div className="wordmark">
           <span className="wordmark-drift">drift</span>
@@ -310,6 +320,9 @@ export default function App() {
           </button>
         ) : (
           <div className="masthead-actions">
+            <button className="btn-back" onClick={() => setFeedbackOpen(true)}>
+              Feedback
+            </button>
             <button
               className="btn-back"
               onClick={() => setScreen({ name: "favourites" })}

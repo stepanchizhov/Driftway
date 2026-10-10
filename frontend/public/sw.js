@@ -1,6 +1,9 @@
 // Minimal service worker: caches the app shell so Driftway is installable and
 // opens fast. Network-first for navigation, cache fallback when offline.
-const CACHE = "driftway-v1";
+// v2 (0.8): only Driftway's own files are cached. v1 also kept every map
+// image and font from other sites, in a cache that never shrank; renaming the
+// cache makes "activate" below delete it.
+const CACHE = "driftway-v2";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", (e) => {
@@ -19,6 +22,8 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   const { request } = e;
+  // Other sites' responses (map images, fonts, sign-in) are theirs to cache.
+  if (new URL(request.url).origin !== self.location.origin) return;
   // Never cache API calls — always go to the network.
   if (request.url.includes("/api/")) return;
   if (request.method !== "GET") return;

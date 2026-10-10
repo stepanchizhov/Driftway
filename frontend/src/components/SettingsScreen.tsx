@@ -153,6 +153,16 @@ export function SettingsScreen({ settings, update, server }: Props) {
           </p>
         </details>
 
+        <p className="settings-links">
+          <a href="/beta.html" target="_blank" rel="noopener noreferrer">
+            Guide for testers
+          </a>{" "}
+          ·{" "}
+          <a href="/privacy.html" target="_blank" rel="noopener noreferrer">
+            Privacy policy
+          </a>
+        </p>
+
         <h3 className="settings-about-title">What's coming</h3>
         <ul className="settings-roadmap">
           <li>Smoother routing that avoids speed bumps and traffic lights</li>

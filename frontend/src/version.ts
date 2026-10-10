@@ -26,6 +26,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.0",
+    date: "in progress",
+    changes: [
+      "A Feedback button at the top of every screen. It says which screen you were on and which version you have.",
+      "A privacy policy, and a guide for testers, linked from Settings.",
+      "Driftway's server logs no longer record what you search for, your position, or the private part of meetup links.",
+      "A proper app icon for Android, and an app description that includes walks and meetups.",
+      "The app no longer keeps a growing copy of every map image you've seen.",
+    ],
+  },
+  {
     version: "0.7.0",
     date: "10 Oct 2026",
     changes: [

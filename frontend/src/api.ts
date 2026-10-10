@@ -134,6 +134,31 @@ export async function sendFeedback(fb: FeedbackRequest): Promise<void> {
   }
 }
 
+export type FeedbackContext = "stillasleep" | "plan" | "meetup" | "walk" | "settings";
+
+/** Feedback about the app from any tab. Unlike drive feedback, it reports
+ *  failure: a beta tester needs to know whether the report arrived. */
+export async function sendAppFeedback(fb: {
+  context: FeedbackContext;
+  message: string;
+  app_version: string;
+  build: string;
+  owner?: string;
+}): Promise<void> {
+  let res: Response;
+  try {
+    res = await authFetch(`${API_BASE}/api/feedback/app`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(fb),
+    });
+  } catch {
+    throw new Error("Can't reach Driftway. Check your connection and try again.");
+  }
+  if (res.status === 429) throw new Error("That's a lot of feedback at once. Please try again a little later.");
+  if (!res.ok) throw new Error("Couldn't send it just now. Please try again in a moment.");
+}
+
 export class AuthExpired extends Error {}
 
 export async function listFavourites(owner: string): Promise<Favourite[]> {

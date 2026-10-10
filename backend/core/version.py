@@ -12,7 +12,7 @@ Render sets RENDER_GIT_COMMIT on every deploy. Elsewhere the build is "dev".
 
 import os
 
-APP_VERSION = "0.7.0"
+APP_VERSION = "0.8.0"
 
 
 def build() -> str:

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Testing Driftway</title>
+<meta name="description" content="A short guide for families testing Driftway: what to try, what to tell us, and what is still rough.">
+<style>
+  :root { --ground:#161c36; --surface:#1f2747; --line:#36406e; --ink:#edeffa; --dim:#9aa3cc; --accent:#f2b179; color-scheme: dark; }
+  @media (prefers-color-scheme: light) {
+    :root { --ground:#f2f3f8; --surface:#ffffff; --line:#c9cee1; --ink:#191f38; --dim:#55608a; --accent:#b8681f; color-scheme: light; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink);
+         font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         padding: 24px 16px 64px; }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 30px 0 8px; }
+  p, li { max-width: 66ch; }
+  li { margin-bottom: 6px; }
+  .meta { color: var(--dim); margin: 0 0 20px; }
+  a { color: var(--accent); }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .safety { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Testing Driftway</h1>
+  <p class="meta">For families in the closed beta · from version 0.8</p>
+
+  <div class="box">
+    <p>Thank you for trying Driftway. It's still being built, and it changes
+    every week. What you notice, especially what confuses you or doesn't
+    work, is the most useful thing you can give us.</p>
+  </div>
+
+  <h2>Before you start</h2>
+  <ul>
+    <li>Sign in with the invitation link you were sent. You can use the drives
+      without signing in, but walks and saving to your account need it.</li>
+    <li>Allow location when asked. Driftway uses it only while you're using the
+      app, never in the background.</li>
+    <li>To check which version you have, go to Settings and look at the top
+      line, or tap <em>What's new?</em>.</li>
+  </ul>
+
+  <h2>What to try</h2>
+  <ul>
+    <li><strong>Still asleep:</strong> the baby fell asleep in the car. One
+      tap gives a drive that keeps going and brings you home.</li>
+    <li><strong>Plan a drive:</strong> choose how long you want to drive, as a
+      loop from home or on the way somewhere. Did the drive take about as long
+      as it said? Did it ask you to turn around, or go down the same road
+      twice?</li>
+    <li><strong>Walk:</strong> choose Pram, Carrier or Just me and a time, then
+      make walks from where you are. Try a checkpoint: choose it on the map,
+      and set how close the walk must come to it in Walk preferences. Were
+      the steps, gates and surfaces it warned about really there? Did it miss
+      any?</li>
+    <li><strong>Meet up:</strong> with another parent, find a place that is
+      fair for you both. Each of you adds a starting point that the other
+      doesn't see.</li>
+  </ul>
+
+  <h2>Telling us</h2>
+  <ul>
+    <li>Tap <strong>Feedback</strong> at the top of any screen. It tells us
+      which screen you were on and which version you have, so you only need
+      to say what happened.</li>
+    <li>After a drive, the "would you use it again?" question takes two
+      taps. It's how the drives get better.</li>
+    <li>Please don't put your address in feedback. "The walk from the park
+      gate" is plenty.</li>
+    <li>For anything else, write to
+      <a href="mailto:stepan@ibookbinding.com">stepan@ibookbinding.com</a>.</li>
+  </ul>
+
+  <h2>Still rough, and known</h2>
+  <ul>
+    <li>Walks are made from map data, and nobody has walked most of them.
+      Unknown surfaces are shown as unknown, not as fine.</li>
+    <li>Google Maps can't follow a walk exactly. Use the map in the app.</li>
+    <li>"Greener" and "Quieter" walks make little difference in Britain: the
+      route provider has little data to choose with here.</li>
+    <li>If our usual route provider stops answering, drives still work, but
+      their times don't include live traffic, and each drive says so.</li>
+  </ul>
+
+  <div class="box safety">
+    <p><strong>Safety first.</strong> Set up the drive before you set off, and
+    don't use your phone while driving. Car seats are designed for travel, not
+    routine sleep: take breaks on longer drives. For slings and carriers,
+    follow the TICKS guidance shown in the Walk tab. Driftway doesn't replace
+    advice from a health professional.</p>
+  </div>
+
+  <p class="meta" style="margin-top:24px">
+    <a href="/privacy.html">Privacy policy</a> · Driftway is run by iBookBinding Ltd
+  </p>
+</main>
+</body>
+</html>
