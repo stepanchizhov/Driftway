@@ -180,7 +180,8 @@ corridors and dragging the route itself are LATER.
 
   Live check: going "to it", a Just me walk from the Long Walk's Park Street
   end came within 18 m of the statue, with 89 m of climb. The 250 m
-  comparison was cut short when openrouteservice's quota ran out (see
+  comparison was cut short when openrouteservice began refusing requests
+  with "Quota exceeded" although its dashboard showed the quota unused (see
   `DEPLOY.md`), and is still to be run.
 - Snapped further, up to **150 m**, the walks are made but not shown until the
   parent has seen both points on the map and accepted the moved one, or moved

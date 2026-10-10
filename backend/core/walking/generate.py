@@ -123,9 +123,11 @@ def refused(resp: httpx.Response) -> Optional[ProviderRefused]:
     except Exception:  # noqa: BLE001
         text = ""
     if resp.status_code == 429 or "quota" in text.lower():
+        # The provider's claim, reported as its claim: on 10 Oct 2026 it said
+        # "Quota exceeded" while its dashboard showed 86 of 2000 used.
         return ProviderRefused(
-            "The route provider's usage limit has been reached, so walks can't "
-            "be made just now. Try again later; the curated walks still work.")
+            "The route provider isn't making walks just now: it says its usage "
+            "limit has been reached. Try again later; the curated walks still work.")
     return ProviderRefused(
         "The route provider isn't accepting requests from Driftway just now. "
         "The curated walks still work.")

@@ -454,18 +454,28 @@ are using.
 - Versions before 0.7.0 were numbered afterwards from the project history.
   Project Bible document versions are a separate numbering.
 
-## openrouteservice quota (10 Oct 2026)
+## openrouteservice refusing requests (10 Oct 2026) - OPEN
 
-After about 80 developer calls that day, the API answered
-`403 {"error": "Quota exceeded"}` to every request, still minutes later,
-so most likely the daily quota. It sent no rate-limit headers to say which
-quota or when it resets. The key is shared with production, so walk
-generation was unavailable there too until the reset. The app reported it
-as "couldn't find a walking route"; it now says the provider's usage limit
-was reached.
+From about 14:30 UTC every request to Directions V2 was answered
+`403 {"error": "Quota exceeded"}`, with no rate-limit headers, and was still
+refused at 14:56. **It was not the quota.** The HeiGIT dashboard (founder
+screenshot, same afternoon) showed Directions V2 at 2000/2000 left and
+40 a minute, and 86 requests that day (41 successes, 45 errors). The 86 match
+the developer's live checks plus a few probes, so production and the test
+suite used almost none.
 
-What used the quota is not established. Before the test suite blanked the
-key (`tests/__init__.py`), runs on a machine with the key in `backend/.env`
-could reach the live API. Production traffic shares the key. **Check the
-HeiGIT dashboard** for that day's count and the plan's actual limits, and
-consider a separate developer key so testing cannot starve production.
+The same symptom - 403 "Quota exceeded" on Directions V2 with the dashboard at
+full quota, no rate-limit headers, for about a day - was reported on the
+openrouteservice forum on 27 Jul 2026, with no staff answer. So this is most
+likely on the provider's side (HYPOTHESIS). The key is shared with
+production, so walk generation there is affected for as long as it lasts.
+
+Until this release the app reported it as "couldn't find a walking route".
+It now says the provider isn't making walks and gives the provider's stated
+reason as the provider's claim.
+
+If it lasts beyond a day: write to HeiGIT support (support@account.heigit.org)
+with the organisation id, the endpoint (`POST /v2/directions/{profile}/geojson`),
+the times, and the response body. Never post the key itself. A separate
+developer key would still be good hygiene, but this incident was not caused
+by quota use.
