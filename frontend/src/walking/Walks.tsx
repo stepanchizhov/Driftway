@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState, type Dispatch } from "react";
 import { ChipGroup } from "../components/ChipGroup";
 import type { Units } from "../hooks/useSettings";
 import {
+  CheckpointError,
   NotAdmitted,
   assessWalks,
   generateWalks,
@@ -18,6 +19,18 @@ import { groupWalks } from "./group";
 import type { Coord } from "../types";
 import { PlaceSearch, type Endpoint } from "../components/PlaceSearch";
 import { useDriftwayAuth } from "../auth/AuthProvider";
+import { CheckpointPicker } from "./CheckpointPicker";
+import {
+  type Checkpoint,
+  type CheckpointAction,
+  type CheckpointState,
+  checkpointChanged,
+  checkpointReducer,
+  initialCheckpoint,
+  latestOnly,
+  roundUpMinutes,
+  sameCoord,
+} from "./checkpoint";
 
 /**
  * Walks with a pram or a carrier - the experiment.
@@ -145,7 +158,10 @@ export function Walks({
   // page refresh. Now nothing recalculates on each tap; an Update bar appears
   // when the two differ, and one tap recalculates everything.
   const [applied, setApplied] = useState<WalkSetup>(setup);
-  const dirty = JSON.stringify(setup) !== JSON.stringify(applied);
+  // The checkpoint is edited and applied the same way, but kept apart from
+  // `setup`: setup is remembered on this device, a checkpoint is not.
+  const [cp, dispatchCp] = useReducer(checkpointReducer, initialCheckpoint);
+  const dirty = JSON.stringify(setup) !== JSON.stringify(applied) || checkpointChanged(cp);
   const [runToken, setRunToken] = useState(0);
   const [result, setResult] = useState<WalksResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -186,6 +202,18 @@ export function Walks({
       window.clearTimeout(timer);
     };
   }, [applied]);
+
+  function applyChanges() {
+    setApplied(setup);
+    dispatchCp({ type: "apply" });
+    setRunToken((t) => t + 1);
+  }
+
+  /** A time offered by a conflict message: set like any other change. */
+  function setMinutes(n: number) {
+    setOwnTime(DURATIONS.includes(n) ? "" : String(n));
+    update({ minutes: n });
+  }
 
   // With no curated walk starting here that fits, make walks straight away.
   const autoMake =
@@ -249,16 +277,16 @@ export function Walks({
 
       {dirty && (
         <div className="walks-update">
-          <button
-            className="btn-primary"
-            onClick={() => {
-              setApplied(setup);
-              setRunToken((t) => t + 1);
-            }}
-          >
+          <button className="btn-primary" onClick={applyChanges}>
             Update walks
           </button>
-          <button className="btn-quiet" onClick={() => update(applied)}>
+          <button
+            className="btn-quiet"
+            onClick={() => {
+              update(applied);
+              dispatchCp({ type: "undo" });
+            }}
+          >
             Undo changes
           </button>
         </div>
@@ -293,6 +321,11 @@ export function Walks({
               handoff={result.handoff}
               runToken={runToken}
               autoMake={autoMake}
+              cp={cp}
+              dispatchCp={dispatchCp}
+              dirty={dirty}
+              onApply={applyChanges}
+              onSetMinutes={setMinutes}
             />
           )}
 
@@ -836,12 +869,36 @@ function WalkGroups({
   );
 }
 
+/** How each profile is named in messages about where it can go. */
+const WHO: Record<WalkSetup["profile"], string> = {
+  pram: "a pram",
+  carrier: "walking with a carrier",
+  walker: "walking",
+};
+
+/** Identity of the settings walks were made with, to tell when they are old. */
+function madeKeyOf(setup: WalkSetup, cp: Checkpoint | null, start: Coord | null): string {
+  return JSON.stringify([
+    setup,
+    cp ? [cp.coord.lat, cp.coord.lng, cp.label] : null,
+    start ? [start.lat, start.lng] : null,
+  ]);
+}
+
 /**
- * Make walks from a start you choose - where you are, or anywhere you search.
+ * Make walks from a start you choose - where you are, or anywhere you search -
+ * optionally through one checkpoint.
  *
  * Founder testing showed curated walks starting at fixed public places are the
  * wrong shape for real use: a tester walked eight minutes to the start of her
  * own regular route. Generated loops start where you are.
+ *
+ * The checkpoint (10 Oct) is chosen by search or on the map and only used on
+ * "Update walks". What came back is never hidden: a checkpoint the route
+ * provider had to move is shown beside the parent's marker and must be
+ * accepted first; walks that cannot fit the time say so and offer a longer
+ * time or a different point; walks hidden by the retracing preference can be
+ * shown on request.
  */
 function MakeWalks({
   setup,
@@ -850,6 +907,11 @@ function MakeWalks({
   handoff,
   runToken,
   autoMake,
+  cp,
+  dispatchCp,
+  dirty,
+  onApply,
+  onSetMinutes,
 }: {
   setup: WalkSetup;
   here: Coord | null;
@@ -859,16 +921,30 @@ function MakeWalks({
   runToken: number;
   /** No curated walk fits here: make walks without waiting to be asked. */
   autoMake: boolean;
+  cp: CheckpointState;
+  dispatchCp: Dispatch<CheckpointAction>;
+  /** Settings or checkpoint edited since the walks were made. */
+  dirty: boolean;
+  onApply: () => void;
+  onSetMinutes: (n: number) => void;
 }) {
+  const checkpoint = cp.applied;
   const [start, setStart] = useState<Endpoint | null>(
     here ? { coord: here, label: "Your location", source: "current" } : null,
   );
-  const [via, setVia] = useState<Endpoint | null>(null);
   const [made, setMade] = useState<GeneratedWalks | null>(null);
+  const [madeKey, setMadeKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cpError, setCpError] = useState<CheckpointError | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
+  const gate = useRef(latestOnly());
   const autoTried = useRef(false);
+  const wantMake = useRef(false);
+
+  const key = madeKeyOf(setup, checkpoint, start?.coord ?? null);
+  const stale = made !== null && (dirty || madeKey !== key);
 
   // Location usually arrives after the screen opens. Use it then - unless a
   // place has already been chosen, which it must not overwrite.
@@ -878,36 +954,48 @@ function MakeWalks({
 
   async function make() {
     if (!start) return;
+    const token = gate.current.begin();
+    const forKey = key;
     setBusy(true);
     setError(null);
+    setCpError(null);
     try {
-      setMade(
-        await generateWalks({
-          profile: setup.profile,
-          minutes: setup.minutes,
-          allow_out_and_back: setup.maxRetrace >= 0.5,
-          character: setup.character,
-          ...(via ? { via: via.coord, via_label: via.label } : {}),
-          start: start.coord,
-          start_label: start.label,
-          ...(setup.profile === "pram"
-            ? { pram: setup.pram }
-            : setup.profile === "carrier"
-              ? { carrier: setup.carrier }
-              : {}),
-        }),
-      );
+      const res = await generateWalks({
+        profile: setup.profile,
+        minutes: setup.minutes,
+        allow_out_and_back: setup.maxRetrace >= 0.5,
+        character: setup.character,
+        ...(checkpoint ? { via: checkpoint.coord, via_label: checkpoint.label } : {}),
+        start: start.coord,
+        start_label: start.label,
+        ...(setup.profile === "pram"
+          ? { pram: setup.pram }
+          : setup.profile === "carrier"
+            ? { carrier: setup.carrier }
+            : {}),
+      });
+      // An answer for settings that have since changed is dropped, so it can
+      // never replace walks made for newer ones.
+      if (!gate.current.isCurrent(token)) return;
+      setMade(res);
+      setMadeKey(forKey);
+      setShowAll(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't make walks just now.");
+      if (!gate.current.isCurrent(token)) return;
+      if (e instanceof CheckpointError) setCpError(e);
+      else setError(e instanceof Error ? e.message : "Couldn't make walks just now.");
     } finally {
-      setBusy(false);
+      if (gate.current.isCurrent(token)) setBusy(false);
     }
   }
 
-  // "Update walks": walks on screen were made with the old settings, so make
-  // them again with the new ones, from the same start and checkpoint.
+  // "Update walks": make walks again with the new settings - also the first
+  // time, once a checkpoint has been chosen or the button asked for it.
   useEffect(() => {
-    if (runToken > 0 && made && start) void make();
+    if (runToken > 0 && start && (made || checkpoint || wantMake.current)) {
+      wantMake.current = false;
+      void make();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runToken]);
 
@@ -919,6 +1007,24 @@ function MakeWalks({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMake, start]);
+
+  const outcome = made?.checkpoint;
+  // A moved checkpoint is accepted by making the moved point the checkpoint;
+  // until then the walks to it are not shown.
+  const confirmNeeded =
+    !!outcome && outcome.needs_confirmation && !sameCoord(checkpoint?.coord, outcome.routed);
+
+  function acceptMoved() {
+    if (!outcome || !checkpoint) return;
+    dispatchCp({ type: "accept_routed", coord: outcome.routed });
+    // The walks on screen already go there: they are current, not stale.
+    setMadeKey(madeKeyOf(setup, { ...checkpoint, coord: outcome.routed }, start?.coord ?? null));
+  }
+
+  const limit = setup.maxRetrace + 0.02;
+  const overLimit = made ? made.walks.filter((w) => w.retrace_share > limit) : [];
+  const shown = made ? (showAll ? made.walks : made.walks.filter((w) => w.retrace_share <= limit)) : [];
+  const pending = cp.pending;
 
   return (
     <section className="walks-make">
@@ -935,44 +1041,189 @@ function MakeWalks({
         currentLocationLabel="Where I am"
         placeholder="Where I am, or search a place"
       />
-      <PlaceSearch
-        legend="Via (optional)"
-        value={via}
-        onChange={setVia}
-        near={start?.coord ?? here}
-        placeholder="A place to walk through"
-      />
-      <button className="btn-primary" disabled={!start || busy} onClick={() => void make()}>
+
+      <fieldset className="walks-checkpoint">
+        <legend>Checkpoint (optional)</legend>
+        <PlaceSearch
+          legend="Search for a place to walk through"
+          value={pending ? { coord: pending.coord, label: pending.label, source: pending.source } : null}
+          onChange={(e) =>
+            dispatchCp({
+              type: "search",
+              checkpoint: e
+                ? { coord: e.coord, label: e.label, source: e.source === "map" ? "map" : "search" }
+                : null,
+            })
+          }
+          near={start?.coord ?? here}
+          placeholder="A place to walk through"
+        />
+        <div className="cp-buttons">
+          <button
+            type="button"
+            className="btn-quiet"
+            aria-expanded={cp.picking !== null}
+            disabled={cp.picking !== null}
+            onClick={() => dispatchCp({ type: "open" })}
+          >
+            {pending ? "Move it on the map" : "Choose on map"}
+          </button>
+          {pending && (
+            <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "remove" })}>
+              Remove checkpoint
+            </button>
+          )}
+        </div>
+        {cp.picking && (
+          <CheckpointPicker
+            start={start?.coord ?? here}
+            draft={cp.picking.draft}
+            confirmed={pending?.coord ?? null}
+            onPlace={(coord) => dispatchCp({ type: "place", coord })}
+            onConfirm={() => dispatchCp({ type: "confirm" })}
+            onCancel={() => dispatchCp({ type: "cancel" })}
+          />
+        )}
+        {checkpointChanged(cp) && !cp.picking && (
+          <p className="walks-hint">
+            {pending ? "Checkpoint changed." : "Checkpoint removed."} Tap Update walks to use it.
+          </p>
+        )}
+      </fieldset>
+
+      <button
+        className="btn-primary"
+        disabled={!start || busy}
+        onClick={() => {
+          if (dirty) {
+            wantMake.current = true;
+            onApply();
+          } else void make();
+        }}
+      >
         {busy
           ? "Making walks…"
-          : via
-            ? `Make walks via ${via.label}`
-            : `Make walks of about ${duration(setup.minutes)}`}
+          : dirty
+            ? "Update and make walks"
+            : checkpoint
+              ? `Make walks via ${checkpoint.label}`
+              : `Make walks of about ${duration(setup.minutes)}`}
       </button>
       <p className="walks-hint">
-        {via
-          ? "Up to three different walks out to your checkpoint and back, each avoiding the paths of the others. Their length follows from where the checkpoint is: a long street or park is placed at one point the search picked."
+        {pending
+          ? "Up to three different walks out to your checkpoint and back, each avoiding the paths of the others. Their length follows from where the checkpoint is."
           : "Up to three walks from mapped paths, judged for your setup."}{" "}
-        To plan them, your start{via ? " and checkpoint are" : " is"} sent to
-        openrouteservice; nothing is stored.
+        To plan them, your start{pending ? " and checkpoint are" : " is"} sent to
+        openrouteservice as {pending ? "points" : "a point"} on the map, with nothing
+        that names you. Driftway doesn&rsquo;t keep {pending ? "them" : "it"}.
       </p>
+
       {error && <p className="account-error">{error}</p>}
+      {cpError && (
+        <div className="walks-conflict" role="alert">
+          <p>{cpError.message}</p>
+          <div className="cp-actions">
+            {cpError.code === "too_far" && cpError.minimumMinutes != null && (
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => onSetMinutes(roundUpMinutes(cpError.minimumMinutes as number))}
+              >
+                Set time to {duration(roundUpMinutes(cpError.minimumMinutes))}
+              </button>
+            )}
+            <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "open" })}>
+              Move the checkpoint
+            </button>
+            <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "remove" })}>
+              Remove it
+            </button>
+          </div>
+          <p className="walks-hint">Then tap Update walks.</p>
+        </div>
+      )}
+
       {made && (
         <>
-          <h3 className="walks-group-title">From {start?.label ?? "your start"}</h3>
-          <div className="walks-list">
-            {made.walks
-              .filter((w) => w.retrace_share <= setup.maxRetrace + 0.02)
-              .map((w) => (
-                <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
-              ))}
-          </div>
-          {made.walks.some((w) => w.retrace_share > setup.maxRetrace + 0.02) && (
-            <p className="walks-hint">
-              Hidden by your preferences:{" "}
-              {made.walks.filter((w) => w.retrace_share > setup.maxRetrace + 0.02).length}{" "}
-              that went over the same path more than you&rsquo;d like.
+          {stale && (
+            <p className="walks-stale" role="status">
+              These walks are for your previous settings. Tap Update walks to
+              remake them.
             </p>
+          )}
+          <h3 className="walks-group-title">
+            From {start?.label ?? "your start"}
+            {outcome && checkpoint ? ` via ${checkpoint.label}` : ""}
+          </h3>
+
+          {confirmNeeded && outcome ? (
+            <div className="walks-conflict" role="alert">
+              <p>
+                The nearest way suitable for {WHO[setup.profile]} is about{" "}
+                {distance(outcome.offset_m, units)} from your checkpoint, so the
+                walks go there instead. Check both on the map before you accept:
+                the nearest path can be across water, behind a fence, or on the
+                wrong side of a wall.
+              </p>
+              {made.walks[0] && <WalkMap walk={made.walks[0]} />}
+              <p className="walks-hint">
+                Purple dot: where the walks go. Dashed ring: your checkpoint.
+              </p>
+              <div className="cp-actions">
+                <button type="button" className="btn-primary" onClick={acceptMoved}>
+                  Use the point on the path
+                </button>
+                <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "open" })}>
+                  Move my checkpoint
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {outcome?.over_time && outcome.shortest_minutes != null && (
+                <div className="walks-conflict" role="status">
+                  <p>
+                    Every walk via {checkpoint?.label ?? "your checkpoint"} takes longer
+                    than the {duration(setup.minutes)} you asked for: the shortest is
+                    about {duration(outcome.shortest_minutes)}. A walk to a checkpoint
+                    isn&rsquo;t cut short before it gets there.
+                  </p>
+                  <div className="cp-actions">
+                    <button
+                      type="button"
+                      className="btn-quiet"
+                      onClick={() => onSetMinutes(roundUpMinutes(outcome.shortest_minutes as number))}
+                    >
+                      Set time to {duration(roundUpMinutes(outcome.shortest_minutes))}
+                    </button>
+                    <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "open" })}>
+                      Choose a nearer checkpoint
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="walks-list">
+                {shown.map((w) => (
+                  <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
+                ))}
+              </div>
+              {overLimit.length > 0 && !showAll && (
+                <div className="walks-hint walks-hidden">
+                  <p>
+                    {shown.length === 0 ? "No walk fits your retracing setting. " : ""}
+                    Hidden: {overLimit.length} that go over the same ground more than
+                    you&rsquo;d like
+                    {outcome
+                      ? " - on the way to a checkpoint a single bridge, gate or path can make that unavoidable"
+                      : ""}
+                    .
+                  </p>
+                  <button type="button" className="btn-quiet" onClick={() => setShowAll(true)}>
+                    Show {overLimit.length > 1 ? "them" : "it"} anyway
+                  </button>
+                </div>
+              )}
+            </>
           )}
           <p className="walks-attrib">{made.attribution}</p>
         </>

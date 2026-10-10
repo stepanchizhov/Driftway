@@ -39,6 +39,7 @@ const MARKER_LABEL: Record<string, string> = {
   other: "Barrier",
   turn_back: "Turn back here",
   via: "Checkpoint",
+  via_requested: "Your checkpoint",
 };
 
 export function WalkMap({ walk }: { walk: Walk }) {
@@ -90,6 +91,18 @@ export function WalkMap({ walk }: { walk: Walk }) {
     }).bindTooltip(`Start: ${walk.start.label}`).addTo(map);
 
     for (const m of walk.markers) {
+      if (m.kind === "via_requested") {
+        // The parent's own marker, where the provider moved the checkpoint
+        // away from it: a hollow ring, joined to nothing - no line is drawn
+        // across ground nobody has mapped as passable.
+        L.circleMarker([m.lat, m.lng], {
+          radius: 9, color: "#7c3aed", weight: 3, dashArray: "4 3", fillOpacity: 0,
+        })
+          .bindTooltip(`${MARKER_LABEL.via_requested}: ${m.label ?? ""}`)
+          .addTo(map);
+        bounds.extend([m.lat, m.lng]);
+        continue;
+      }
       const fill =
         m.kind === "turn_back" ? token("--accent", "#f2b179")
         : m.kind === "via" ? "#7c3aed"

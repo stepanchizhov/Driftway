@@ -24,7 +24,7 @@ export interface Endpoint {
   coord: Coord;
   label: string;
   detail?: string;
-  source: "search" | "current" | "home";
+  source: "search" | "current" | "home" | "map";
   approximate?: boolean;
 }
 

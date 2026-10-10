@@ -125,15 +125,44 @@ export interface CarrierSetup {
   luggage_with: "carrier_adult" | "companion";
 }
 
+/** What happened to a checkpoint: where the walks really go, and whether
+ *  they fit the time. Present only on walks made via a checkpoint. */
+export interface CheckpointOutcome {
+  /** The parent's marker. */
+  requested: { lat: number; lng: number };
+  /** Where the route provider took the walks - the point they visit. */
+  routed: { lat: number; lng: number };
+  offset_m: number;
+  /** Moved further than a path's width: show both, ask before showing walks. */
+  needs_confirmation: boolean;
+  /** Every walk through it is longer than the time asked for. */
+  over_time: boolean;
+  shortest_minutes: number | null;
+}
+
 export interface GeneratedWalks {
   walks: Walk[];
   attribution: string;
+  checkpoint?: CheckpointOutcome;
+}
+
+/** The checkpoint itself is the problem, and the parent can fix it. */
+export class CheckpointError extends Error {
+  constructor(
+    message: string,
+    readonly code: "too_close" | "too_far" | "unreachable" | "no_route",
+    readonly minimumMinutes: number | null,
+  ) {
+    super(message);
+  }
 }
 
 /**
- * Loops made from a chosen start. The start goes to our server, which asks
- * openrouteservice; nothing identifying you goes with it, and the walks are
- * not stored. Errors are reported, never replaced by an invented walk.
+ * Walks made from a chosen start, optionally via a checkpoint. The start and
+ * checkpoint go to our server, which sends them to openrouteservice as
+ * precise points - with no name, account or label - and keeps neither; the
+ * walks are not stored. Errors are reported, never replaced by an invented
+ * walk.
  */
 export async function generateWalks(body: {
   profile: "pram" | "carrier" | "walker";
@@ -162,12 +191,18 @@ export async function generateWalks(body: {
   }
   if (!res.ok) {
     let detail = "Couldn't make walks just now.";
+    let body: unknown = null;
     try {
-      const b = await res.json();
-      if (typeof b?.detail === "string") detail = b.detail;
+      body = await res.json();
     } catch {
       /* keep default */
     }
+    const d = (body as { detail?: unknown } | null)?.detail;
+    if (res.status === 422 && d && typeof d === "object" && "code" in d) {
+      const c = d as { code: CheckpointError["code"]; message: string; minimum_minutes: number | null };
+      throw new CheckpointError(c.message, c.code, c.minimum_minutes ?? null);
+    }
+    if (typeof d === "string") detail = d;
     throw new Error(detail);
   }
   return res.json();
