@@ -43,7 +43,7 @@ from sqlalchemy import DateTime, Integer, Boolean, String, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .accounts import BetaAccessInvite, StagingSession, UserAccount
-from .db import Base, Favourite, Feedback, _uuid
+from .db import AppFeedback, Base, Favourite, Feedback, _uuid
 from .meetups import (
     MeetupParticipant,
     MeetupSession,
@@ -154,6 +154,10 @@ def export_account(session: Session, user_id: str) -> Dict:
         select(Feedback).where(Feedback.owner == user_id)
     ).scalars().all()
 
+    app_feedback = session.execute(
+        select(AppFeedback).where(AppFeedback.owner == user_id)
+    ).scalars().all()
+
     return {
         "exported_at": _now_naive().isoformat(),
         "account": {
@@ -222,6 +226,15 @@ def export_account(session: Session, user_id: str) -> Dict:
             }
             for f in feedback
         ],
+        "app_feedback": [
+            {
+                "context": f.context,
+                "message": f.message,
+                "app_version": f.app_version,
+                "at": f.created_at.isoformat(),
+            }
+            for f in app_feedback
+        ],
         "not_included": [
             "Other participants' starting points and details, which are theirs "
             "rather than yours.",
@@ -256,7 +269,7 @@ def erase_account(session: Session, user_id: str) -> Dict[str, int]:
         raise LookupError("No such account.")
 
     removed = {"participations": 0, "votes": 0, "meetups_organised": 0,
-               "favourites": 0, "feedback": 0, "sessions": 0}
+               "favourites": 0, "feedback": 0, "app_feedback": 0, "sessions": 0}
 
     participations = session.execute(
         select(MeetupParticipant).where(MeetupParticipant.user_id == user_id)
@@ -297,6 +310,12 @@ def erase_account(session: Session, user_id: str) -> Dict[str, int]:
     ).scalars():
         session.delete(fb)
         removed["feedback"] += 1
+
+    for afb in session.execute(
+        select(AppFeedback).where(AppFeedback.owner == user_id)
+    ).scalars():
+        session.delete(afb)
+        removed["app_feedback"] += 1
 
     for sess in session.execute(
         select(StagingSession).where(StagingSession.user_id == user_id)

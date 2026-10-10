@@ -11,6 +11,7 @@ On Render, set the start command to:
 from __future__ import annotations
 
 import logging
+import re
 import os
 from pathlib import Path
 
@@ -46,6 +47,38 @@ import core.accounts  # noqa: F401
 import core.meetups   # noqa: F401
 
 logging.basicConfig(level=logging.INFO)
+
+
+class _AccessLogPrivacy(logging.Filter):
+    """Keep what people search for, and their link secrets, out of the logs.
+
+    Uvicorn's access log writes each request's full URL. Found 10 Oct 2026
+    while writing the privacy policy: that put search text and positions
+    (/api/search?q=...&lat=...&lng=...) and meetup join tokens and results
+    links (/api/meetups/<id>/<join token>) into the hosting provider's logs,
+    although the code had always meant not to log them. The query string is
+    dropped, and any path segment shaped like a token is blanked. Plain
+    record ids (UUIDs) stay: they are not secrets, and they help debugging.
+    """
+
+    _TOKEN = re.compile(r"^[A-Za-z0-9_-]{20,}$")
+    _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+    @classmethod
+    def clean(cls, path: str) -> str:
+        bare = path.split("?", 1)[0]
+        parts = [("…" if cls._TOKEN.match(p) and not cls._UUID.match(p) else p)
+                 for p in bare.split("/")]
+        return "/".join(parts) + ("?…" if "?" in path else "")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str):
+            record.args = args[:2] + (self.clean(args[2]),) + args[3:]
+        return True
+
+
+logging.getLogger("uvicorn.access").addFilter(_AccessLogPrivacy())
 
 # Create tables on startup (SQLite locally, Postgres on Render).
 init_db()

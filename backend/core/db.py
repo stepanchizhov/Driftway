@@ -135,6 +135,27 @@ class Feedback(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
+class AppFeedback(Base):
+    """Feedback about the app itself, sent from any tab - 0.8, for the beta.
+
+    Kept apart from Feedback, which is the drive-accuracy signal (predicted
+    against actual minutes): a remark about the Walk tab is not a data point
+    about a route. Its own table, so create_all() adds it with no migration.
+    Exported and erased with the account, like Feedback.
+    """
+    __tablename__ = "app_feedback"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    owner: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
+    #: The tab it was sent from: stillasleep | plan | meetup | walk | settings.
+    context: Mapped[str] = mapped_column(String(16))
+    message: Mapped[str] = mapped_column(Text)
+    #: Which Driftway it was about, so a report can be matched to a build.
+    app_version: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    build: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class Favourite(Base):
     """A drive the user saved to repeat. Stores enough to reopen the same
     shape (waypoints / maps URL) — Google recomputes live traffic on open, so

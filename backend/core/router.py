@@ -168,6 +168,14 @@ _tomtom_down_until = 0.0
 _tomtom_down_reason = ""
 
 
+def _no_numbers(text: str) -> str:
+    """A provider error body with every number blanked. TomTom's can repeat
+    the request's coordinates ("no route between points (51.48, -0.61)"),
+    which must not reach the logs (privacy policy, 10 Oct 2026)."""
+    import re
+    return re.sub(r"-?\d+(\.\d+)?", "#", text or "")[:200]
+
+
 def tomtom_available() -> bool:
     import time
     return time.monotonic() >= _tomtom_down_until
@@ -256,18 +264,18 @@ class TomTomRouter:
                     "TomTom %s: key rejected or Routing product not enabled. "
                     "Body: %.200s",
                     resp.status_code,
-                    resp.text,
+                    _no_numbers(resp.text),
                 )
                 _tomtom_failed(f"refused ({resp.status_code})")
                 return None
             if resp.status_code >= 500:
-                log.warning("TomTom %s: %.200s", resp.status_code, resp.text)
+                log.warning("TomTom %s: %.200s", resp.status_code, _no_numbers(resp.text))
                 failure = f"server error ({resp.status_code})"
                 continue
             if resp.status_code >= 400:
                 # About this request (no route between these points), not
                 # about TomTom: not a reason to stand it down.
-                log.warning("TomTom %s: %.200s", resp.status_code, resp.text)
+                log.warning("TomTom %s: %.200s", resp.status_code, _no_numbers(resp.text))
                 failure = None
                 continue
             try:
@@ -338,7 +346,7 @@ class TomTomRouter:
             return grid
 
         if resp.status_code >= 400:
-            log.warning("TomTom matrix HTTP %s: %.160s", resp.status_code, resp.text)
+            log.warning("TomTom matrix HTTP %s: %.160s", resp.status_code, _no_numbers(resp.text))
             if resp.status_code in (401, 403, 429) or resp.status_code >= 500:
                 _tomtom_failed(f"matrix {resp.status_code}")
             return grid

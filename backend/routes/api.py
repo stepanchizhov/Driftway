@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from core.accounts import UserAccount
-from core.db import Favourite, Feedback, get_session, storage_available
+from core.db import AppFeedback, Favourite, Feedback, get_session, storage_available
 from core.version import APP_VERSION, build
 from core.generator import generate_routes
 from core.models import (
@@ -22,7 +24,8 @@ from core.models import (
 )
 from core.config import meet_halfway_enabled, registration_mode, walking_enabled
 from core.identity import is_configured as identity_configured
-from core.ratelimit import RateLimited, check_generate
+from core.ratelimit import (RateLimited, SlidingWindowLimiter, _Window, check_generate,
+                            client_address)
 from core.current_user import (
     SESSION_COOKIE,
     CredentialsRejected,
@@ -169,6 +172,52 @@ async def search(
     # home address.
     log.info("search: provider=%s results=%d", provider.name, len(places))
     return SearchResponse(query=q, places=places, provider=provider.name)
+
+
+class AppFeedbackRequest(BaseModel):
+    """A remark about the app, from any tab. Free text, so it is capped, and
+    the screen asks people not to put addresses in it."""
+    context: Literal["stillasleep", "plan", "meetup", "walk", "settings"]
+    message: str = Field(..., min_length=1, max_length=2000)
+    app_version: Optional[str] = Field(None, max_length=16)
+    build: Optional[str] = Field(None, max_length=16)
+    owner: Optional[str] = Field(None, max_length=64)
+
+
+#: Anyone can send it, so it is metered: per sender, and across the service.
+_app_feedback_caller = SlidingWindowLimiter()
+_app_feedback_global = SlidingWindowLimiter()
+
+
+@router.post("/feedback/app")
+def app_feedback(
+    fb: AppFeedbackRequest,
+    request: Request,
+    driftway_staging_session: str | None = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    """Feedback about the app itself - 0.8, so beta testers can report from
+    wherever they are. Attributed like route feedback: to the account when
+    signed in (so it is exported and erased with it), else to the device."""
+    _require_storage()
+    account = _account(request, session, driftway_staging_session)
+    caller = f"account:{account.id}" if account else f"ip:{client_address(request)}"
+    try:
+        _app_feedback_global.check("*", [_Window(86400, 500)], scope="service")
+        _app_feedback_caller.check(caller, [_Window(3600, 10)], scope="caller")
+    except RateLimited as limited:
+        raise HTTPException(status_code=429,
+                            detail="Thanks - that's a lot of feedback at once. "
+                                   "Please try again a little later.",
+                            headers={"Retry-After": str(limited.retry_after)})
+    row = AppFeedback(owner=owner_for_write(account, fb.owner), context=fb.context,
+                      message=fb.message.strip(), app_version=fb.app_version,
+                      build=fb.build)
+    session.add(row)
+    session.commit()
+    # The message is not logged: people may write anything in it.
+    log.info("app feedback stored: context=%s version=%s", fb.context, fb.app_version)
+    return {"ok": True, "id": row.id}
 
 
 @router.post("/feedback")
