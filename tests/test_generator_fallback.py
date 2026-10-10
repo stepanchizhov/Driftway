@@ -163,3 +163,50 @@ class AnchorSnappingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _CapturingClient:
+    """Records the query a TomTomRouter sends and answers with one route."""
+
+    def __init__(self):
+        self.params = None
+
+    async def get(self, url, params=None):
+        self.params = params
+
+        class _Resp:
+            status_code = 200
+            text = ""
+
+            @staticmethod
+            def json():
+                return {"routes": [{"summary": {"travelTimeInSeconds": 1800,
+                                                "lengthInMeters": 15000},
+                                    "legs": []}]}
+
+        return _Resp()
+
+
+class TomTomRequestTests(unittest.TestCase):
+    """Measured 10 Oct 2026: asking TomTom to avoid roads it has already used
+    took generated loops with no turn-around from 0 of 11 to 5 of 11."""
+
+    def _params(self, profile):
+        from backend.core.router import TomTomRouter
+
+        client = _CapturingClient()
+        router = TomTomRouter("test-key", client=client)
+        here = Coord(lat=51.48, lng=-0.61)
+        asyncio.run(router.evaluate(here, here, [Coord(lat=51.49, lng=-0.62)], profile))
+        return client.params
+
+    def test_every_route_avoids_roads_already_used(self):
+        for profile in ("mixed", "motorway", "quiet"):
+            self.assertIn("alreadyUsedRoads", self._params(profile)["avoid"], profile)
+
+    def test_quiet_still_avoids_motorways(self):
+        self.assertIn("motorways", self._params("quiet")["avoid"])
+
+    def test_route_type_stays_fastest(self):
+        # thrilling was measured and not adopted: more signals, no fewer turn-arounds.
+        self.assertEqual(self._params("mixed")["routeType"], "fastest")

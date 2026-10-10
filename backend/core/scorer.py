@@ -121,10 +121,12 @@ def turnaround_count(route: EvaluatedRoute) -> int:
     """Total turn-arounds on this route, from both detectors.
 
     NOT part of validation, deliberately. Measured against TomTom, every single
-    generated loop contains at least one - 24 out of 24 across dense, suburban
+    generated loop contained at least one - 24 out of 24 across dense, suburban
     and rural starts. Rejecting on it would reject everything, so it ranks
     routes instead of filtering them. See the note in generator.py about why
-    hard waypoints cause this.
+    hard waypoints cause this. Since asking TomTom to avoid roads already used
+    (10 Oct 2026), 5 of 11 measured loops had none - still not enough to
+    filter on.
     """
     return (1 if route.has_uturn else 0) + turnaround_waypoints(route)
 

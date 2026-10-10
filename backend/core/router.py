@@ -181,10 +181,18 @@ class TomTomRouter:
             # the only reliable way to know the driver would be asked to turn
             # around - which, with a sleeping baby aboard, is the whole point.
             "instructionsType": "coded",
+            # Measured 10 Oct 2026 on 33 generated 30-minute loops per variant
+            # from four Windsor-area starts: loops with no turn-around went
+            # from 0 to 5 of 11 picks, loops repeating >=10% of their road
+            # from 6 to 0, with the same time accuracy, at about three more
+            # calls per request. routeType=thrilling (low windingness and
+            # hilliness) was measured too and added signals without fewer
+            # turn-arounds, so it is not used. See docs/DRIVING.md.
+            "avoid": ["alreadyUsedRoads"],
         }
         # Nudge the engine toward / away from motorways by profile.
         if profile == "quiet":
-            params["avoid"] = "motorways"
+            params["avoid"] = ["alreadyUsedRoads", "motorways"]
         elif profile == "motorway":
             params["routeType"] = "fastest"
 
