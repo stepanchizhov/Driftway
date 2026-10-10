@@ -175,7 +175,7 @@ on a device yet:
 | No search text, positions or link tokens in server logs | IMPLEMENTED |
 | Data safety answers | IMPLEMENTED as `docs/DATA_SAFETY.md`; to be entered in Play Console by the founder |
 | `android/twa-manifest.json`, package `com.ibookbinding.driftway`, location delegation on | IMPLEMENTED, for the current address |
-| Local test build (APK and AAB, local test key) | Built on the founder's machine by the developer; **not yet installed on a phone** |
+| Local test build (APK and AAB, local test key) | Built on the founder's machine in `C:\Users\stepa\driftway-android`. Checked with apksigner and aapt2: the signer's SHA-256 `28:E3:53:…:DD:6D` matches `assetlinks.json`; package `com.ibookbinding.driftway` 0.8.0 (code 1), target API 36; fine and coarse location only (no background location, no notifications); an `https` link filter with `autoVerify`; the location delegation service is present. **Not yet installed on a phone** |
 | `assetlinks.json` | Local test key only. The Play app signing key: OPEN, founder, section 2 |
 | Domain `driftway.stepan.chizhov.com` | OPEN: founder, section 1 |
 | Upload key | OPEN: founder, `android/README.md` |
