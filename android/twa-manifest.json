@@ -1,6 +1,6 @@
 {
   "packageId": "com.ibookbinding.driftway",
-  "host": "driftway-front.onrender.com",
+  "host": "driftway.stepan.chizhov.com",
   "name": "Driftway",
   "launcherName": "Driftway",
   "display": "standalone",
@@ -13,8 +13,8 @@
   "backgroundColor": "#161C36",
   "enableNotifications": false,
   "startUrl": "/",
-  "iconUrl": "https://driftway-front.onrender.com/icon-512.png",
-  "maskableIconUrl": "https://driftway-front.onrender.com/icon-maskable-512.png",
+  "iconUrl": "https://driftway.stepan.chizhov.com/icon-512.png",
+  "maskableIconUrl": "https://driftway.stepan.chizhov.com/icon-maskable-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "C:\\Users\\stepa\\.driftway\\driftway-localtest.jks",
@@ -24,7 +24,7 @@
   "appVersionCode": 1,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://driftway-front.onrender.com/manifest.webmanifest",
+  "webManifestUrl": "https://driftway.stepan.chizhov.com/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {
     "locationDelegation": {
@@ -37,7 +37,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://driftway-front.onrender.com/",
+  "fullScopeUrl": "https://driftway.stepan.chizhov.com/",
   "minSdkVersion": 21,
   "orientation": "portrait",
   "fingerprints": [],

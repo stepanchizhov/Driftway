@@ -9,7 +9,7 @@ Play Console and domain steps, is in `docs/ANDROID.md`.
 | Setting | Value | Why |
 |---|---|---|
 | `packageId` | `com.ibookbinding.driftway` | Founder decision, 10 Oct. Permanent once uploaded to Play |
-| `host` | `driftway-front.onrender.com` **for now** | The final address, `driftway.stepan.chizhov.com`, is not live yet. Change this, the icon URLs, `webManifestUrl` and `fullScopeUrl` together, then run `bubblewrap update` |
+| `host` | `driftway.stepan.chizhov.com` | The final address. It went live on 10 Oct 2026: HTTPS, asset links and the API's CORS were checked from outside |
 | `features.locationDelegation` | on | Every tab uses location. Android then asks for it as it would for a native app. Foreground only: no background location |
 | `enableNotifications` | off | Not used in the beta. Not impossible, just not needed |
 | `signingKey` | `C:\Users\stepa\.driftway\driftway-localtest.jks`, alias `driftway-localtest` | A **local test key** for builds you install by hand. Never use it as the Play upload key; see below |

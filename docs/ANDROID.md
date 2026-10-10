@@ -174,9 +174,9 @@ on a device yet:
 | Maskable app icon, site icon, iPhone icon, manifest describing walks and meetups | IMPLEMENTED |
 | No search text, positions or link tokens in server logs | IMPLEMENTED |
 | Data safety answers | IMPLEMENTED as `docs/DATA_SAFETY.md`; to be entered in Play Console by the founder |
-| `android/twa-manifest.json`, package `com.ibookbinding.driftway`, location delegation on | IMPLEMENTED, for the current address |
+| `android/twa-manifest.json`, package `com.ibookbinding.driftway`, location delegation on | IMPLEMENTED, for `driftway.stepan.chizhov.com`. Rebuilt for it on 10 Oct |
 | Local test build (APK and AAB, local test key) | Built on the founder's machine in `C:\Users\stepa\driftway-android`. Checked with apksigner and aapt2: the signer's SHA-256 `28:E3:53:…:DD:6D` matches `assetlinks.json`; package `com.ibookbinding.driftway` 0.8.0 (code 1), target API 36; fine and coarse location only (no background location, no notifications); an `https` link filter with `autoVerify`; the location delegation service is present. **Not yet installed on a phone** |
 | `assetlinks.json` | Local test key only. The Play app signing key: OPEN, founder, section 2 |
-| Domain `driftway.stepan.chizhov.com` | OPEN: founder, section 1 |
+| Domain `driftway.stepan.chizhov.com` | DEPLOYED (founder, 10 Oct). Checked from outside: Google Trust Services certificate, http redirects to https, the pages and `assetlinks.json` answer, the API's CORS accepts the address, and the banner is on at the old address. **Sign-in there not yet checked** (needs a browser) |
 | Upload key | OPEN: founder, `android/README.md` |
 | On-phone checks (section 3) | OPEN: nobody has done them yet |

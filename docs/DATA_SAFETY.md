@@ -83,6 +83,5 @@ but the privacy policy says so plainly.
   app and the developer (iBookBinding Ltd) as on the listing, and puts the
   deletion route first.
 
-OPEN until the domain move is verified: the URLs above assume
-`driftway.stepan.chizhov.com`. Until then the same pages are on
-`driftway-front.onrender.com`.
+The domain went live on 10 Oct 2026: both URLs answer over HTTPS. The same
+pages remain on `driftway-front.onrender.com`.
