@@ -402,6 +402,41 @@ def purge_expired_meetups(
     return purged
 
 
+#: Feedback sent without an account is kept this long, then deleted. Signed-in
+#: feedback goes with its account instead. Decided 10 Oct 2026 (0.8): it had
+#: no limit at all, and the privacy policy could only offer "email us".
+ANONYMOUS_FEEDBACK_RETENTION_DAYS = 365
+
+
+def purge_anonymous_feedback(
+    session: Session, now: datetime = None, *, limit: int = MAX_PER_RUN
+) -> int:
+    """Delete route and app feedback older than the retention period whose
+    owner is not an account - a random device id, or none. Returns how many.
+
+    An owner is "an account" when it is the id of an existing account; signed-
+    in feedback is kept with the account and erased with it.
+    """
+    now = now or _now_naive()
+    cutoff = now - timedelta(days=ANONYMOUS_FEEDBACK_RETENTION_DAYS)
+    accounts = set(session.execute(select(UserAccount.id)).scalars().all())
+    purged = 0
+    for model in (Feedback, AppFeedback):
+        for row in session.execute(
+            select(model).where(model.created_at < cutoff)
+        ).scalars().all():
+            if purged >= limit:
+                break
+            if row.owner in accounts:
+                continue
+            session.delete(row)
+            purged += 1
+    if purged:
+        session.commit()
+        log.info("purged %d old feedback records sent without an account", purged)
+    return purged
+
+
 def purge_inactive_accounts(
     session: Session, now: datetime = None, *, limit: int = MAX_PER_RUN
 ) -> List[str]:

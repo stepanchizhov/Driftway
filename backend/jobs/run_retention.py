@@ -52,6 +52,7 @@ def main() -> int:
     from core.db import SessionLocal, init_db, storage_available
     from core.retention import (
         MAX_PER_RUN,
+        purge_anonymous_feedback,
         purge_expired_meetups,
         purge_inactive_accounts,
         record_run,
@@ -70,6 +71,7 @@ def main() -> int:
     try:
         meetups = purge_expired_meetups(session)
         accounts = purge_inactive_accounts(session)
+        feedback = purge_anonymous_feedback(session)
     except Exception:  # noqa: BLE001 - a failed purge must not look like a clean one
         session.rollback()
         log.exception("retention run failed; nothing further was deleted")
@@ -77,7 +79,8 @@ def main() -> int:
     finally:
         pass
 
-    capped = len(meetups) >= MAX_PER_RUN or len(accounts) >= MAX_PER_RUN
+    capped = (len(meetups) >= MAX_PER_RUN or len(accounts) >= MAX_PER_RUN
+              or feedback >= MAX_PER_RUN)
     try:
         record_run(
             session,

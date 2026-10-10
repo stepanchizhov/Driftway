@@ -161,7 +161,9 @@ the value in Render contains a space, it is wrong.
 ### Retention — the scheduled purge
 
 Meetups are kept for 30 days after the event (60 from creation if never
-scheduled), and accounts for 365 days of inactivity. Those rules live in
+scheduled), and accounts for 365 days of inactivity. Since 0.8, feedback sent
+without an account (route feedback and app feedback whose owner is a device
+id or nobody) is kept for 365 days. Signed-in feedback goes with its account. Those rules live in
 `backend/core/retention.py` and have been tested since 14 September. **They do
 nothing until something calls them on a schedule.**
 

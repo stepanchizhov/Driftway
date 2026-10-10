@@ -152,3 +152,40 @@ class OwnDataTests(unittest.TestCase):
         self._admitted("auth0|owner")
         stranger = {"Authorization": f"Bearer {_token(sub='auth0|stranger')}"}
         self.assertEqual(self.client.delete("/api/account", headers=stranger).status_code, 401)
+
+
+class AnonymousFeedbackRetentionTests(unittest.TestCase):
+    """Feedback sent without an account had no time limit (0.8: 365 days).
+    Signed-in feedback stays with its account, and goes when it does."""
+
+    def setUp(self):
+        self.client, _ = _fresh()
+
+    def tearDown(self):
+        self.client.close()
+
+    def test_old_anonymous_feedback_goes_and_the_rest_stays(self):
+        from datetime import datetime, timedelta
+        from core.db import AppFeedback, Feedback, SessionLocal
+        from core.retention import purge_anonymous_feedback
+        auth = AppFeedbackTests.admit(self, "auth0|keeps")
+        me = self.client.get("/api/account/export", headers=auth).json()["account"]["id"]
+        old = datetime.utcnow() - timedelta(days=400)
+        with SessionLocal() as s:
+            s.add_all([
+                Feedback(owner="device-x", route_id="r1", predicted_minutes=30, created_at=old),
+                AppFeedback(owner=None, context="walk", message="old", created_at=old),
+                AppFeedback(owner=me, context="walk", message="mine, old", created_at=old),
+                AppFeedback(owner="device-y", context="plan", message="recent"),
+            ])
+            s.commit()
+            self.assertEqual(purge_anonymous_feedback(s), 2)
+            left = sorted(f.message for f in s.query(AppFeedback).all())
+            self.assertEqual(left, ["mine, old", "recent"])
+            self.assertEqual(s.query(Feedback).count(), 0)
+            self.assertEqual(purge_anonymous_feedback(s), 0)     # safe to repeat
+
+    def test_the_scheduled_run_reports_it(self):
+        r = self.client.post("/api/admin/retention/run", headers={"X-Admin-Token": ADMIN})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual(r.json()["feedback_purged"], 0)

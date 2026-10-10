@@ -37,6 +37,7 @@ from core.retention import (
     MAX_PER_RUN,
     erase_account,
     export_account,
+    purge_anonymous_feedback,
     purge_expired_meetups,
     purge_inactive_accounts,
     record_run,
@@ -223,7 +224,9 @@ def run_retention_now(
     _require_storage()
     meetups = purge_expired_meetups(session)
     accounts = purge_inactive_accounts(session)
-    capped = len(meetups) >= MAX_PER_RUN or len(accounts) >= MAX_PER_RUN
+    feedback = purge_anonymous_feedback(session)
+    capped = (len(meetups) >= MAX_PER_RUN or len(accounts) >= MAX_PER_RUN
+              or feedback >= MAX_PER_RUN)
     record_run(
         session,
         meetups_purged=len(meetups),
@@ -233,6 +236,7 @@ def run_retention_now(
     return {
         "meetups_purged": len(meetups),
         "accounts_purged": len(accounts),
+        "feedback_purged": feedback,
         "backlog": capped,
     }
 

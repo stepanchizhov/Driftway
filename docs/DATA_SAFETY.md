@@ -1,7 +1,7 @@
 # Google Play Data safety: Driftway's answers
 
 Reviewable answers for the Data safety form in Play Console, drawn from the
-inventory behind `frontend/public/privacy.html` (version 1.2, 10 Oct 2026).
+inventory behind `frontend/public/privacy.html` (version 1.3, 10 Oct 2026).
 That inventory was checked against the code: stored tables, device storage,
 logs, and every outside host, which `tests/test_privacy_inventory.py` keeps
 honest.
@@ -35,7 +35,7 @@ form as it is on the day; these are the facts to answer with.
 | **Personal info: email address** | Yes | No (service provider: Auth0) | No | Optional (only to sign in) | Account management | Stored on the account only if Auth0 has verified it |
 | **Personal info: name** | Yes | No | No | Optional | Account management; app functionality (meetups) | An optional display name for the account or a meetup |
 | **Personal info: user IDs** | Yes | No | No | Optional (only to sign in) | Account management | The sign-in id from Auth0; a random device id for things saved without an account |
-| **App activity: other user-generated content** | Yes | No | No | Optional | App functionality; analytics in the plain sense (improving the app) | Feedback messages, route feedback notes, meetup votes and comments |
+| **App activity: other user-generated content** | Yes | No | No | Optional | App functionality; analytics in the plain sense (improving the app) | Feedback messages, route feedback notes, meetup votes and comments. Feedback sent without an account is deleted after 365 days |
 | **App activity: other actions** | Yes | No | No | Optional | App functionality | Saved drives, including the navigation link with its points |
 | **App info and performance** | No | | | | | No crash or diagnostics reporting. The Feedback button sends only the app version and build with the message |
 

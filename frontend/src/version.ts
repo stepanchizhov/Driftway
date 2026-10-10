@@ -39,6 +39,7 @@ export const RELEASES: Release[] = [
       "Ready for Driftway's new address: the old one will say so, and what does and doesn't come with you.",
       "The app no longer keeps a growing copy of every map image you've seen.",
       "Driftway's typefaces now come with the app, so your phone no longer contacts Google Fonts.",
+      "Feedback sent without an account is deleted after a year. Before, it had no time limit.",
       "Settings describes what Driftway does now, and what's planned, without promising dates.",
     ],
   },
