@@ -113,6 +113,19 @@ def _spend() -> None:
             "Lots of walks are being made just now. Please try again in a minute.")
 
 
+def pram_character(profile: str, character: str) -> Tuple[str, Optional[str]]:
+    """The walk character actually used, and a note when a request was
+    changed. A pram keeps its pram routing: Greener and Quieter need walking
+    routing, which drops the pram's rules, so they are not offered for a pram
+    and a request for them (from an older app) is answered with an ordinary
+    pram walk that says so - never silently with weaker rules."""
+    if profile == "pram" and character in ("green", "quiet"):
+        return "any", ("Greener and Quieter aren't available with a pram: they need "
+                       "walking routes, which don't keep the pram's rules on surface, "
+                       "slope and kerbs. This walk was made with pram routing.")
+    return character, None
+
+
 async def _post(client: httpx.AsyncClient, ors_profile: str, body: Dict) -> httpx.Response:
     """One directions call, already counted, with the fallback address."""
     return await ors.request(client, "POST", DIRECTIONS_PATH.format(profile=ors_profile),
@@ -232,13 +245,18 @@ def request_body(start: Tuple[float, float], profile: str, minutes: int,
                  weight_form: Optional[str] = "int") -> Tuple[str, Dict]:
     """The ORS profile and request body for one candidate walk.
 
-    A pram normally gets wheelchair routing. Asking for a greener or quieter
-    walk switches it to walking routing with steps still avoided, because only
-    walking routing can weigh greenery or quiet; the pram rules still judge the
-    result, and the walk says which routing made it.
+    A pram always gets wheelchair routing. Until 0.8, asking for a greener or
+    quieter pram walk switched it to walking routing with only steps avoided,
+    because only walking routing can weigh greenery or quiet. That was a
+    weaker rule set, not the same one: wheelchair routing also restricts
+    surface, smoothness, slope and kerb height, so the switch could admit
+    paths a pram may not manage. Preferences must not weaken a profile's
+    access rules (product rule, restated 10 Oct 2026), so a pram is never
+    weighted here, whatever the caller asks.
     """
-    weighted = character in ("green", "quiet") and weight_form is not None
-    ors_profile = "wheelchair" if profile == "pram" and not weighted else "foot-walking"
+    weighted = (character in ("green", "quiet") and weight_form is not None
+                and profile != "pram")
+    ors_profile = "wheelchair" if profile == "pram" else "foot-walking"
     body = {
         # ORS takes [longitude, latitude].
         "coordinates": [[start[1], start[0]]],
@@ -357,6 +375,7 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
     key = api_key()
     if not key:
         raise GenerationUnavailable("Walk generation is not configured on this deployment.")
+    character, pram_note = pram_character(profile, character)
 
     own = client is None
     client = client or httpx.AsyncClient(timeout=20.0)
@@ -404,9 +423,8 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
             what = "greenery" if character == "green" else "traffic-noise"
             notes.append(f"The route provider's {what} data doesn't vary along this "
                          f"walk, so asking for a {wanted} walk may not have changed it.")
-        if weighted and form is not None and profile == "pram":
-            notes.append("Made with walking routes, steps avoided, so it could favour "
-                         f"{wanted} ways; wheelchair routing cannot weigh that.")
+        if pram_note:
+            notes.append(pram_note)
         note = " ".join(notes) or None
         # "Walk", not "Loop": a round trip can retrace much of itself, and
         # the card names its real shape from the geometry.
@@ -724,6 +742,7 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
     passing = reach_m > CHECKPOINT_ON_ROUTE_M
     search_m = max(CHECKPOINT_SEARCH_M, int(reach_m))
     check_checkpoint(start, via, minutes, via_label, reach_m)
+    character, pram_note = pram_character(profile, character)
     forms = _weight_forms(character)
 
     def make_base(form):
@@ -862,6 +881,8 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
                  dropped)
     routes = []
     for n, (joined, note, at) in enumerate(found, start=1):
+        if pram_note:
+            note = f"{note} {pram_note}" if note else pram_note
         if passing and close_enough:
             pass_note = (f"Turns back about {round(_haversine(via, at))} m from "
                          f"{via_label}, as close as you asked it to come.")

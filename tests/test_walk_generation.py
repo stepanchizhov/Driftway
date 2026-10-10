@@ -199,12 +199,57 @@ class CharacterTests(_FreshBudget):
         # ... and the data behind it, so a walk can say when it was flat.
         self.assertIn("green", body["extra_info"])
 
-    def test_a_pram_wanting_quiet_walks_keeps_steps_avoided(self):
-        """Wheelchair routing has no weightings, so walking routing is used."""
+    def test_a_pram_is_never_moved_off_pram_routing(self):
+        """0.8: Greener/Quieter used to switch a pram to walking routing with
+        only steps avoided - weaker than wheelchair routing, which also limits
+        surface, slope and kerbs. A preference must not weaken access."""
         from core.walking.generate import request_body
-        profile, body = request_body((52.0, 13.0), "pram", 30, 1, "quiet")
-        self.assertEqual(profile, "foot-walking")
-        self.assertEqual(body["options"]["avoid_features"], ["steps"])
+        for character in ("green", "quiet"):
+            profile, body = request_body((52.0, 13.0), "pram", 30, 1, character)
+            self.assertEqual(profile, "wheelchair")
+            self.assertNotIn("profile_params", body["options"])
+            self.assertEqual(body["options"]["avoid_features"], ["steps"])
+
+    def test_an_older_app_asking_for_a_quieter_pram_walk_gets_pram_routing_and_a_note(self):
+        from core.walking import generate as gen
+        seen = []
+
+        def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json={"features": [feature()]})
+
+        os.environ["ORS_API_KEY"] = "test-key"
+        try:
+            client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+            routes = asyncio.run(gen.generate((52.0, 13.0), "pram", 30, "x", client,
+                                              character="quiet"))
+        finally:
+            os.environ.pop("ORS_API_KEY", None)
+        self.assertTrue(all("/wheelchair/" in str(r.url) for r in seen))
+        self.assertTrue(all("weightings" not in r.read().decode() for r in seen))
+        self.assertTrue(any("aren't available with a pram" in n for n in routes[0].notes))
+
+    def test_a_pram_walk_via_a_checkpoint_keeps_pram_routing_on_both_legs(self):
+        from core.walking import generate as gen
+        seen = []
+
+        def handler(request):
+            seen.append(request)
+            coords = LINE if len(seen) % 2 else LINE[::-1]
+            return httpx.Response(200, json={"features": [line_feature(coords)]})
+
+        os.environ["ORS_API_KEY"] = "test-key"
+        try:
+            client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+            routes = asyncio.run(gen.via_walk((52.0, 13.0), (52.009, 13.0), "pram", "x",
+                                              "the gate", character="green", client=client,
+                                              reach_m=250))
+        finally:
+            os.environ.pop("ORS_API_KEY", None)
+        self.assertGreaterEqual(len(seen), 2)
+        self.assertTrue(all("/wheelchair/" in str(r.url) for r in seen))
+        self.assertTrue(all("weightings" not in r.read().decode() for r in seen))
+        self.assertTrue(any("aren't available with a pram" in n for n in routes[0].notes))
 
     def test_no_preference_sends_no_weighting(self):
         from core.walking.generate import request_body

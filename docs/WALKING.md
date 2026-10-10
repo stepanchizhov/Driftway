@@ -71,9 +71,14 @@ Founder decisions, 9 Oct 2026, after using it:
   "don't mind" also stops a long loop being shortened by turning back.
 - **Greener or quieter**, for walks made from your start: openrouteservice's
   documented `green` and `quiet` weightings, which exist for walking routing
-  only. A pram asking for either gets walking routing with steps still
-  avoided, and the card says so - so for a pram, part of any difference comes
-  from the change of routing, not the weighting. Rivers, canals, seaside and
+  only. **Not offered for a pram** (DECISION, 0.8): until 0.8 a pram asking
+  for either was switched to walking routing with only steps avoided, which
+  is weaker than wheelchair routing - that also limits surface, smoothness,
+  slope and kerb height - so it could admit paths a pram may not manage. A
+  pram now always gets wheelchair routing. A request for a greener or quieter
+  pram walk (an older app) is answered with an ordinary pram walk that says
+  so, on loops and on both legs of a checkpoint walk; tested in
+  `tests/test_walk_generation.py`. Rivers, canals, seaside and
   "town" are not offered by the provider and are not pretended; waterside
   would need our own check against mapped water. Each generated walk shows its
   share along streets and roads, from the provider's way types. **What they do

@@ -440,7 +440,11 @@ function PrefsPanel({
         <span className="walks-setup-now">
           {[
             setup.maxRetrace >= 1 ? null : setup.maxRetrace > 0.1 ? "little retracing" : "no retracing",
-            setup.character === "any" ? null : setup.character === "green" ? "greener" : "quieter",
+            setup.character === "any" || setup.profile === "pram"
+              ? null
+              : setup.character === "green"
+                ? "greener"
+                : "quieter",
             setup.allowTravel ? null : "doorstep only",
             setup.checkpointReach > 25 ? `checkpoints within ${setup.checkpointReach} m` : null,
           ]
@@ -463,17 +467,28 @@ function PrefsPanel({
         A shared first and last stretch is common. Anything but "Don't mind"
         also stops a long loop being shortened by turning back.
       </p>
-      <ChipGroup
-        legend="Kind of walk (for walks made from your start)"
-        columns={3}
-        options={[
-          { value: "any", label: "Any" },
-          { value: "green", label: "Greener", sub: "parks, fields" },
-          { value: "quiet", label: "Quieter", sub: "less traffic" },
-        ]}
-        value={setup.character}
-        onChange={(v) => update({ character: v as WalkSetup["character"] })}
-      />
+      {setup.profile === "pram" ? (
+        // 0.8: Greener/Quieter need walking routes, which drop the pram's
+        // rules on surface, slope and kerbs, so they are not offered for a
+        // pram. The server enforces the same for older versions of the app.
+        <p className="walks-hint">
+          Kind of walk: Greener and Quieter aren&rsquo;t available with a pram.
+          They need walking routes, which don&rsquo;t keep the pram&rsquo;s
+          rules on surface, slope and kerbs.
+        </p>
+      ) : (
+        <ChipGroup
+          legend="Kind of walk (for walks made from your start)"
+          columns={3}
+          options={[
+            { value: "any", label: "Any" },
+            { value: "green", label: "Greener", sub: "parks, fields" },
+            { value: "quiet", label: "Quieter", sub: "less traffic" },
+          ]}
+          value={setup.character}
+          onChange={(v) => update({ character: v as WalkSetup["character"] })}
+        />
+      )}
       <p className="walks-hint">
         Greener and Quieter ask the route provider to prefer parks or quiet
         ways. They depend on its greenery and traffic-noise data, which it
@@ -987,7 +1002,8 @@ function MakeWalks({
         profile: setup.profile,
         minutes: setup.minutes,
         allow_out_and_back: setup.maxRetrace >= 0.5,
-        character: setup.character,
+        // A pram is always made with pram routing (0.8); never send a weighting.
+        character: setup.profile === "pram" ? "any" : setup.character,
         ...(checkpoint
           ? {
               via: checkpoint.coord,
