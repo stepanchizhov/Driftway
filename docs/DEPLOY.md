@@ -454,7 +454,7 @@ are using.
 - Versions before 0.7.0 were numbered afterwards from the project history.
   Project Bible document versions are a separate numbering.
 
-## openrouteservice refusing requests (10 Oct 2026) - OPEN
+## openrouteservice refusing requests (10 Oct 2026) - FIXED: the API had moved
 
 From about 14:30 UTC every request to Directions V2 was answered
 `403 {"error": "Quota exceeded"}`, with no rate-limit headers, and was still
@@ -474,7 +474,19 @@ Until this release the app reported it as "couldn't find a walking route".
 It now says the provider isn't making walks and gives the provider's stated
 reason as the provider's claim.
 
-If it lasts beyond a day: write to HeiGIT support (support@account.heigit.org)
+**Cause, found the same day:** openrouteservice moved its API to
+`api.heigit.org/openrouteservice`. The old host, `api.openrouteservice.org`,
+was deprecated from 28 Apr 2026, its quota was cut to 10% of the plan from
+27 Aug, and it was due to be switched off on 28 Sep (forum announcements).
+The dashboard counts the new host, hence "Quota exceeded" with the quota
+unused. Driftway now calls the new host, which answered at once with
+`x-ratelimit-limit: 2000`. The host can be changed with `ORS_BASE_URL`
+without a deploy. The forum hypothesis above is withdrawn as the cause.
+
+The lesson: a provider can retire an endpoint with notice given only on its
+own forum. See the provider contingency section.
+
+Previously recommended, now not needed: write to HeiGIT support (support@account.heigit.org)
 with the organisation id, the endpoint (`POST /v2/directions/{profile}/geojson`),
 the times, and the response body. Never post the key itself. A separate
 developer key would still be good hygiene, but this incident was not caused

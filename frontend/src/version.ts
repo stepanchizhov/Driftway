@@ -33,6 +33,7 @@ export const RELEASES: Release[] = [
       "New walk preference: how close a walk must come to your checkpoint. Pass a statue on a hill at a distance instead of climbing up to it.",
       "If the nearest path is away from your checkpoint, both are shown and you're asked before it's used. You're told when a checkpoint can't be reached, or is too far for the time you chose.",
       "Greener and Quieter now reach the route provider in the form it accepts. A walk says when the provider has no data to make a difference, as around Windsor.",
+      "Walks can be made again: the route provider had moved to a new address.",
       "When the route provider refuses to make walks, the Walk tab says so, instead of saying a place can't be reached.",
       "Drives try not to use the same road twice: fewer turn-arounds in testing.",
       "This version history, and the version and build shown in Settings.",

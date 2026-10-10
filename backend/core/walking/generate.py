@@ -46,7 +46,22 @@ from .terrain import attach_gradients, smooth
 
 log = logging.getLogger("driftway")
 
-ORS_URL = "https://api.openrouteservice.org/v2/directions/{profile}/geojson"
+#: openrouteservice's API host. It moved from api.openrouteservice.org to
+#: api.heigit.org/openrouteservice (announced on its forum: the old domain was
+#: deprecated from 28 Apr 2026, cut to 10% of plan quota from 27 Aug, due off
+#: 28 Sep). Driftway kept calling the old host, and from 10 Oct every request
+#: was refused "Quota exceeded" while the dashboard - which counts the new
+#: host - showed the quota unused. Overridable with ORS_BASE_URL so the next
+#: move is a setting, not a deploy.
+ORS_BASE_DEFAULT = "https://api.heigit.org/openrouteservice"
+
+
+def _ors_url() -> str:
+    base = (os.getenv("ORS_BASE_URL") or ORS_BASE_DEFAULT).strip().rstrip("/")
+    return base + "/v2/directions/{profile}/geojson"
+
+
+ORS_URL = _ors_url()
 ATTRIBUTION = "© openrouteservice by HeiGIT | Data from OpenStreetMap"
 SOURCE = "openrouteservice (OpenStreetMap data)"
 HEIGHT_SOURCE = "SRTM via openrouteservice"

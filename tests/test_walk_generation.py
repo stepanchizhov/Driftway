@@ -437,3 +437,19 @@ class ViaAlternativesTests(_FreshBudget):
             gen.CALL_WINDOWS = gen.CALL_WINDOWS_SAVED
         self.assertEqual(len(calls), 2)          # refused after the budget
         self.assertEqual(len(routes), 1)         # what was found is kept
+
+
+class ProviderHostTests(unittest.TestCase):
+    """openrouteservice moved to api.heigit.org; the old host refused every
+    request from 10 Oct 2026 with "Quota exceeded"."""
+
+    def test_the_current_host_is_used(self):
+        from core.walking import generate as gen
+        self.assertTrue(gen.ORS_URL.startswith("https://api.heigit.org/openrouteservice/v2/"))
+        self.assertNotIn("api.openrouteservice.org", gen.ORS_URL)
+
+    def test_the_host_can_be_changed_by_setting(self):
+        from core.walking import generate as gen
+        with mock.patch.dict(os.environ, {"ORS_BASE_URL": "https://example.test/ors/"}):
+            self.assertEqual(gen._ors_url(),
+                             "https://example.test/ors/v2/directions/{profile}/geojson")
