@@ -193,10 +193,31 @@ output (43 random characters, no spaces), never the command.
 3. GitHub → Actions → Retention → **Run workflow**, then check that
    `/api/health` shows a non-null `retention` field.
 
-Known limits, from GitHub's own documentation: scheduled workflows in a public
-repository are switched off after 60 days with no repository activity, and
-scheduled runs can start late when GitHub is busy. Neither loses data -
-selection is by age, so the next run takes whatever a missed one would have.
+Known limits, from GitHub's own documentation (checked 10 Oct 2026): scheduled
+workflows in a public repository are switched off after 60 days with no
+repository activity; the schedule "can be delayed during periods of high loads",
+and "if the load is sufficiently high enough, some queued jobs may be dropped".
+A late or dropped run catches up at the next run, because selection is by age.
+It is not free of consequence: until then, records past their retention period
+are kept longer than the policy says.
+
+**First scheduled run, 10 Oct 2026: late, then successful.** Diagnosed from
+GitHub's run history (public API) and `/api/health`, not assumed:
+
+| Check | Evidence |
+|---|---|
+| Workflow on the default branch | `.github/workflows/retention.yml` on `main` since `645e71e` |
+| Enabled | Workflow state `active` |
+| Triggered by the schedule | Run 38042742327, event `schedule`, created 09:49:21 UTC - 6 h 34 min after the 03:15 slot |
+| Reached the service and purged | Run concluded `success` in 5 s; `/api/health` `retention.last_run` = 2026-10-10T09:49:24, 0 purged, no backlog |
+
+So the schedule did fire, late, which is GitHub's documented behaviour under
+load; the workflow, token and endpoint all worked. Nothing was changed: 03:15
+is already away from the top of the hour, which is GitHub's only advice. The
+9 Oct run was a manual `workflow_dispatch`, which proves the token and endpoint
+but not the schedule. **To check a run was scheduled rather than manual**, look
+at its event on the Actions tab (`schedule` versus `workflow_dispatch`);
+`/api/health` records when a purge ran, not what started it.
 
 *Alternatives, not in use.* `backend/render.yaml` still carries a Render cron
 service, which Render bills separately. And the endpoint can be called from a
@@ -225,9 +246,9 @@ reports the timestamp, the counts, and whether a backlog remained:
 Until that field is non-null on production, retention is implemented and
 scheduled but **not verified**, and should not be described as operational.
 
-**If a run is missed**, do nothing special. The next ordinary run takes
+**If a run is missed**, nothing needs repairing. The next ordinary run takes
 whatever the missed one would have, because selection is by age rather than by
-a cursor. To catch up immediately, call the admin endpoint once. If `backlog`
+a cursor; in the meantime expired records stay longer than they should. To catch up immediately, call the admin endpoint once. If `backlog`
 comes back `true` repeatedly, the schedule is too infrequent for the volume.
 
 **Retention is not erasure.** A person deleting their account gets that

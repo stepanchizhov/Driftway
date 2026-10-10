@@ -13,8 +13,10 @@
 #   * Scheduled runs on public repositories are switched off after 60 days with
 #     no repository activity. A commit, or re-enabling it on the Actions tab,
 #     turns it back on.
-#   * Scheduled runs can start late when GitHub is busy. Retention selects by
-#     age, so a late or missed run loses nothing - the next one takes it.
+#   * Scheduled runs can start late, or be dropped, when GitHub is busy. The
+#     first one (10 Oct 2026) started 6 h 34 min late and succeeded. Retention
+#     selects by age, so the next run catches up; until it does, expired
+#     records are kept longer than the policy says.
 
 name: Retention
 
