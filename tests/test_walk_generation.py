@@ -269,7 +269,7 @@ class ViaTests(_FreshBudget):
     def test_with_no_other_way_back_it_says_so(self):
         routes, seen = self._run(404)
         self.assertEqual(len(routes), 1)
-        self.assertTrue(any("No different way back" in n for n in routes[0].notes))
+        self.assertTrue(any("avoids the way out" in n for n in routes[0].notes))
 
     def test_a_via_walk_is_never_turned_back_before_the_checkpoint(self):
         from core.walking.catalogue import assess_route

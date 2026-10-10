@@ -19,9 +19,14 @@ What openrouteservice gives, and what it does not (documentation checked
     there are none.
 
 Terms (founder-reviewed, 9 Oct): results are CC-BY-SA 4.0 and need the
-attribution below; personal data must not be sent. So requests go from this
-server only, carry the start point and nothing that identifies anyone, are not
-logged with that point, and generated walks are not stored.
+attribution below. What openrouteservice receives, exactly: the start point
+and, for a walk via a checkpoint, the checkpoint - both as precise
+coordinates - with the walk options (profile, length, weighting, areas to
+avoid). No name, account, device id or label goes with them. A precise start
+can still be someone's home, so it is location data about a person; Driftway
+neither stores nor logs it (error logs blank every number), but the provider
+receives it and handles it under its own terms. Requests go from this server
+only, and generated walks are not stored.
 """
 
 from __future__ import annotations
@@ -407,6 +412,111 @@ def join_features(out: Dict, back: Dict) -> Dict:
             "properties": {"extras": extras}}
 
 
+# ------------------------------------------------------------ checkpoints
+#
+# A checkpoint means "visit this point", not "follow this avenue". The parent
+# places it by search or on the map; openrouteservice then snaps it to the
+# nearest way the chosen profile may use - for a pram, wheelchair routing, so
+# never onto steps. What the provider snapped to is the point the walk really
+# visits, and it is reported, never hidden. Policy, decided 10 Oct 2026:
+#
+#   * within CHECKPOINT_ON_ROUTE_M of the marker, the walk visits the marker;
+#   * further, up to CHECKPOINT_SEARCH_M, the walks are made but the parent is
+#     shown the moved point and must accept it first. Distance alone does not
+#     show the two places are equivalent - the nearest path may be across a
+#     river or behind a fence - so the parent decides, with both on the map;
+#   * beyond CHECKPOINT_SEARCH_M nothing is routed and the parent is asked to
+#     move the marker. No connector is ever drawn across unmapped ground.
+#
+# 25 m is a HYPOTHESIS: about a path's width plus a marker placed by finger.
+# A fence or a river narrower than that could still separate marker and path.
+
+#: The walk counts as visiting the checkpoint within this distance of it.
+CHECKPOINT_ON_ROUTE_M = 25.0
+#: How far openrouteservice may look for a usable way near the checkpoint.
+CHECKPOINT_SEARCH_M = 150
+#: How far it may look near the start: its own documented default for
+#: directions (maintainer note, GIScience/openrouteservice#1798), unchanged.
+START_SEARCH_M = 400
+#: Closer than this to the start, there is nowhere to walk out to.
+CHECKPOINT_MIN_M = 50.0
+
+
+class CheckpointProblem(GenerationUnavailable):
+    """The checkpoint itself is the problem; the parent can fix it.
+
+    `code` is one of "too_close", "too_far", "unreachable", "no_route";
+    `minimum_minutes` is set for "too_far".
+    """
+
+    def __init__(self, code: str, message: str, minimum_minutes: Optional[int] = None):
+        super().__init__(message)
+        self.code = code
+        self.minimum_minutes = minimum_minutes
+
+
+def fit_tolerance(minutes: float) -> float:
+    """The catalogue's own "about right" band, used for conflicts too."""
+    return max(5.0, 0.15 * minutes)
+
+
+def minimum_via_minutes(start: Tuple[float, float], via: Tuple[float, float]) -> float:
+    """No walk out to a point and back can be shorter than the straight line
+    there and back. A floor, not an estimate: real paths are longer."""
+    return 2 * _haversine(start, via) / 1000.0 / PACE_KMH * 60.0
+
+
+def check_checkpoint(start: Tuple[float, float], via: Tuple[float, float],
+                     minutes: Optional[int], via_label: str) -> None:
+    """Refuse, before any provider call, a checkpoint that cannot work."""
+    if _haversine(start, via) < CHECKPOINT_MIN_M:
+        raise CheckpointProblem(
+            "too_close", f"{via_label} is right by your start, so there is nowhere "
+            "to walk out to. Choose a point further away.")
+    if minutes:
+        floor = minimum_via_minutes(start, via)
+        if floor > minutes + fit_tolerance(minutes):
+            need = int(-(-floor // 1))                   # up to the whole minute
+            raise CheckpointProblem(
+                "too_far", f"Getting to {via_label} and back takes at least "
+                f"{need} minutes in a straight line, longer than the {minutes} you "
+                "asked for. Choose a longer time or a nearer checkpoint.",
+                minimum_minutes=need)
+
+
+def _ors_failure(resp: httpx.Response) -> Tuple[Optional[int], Optional[int]]:
+    """openrouteservice's error code and, for "point not found", which point.
+
+    Read here, never logged: the message carries the coordinates.
+    """
+    try:
+        err = resp.json().get("error")
+    except Exception:  # noqa: BLE001
+        return None, None
+    if not isinstance(err, dict):
+        return None, None
+    m = re.search(r"point (\d+)", str(err.get("message", "")))
+    return err.get("code"), (int(m.group(1)) if m else None)
+
+
+def closest_m(line: List[List[float]], point: Tuple[float, float]) -> float:
+    """Closest approach, in metres, of an ORS [lng, lat] line to a (lat, lng)
+    point - along segments, not only at vertices."""
+    import math
+    k = math.cos(math.radians(point[0]))
+    px, py = point[1] * k * 111320.0, point[0] * 111320.0
+    pts = [(c[0] * k * 111320.0, c[1] * 111320.0) for c in line]
+    if len(pts) == 1:
+        return math.hypot(pts[0][0] - px, pts[0][1] - py)
+    best = float("inf")
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        dx, dy = bx - ax, by - ay
+        L2 = dx * dx + dy * dy
+        t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L2))
+        best = min(best, math.hypot(ax + t * dx - px, ay + t * dy - py))
+    return best
+
+
 #: Different loops through one checkpoint to look for.
 VIA_VARIANTS = 3
 #: A candidate sharing more than this much of its line with one already found
@@ -434,7 +544,8 @@ def _merge(*polys: Optional[Dict]) -> Optional[Dict]:
 async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
                    profile: str, start_label: str, via_label: str,
                    character: str = "any",
-                   client: Optional[httpx.AsyncClient] = None) -> List[Route]:
+                   client: Optional[httpx.AsyncClient] = None,
+                   minutes: Optional[int] = None) -> List[Route]:
     """Up to three different walks out to a chosen place and back.
 
     Founder requests, 9 Oct: a checkpoint to build walks around, and more than
@@ -445,12 +556,21 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
     open near the start and the checkpoint), so it comes back genuinely
     different; a candidate that repeats an earlier one anyway is dropped.
 
-    The first variant may return the way it came if no other way back exists,
-    and says so. Later variants are only kept if they are real alternatives.
+    The first variant may go over some of the same ground if no wholly
+    different way back exists - a single bridge or gate can force that - and
+    says so; the parent's retracing preference then decides, in the open,
+    whether it is shown. Later variants are only kept if they are real
+    alternatives. Every variant kept passes within CHECKPOINT_ON_ROUTE_M of
+    the point the provider routed to, and each Route's `via` records that
+    point, the parent's own marker and the distance between them.
+
+    Raises CheckpointProblem when the checkpoint is the problem (too close,
+    too far for the time, no usable way near it, no route to it).
     """
     key = api_key()
     if not key:
         raise GenerationUnavailable("Walk generation is not configured on this deployment.")
+    check_checkpoint(start, via, minutes, via_label)
     forms = _weight_forms(character)
 
     def make_base(form):
@@ -459,7 +579,11 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         return p, b
 
     def body(base, a, b, avoid=None):
+        # Both legs keep the profile's own options - steps avoided for a pram -
+        # so the way back is held to the same access rules as the way out.
         req = {**base, "coordinates": [[a[1], a[0]], [b[1], b[0]]],
+               "radiuses": ([START_SEARCH_M, CHECKPOINT_SEARCH_M] if a == start
+                            else [CHECKPOINT_SEARCH_M, START_SEARCH_M]),
                "options": dict(base["options"])}
         if avoid:
             req["options"]["avoid_polygons"] = avoid
@@ -470,6 +594,7 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
     headers = {"Authorization": key}
     found: List[Tuple[Dict, Optional[str]]] = []
     used: List[Dict] = []        # corridors of every line found so far
+    dropped = 0
 
     async def post(url, req):
         _spend()
@@ -494,7 +619,28 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         if first_out is None:
             log.warning("openrouteservice %s for the way to a checkpoint - %s",
                         r1.status_code, _ors_error(r1))
+            code, point = _ors_failure(r1)
+            what = {"pram": "a pram", "carrier": "walking with a carrier",
+                    "walker": "walking"}.get(profile, "walking")
+            if code == 2010 and point == 1:
+                raise CheckpointProblem(
+                    "unreachable", f"There's no mapped way suitable for {what} "
+                    f"within {CHECKPOINT_SEARCH_M} m of {via_label}. Move the "
+                    "checkpoint onto or near a path.")
+            if code == 2010 and point == 0:
+                raise GenerationUnavailable(
+                    "There's no mapped path near your start. Choose a start on "
+                    "or near a path.")
+            if code == 2009:
+                raise CheckpointProblem(
+                    "no_route", f"No route suitable for {what} reaches {via_label} "
+                    "from your start. It may be on private land, across water, "
+                    "or reachable only by steps. Try a different point.")
             raise GenerationUnavailable(f"Couldn't find a walking route to {via_label}.")
+
+        # Where the provider actually took the walk: the end of the way out.
+        end = first_out["geometry"]["coordinates"][-1]
+        routed = (end[1], end[0])
 
         for k in range(VIA_VARIANTS):
             if k == 0:
@@ -512,17 +658,25 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
                 back = feature(await post(url, body(base, via, start)))
                 if back is None:
                     raise GenerationUnavailable(f"Couldn't find a way back from {via_label}.")
-                note = (f"No different way back from {via_label} was found, so this "
-                        "returns the way it came.")
+                note = (f"No way back from {via_label} that avoids the way out was "
+                        "found. A single bridge, gate or path can force that, so "
+                        "this walk goes over some of the same ground twice; the "
+                        "card says how much.")
             if back is None:
                 break
             joined = join_features(out, back)
             line = joined["geometry"]["coordinates"]
+            if closest_m(line, routed) > CHECKPOINT_ON_ROUTE_M:
+                # Snapped somewhere else this time: not a walk via this checkpoint.
+                dropped += 1
+                continue
             if any(_overlap(line, j["geometry"]["coordinates"]) > DUPLICATE_SHARE
                    for j, _ in found):
                 break
             found.append((joined, note))
             used += [c for c in (out_line, corridor(back["geometry"]["coordinates"])) if c]
+    except CheckpointProblem:
+        raise
     except GenerationUnavailable:
         if not found:
             raise
@@ -530,11 +684,16 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         if own:
             await client.aclose()
 
+    if dropped:
+        log.info("checkpoint walks: %d variant(s) dropped for missing the checkpoint",
+                 dropped)
+    offset = round(_haversine(via, routed))
     routes = []
     for n, (joined, note) in enumerate(found, start=1):
         r = route_from_ors(joined, walk_id=f"via-{n}",
                            name=f"Via {via_label}" + (f", option {n}" if n > 1 else ""),
                            start_label=start_label, routing_note=note)
-        r.via = {"lat": via[0], "lng": via[1], "label": via_label}
+        r.via = {"lat": routed[0], "lng": routed[1], "label": via_label,
+                 "requested": {"lat": via[0], "lng": via[1]}, "offset_m": offset}
         routes.append(r)
     return routes

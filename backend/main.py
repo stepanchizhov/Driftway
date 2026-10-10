@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Load a local .env file (if present) so ROUTING_PROVIDER, TOMTOM_API_KEY, etc.
@@ -48,6 +50,21 @@ logging.basicConfig(level=logging.INFO)
 init_db()
 
 app = FastAPI(title="Driftway API", version="0.1.0")
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(request, exc: RequestValidationError):
+    """A 422 that says what was wrong without repeating what was sent.
+
+    FastAPI's default echoes each rejected value back. For a start point or a
+    checkpoint that is a precise location in a response body, and for a NaN
+    coordinate it crashed: NaN cannot be written as JSON, so a bad request
+    became a 500 (found 10 Oct 2026 by the checkpoint tests).
+    """
+    errors = [{k: v for k, v in e.items() if k in ("type", "loc", "msg")}
+              for e in exc.errors()]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
 
 # CORS: allow the PWA origin(s). Comma-separated in the env var.
 # Default permits local dev. Tighten before any public beta.

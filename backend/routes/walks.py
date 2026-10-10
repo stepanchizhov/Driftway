@@ -171,8 +171,11 @@ from core.walking.catalogue import assess_route  # noqa: E402
 
 
 class Point(BaseModel):
-    lat: float = Field(..., ge=-90, le=90)
-    lng: float = Field(..., ge=-180, le=180)
+    # Finite and in range: NaN and infinity are refused here, before anything
+    # reaches the route provider (which takes [lng, lat] - swapped in one place,
+    # generate.request_body / via_walk.body).
+    lat: float = Field(..., ge=-90, le=90, allow_inf_nan=False)
+    lng: float = Field(..., ge=-180, le=180, allow_inf_nan=False)
 
 
 class GenerateIn(AssessIn):
@@ -203,11 +206,12 @@ async def generate_walks(
     driftway_staging_session: Optional[str] = Cookie(None),
     session: Session = Depends(get_session),
 ):
-    """Loops from a chosen start, judged like every other walk.
+    """Loops from a chosen start, or walks via a checkpoint, judged like every
+    other walk.
 
-    The start point goes to openrouteservice and nowhere else: it is not
-    logged, and the walks are not stored. Nothing identifying the parent is
-    sent with it.
+    The start and any checkpoint go to openrouteservice as precise
+    coordinates, and nowhere else; Driftway does not log or store them, and the
+    walks are not stored. No name, account or label is sent with them.
     """
     if not walking_enabled():
         raise HTTPException(status_code=404, detail="Not found.")
@@ -243,16 +247,36 @@ async def generate_walks(
             routes = await gen.via_walk((body.start.lat, body.start.lng),
                                         (body.via.lat, body.via.lng), body.profile,
                                         body.start_label, body.via_label,
-                                        character=body.character)
+                                        character=body.character, minutes=minutes)
         else:
             routes = await gen.generate((body.start.lat, body.start.lng), body.profile,
                                         minutes, body.start_label,
                                         character=body.character)
+    except gen.CheckpointProblem as e:
+        # The parent can fix this by moving the checkpoint or changing the
+        # time, so it is a 422 the screen can act on, not an outage.
+        raise HTTPException(status_code=422, detail={
+            "code": e.code, "message": str(e), "minimum_minutes": e.minimum_minutes})
     except gen.GenerationUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    return {
-        "walks": [assess_route(r, body.profile, setup, minutes, body.allow_out_and_back)
-                  for r in routes],
-        "attribution": gen.ATTRIBUTION,
-    }
+    walks = [assess_route(r, body.profile, setup, minutes, body.allow_out_and_back)
+             for r in routes]
+    out = {"walks": walks, "attribution": gen.ATTRIBUTION}
+    if body.via is not None and routes:
+        via = routes[0].via
+        fulls = [w["fit"]["full_minutes"] for w in walks if w.get("fit")]
+        over = bool(fulls) and all(w["fit"]["kind"] == "longer" for w in walks if w.get("fit"))
+        out["checkpoint"] = {
+            "requested": via["requested"],
+            "routed": {"lat": via["lat"], "lng": via["lng"]},
+            "offset_m": via["offset_m"],
+            # Moved further than a path's width: the parent sees both points
+            # and accepts the moved one before the walks are shown.
+            "needs_confirmation": via["offset_m"] > gen.CHECKPOINT_ON_ROUTE_M,
+            # Every walk through it takes longer than asked: said, not hidden,
+            # and the time is not changed for them.
+            "over_time": over,
+            "shortest_minutes": min(fulls) if fulls else None,
+        }
+    return out

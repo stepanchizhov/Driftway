@@ -217,8 +217,16 @@ def _markers(route: Route) -> List[Dict]:
         out.append({"kind": "turn_back", "lat": end[0], "lng": end[1],
                     "at_m": round(route.outbound_m), "basis": "modelled"})
     if route.via:
+        # The point the walk really visits: where the route provider took it.
         out.append({"kind": "via", "lat": route.via["lat"], "lng": route.via["lng"],
                     "at_m": None, "basis": "reported", "label": route.via.get("label")})
+        asked = route.via.get("requested")
+        if asked and (route.via.get("offset_m") or 0) > 0:
+            # And the parent's own marker, when the two are apart, so a moved
+            # checkpoint is visible on the map rather than silently replaced.
+            out.append({"kind": "via_requested", "lat": asked["lat"], "lng": asked["lng"],
+                        "at_m": None, "basis": "reported",
+                        "label": f"{route.via['offset_m']} m from the walk"})
     return out
 
 
