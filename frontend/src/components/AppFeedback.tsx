@@ -30,6 +30,8 @@ export function AppFeedback({
   onClose: () => void;
 }) {
   const [message, setMessage] = useState("");
+  // Optional: what led up to it - the steps that matter when something broke.
+  const [steps, setSteps] = useState("");
   const [state, setState] = useState<"editing" | "sending" | "sent" | "failed">("editing");
   const [error, setError] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
@@ -47,7 +49,9 @@ export function AppFeedback({
     try {
       await sendAppFeedback({
         context,
-        message: message.trim(),
+        message: steps.trim()
+          ? `${message.trim()}\n\nWhat I was doing: ${steps.trim()}`
+          : message.trim(),
         app_version: APP_VERSION,
         build: BUILD,
         owner,
@@ -89,15 +93,26 @@ export function AppFeedback({
                 id="appfb-message"
                 ref={box}
                 rows={6}
-                maxLength={2000}
+                maxLength={1500}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />
             </label>
+            <label className="account-field">
+              <span>What were you doing just before? (optional)</span>
+              <textarea
+                id="appfb-steps"
+                rows={3}
+                maxLength={450}
+                value={steps}
+                onChange={(e) => setSteps(e.target.value)}
+              />
+            </label>
             <p className="walks-hint">
-              Please don&rsquo;t include your address or other people&rsquo;s
-              details. If you&rsquo;re signed in, this is kept with your account
-              and deleted with it.
+              Only what you type is sent, with the screen and version above: no
+              location, route or meetup link. Please don&rsquo;t include your
+              address or other people&rsquo;s details. If you&rsquo;re signed
+              in, it&rsquo;s kept with your account and deleted with it.
             </p>
             {error && <p className="account-error">{error}</p>}
             <div className="appfb-actions">

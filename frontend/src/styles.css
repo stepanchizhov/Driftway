@@ -2111,3 +2111,13 @@ body {
 .masthead-actions { flex-wrap: wrap; justify-content: flex-end; }
 .settings-links { margin: 4px 0 16px; font-size: 14px; }
 .settings-links a { color: var(--accent); }
+
+/* --- New address (0.8) ------------------------------------------ */
+.moved-banner {
+  margin: 8px 12px 0; padding: 12px 14px;
+  border: 1px solid var(--accent); border-radius: var(--r-md);
+  background: var(--surface); display: grid; gap: 10px;
+}
+.moved-banner p { margin: 0; font-size: 14px; }
+.moved-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.moved-actions .btn-primary { margin-top: 0; text-decoration: none; }

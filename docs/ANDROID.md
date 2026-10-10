@@ -23,20 +23,56 @@ reinstall for every tester.
 
 ## 1. Domain (founder)
 
-1. At the DNS host for `stepan.chizhov.com`, add a CNAME record: name
-   `driftway`, value `driftway-front.onrender.com`.
-2. Render, Driftway-Front, Settings, Custom Domains: add
-   `driftway.stepan.chizhov.com`, and wait until its certificate shows as
-   issued.
-3. Render, Driftway (API), Environment: add
+Checked against Render's custom-domain documentation, 10 Oct 2026. Render
+shows the exact DNS record only after the domain is added, so add it there
+first.
+
+1. Render, Driftway-Front, Settings, Custom Domains: **+ Add Custom Domain**,
+   then enter `driftway.stepan.chizhov.com`. Render then shows the record to
+   create. For a subdomain this is normally a CNAME to the site's own
+   address, `driftway-front.onrender.com`. Use what Render shows.
+2. At the DNS host for `stepan.chizhov.com`, create that record (name
+   `driftway`). Render's own notes:
+   - remove any AAAA record for that name, because Render uses IPv4;
+   - if the domain has CAA records, allow `letsencrypt.org` and `pki.goog`;
+   - with Cloudflare, use "DNS only" (grey cloud) for this record.
+3. Back in Render, press **Verify**. Render then issues the certificate, and
+   all HTTP is redirected to HTTPS. The `onrender.com` address keeps working
+   unless you switch it off. Don't switch it off: testers' links use it.
+4. Render, Driftway (API), Environment: add
    `https://driftway.stepan.chizhov.com` to `ALLOWED_ORIGINS`. It is
-   comma-separated; keep the existing entries.
-4. Auth0, Applications, the Driftway single-page app: add
+   comma-separated; keep the existing entries. The API's own address,
+   `driftway.onrender.com`, does not change.
+5. Auth0, Applications, the Driftway single-page app: add
    `https://driftway.stepan.chizhov.com` to Allowed Callback URLs, Allowed
-   Logout URLs and Allowed Web Origins. Keep the onrender.com entries until
-   everyone has moved.
-5. Open `https://driftway.stepan.chizhov.com` and sign in. Check that
-   `/privacy.html` and `/beta.html` load.
+   Logout URLs and Allowed Web Origins. Keep the onrender.com entries. The
+   app sends its current address as the callback, so nothing else changes.
+   The API audience `https://api.driftway.app` stays as it is: it is an
+   identifier, never fetched.
+6. Check `https://driftway.stepan.chizhov.com` yourself:
+   - signing in and out;
+   - a route;
+   - a meetup link;
+   - `/privacy.html`, `/delete-account.html` and `/beta.html`.
+7. Only then, Render, Driftway-Front, Environment: set
+   `VITE_CANONICAL_ORIGIN=https://driftway.stepan.chizhov.com` and redeploy.
+   The old address then shows "Driftway has a new address".
+
+**What does not move with the address** (browser storage belongs to an
+address):
+
+- Home, settings, walk preferences and the recent destination, on each
+  device;
+- the sign-in session (sign in again; the account and everything on it are
+  unaffected);
+- drives saved without signing in, which are tied to a device id kept
+  there.
+
+The banner says this. It suggests signing in first on the old address and
+moving those drives to the account (Saved), which then brings them along.
+Nothing is carried automatically: the device id acts like a password, and
+must not travel in a link. The banner's link keeps the page, so a meetup
+link opened on the old address continues on the new one.
 
 ## 2. Play Console (founder)
 

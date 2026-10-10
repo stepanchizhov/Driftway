@@ -21,6 +21,7 @@ import { Feedback } from "./components/Feedback";
 import { Favourites } from "./components/Favourites";
 import { SettingsScreen } from "./components/SettingsScreen";
 import { AppFeedback } from "./components/AppFeedback";
+import { MovedBanner } from "./components/MovedBanner";
 import { PlaceSearch } from "./components/PlaceSearch";
 import { MeetHalfway } from "./meetup/MeetHalfway";
 import { StillAsleep } from "./components/StillAsleep";
@@ -309,6 +310,7 @@ export default function App() {
           onClose={() => setFeedbackOpen(false)}
         />
       )}
+      <MovedBanner />
       <header className="masthead">
         <div className="wordmark">
           <span className="wordmark-drift">drift</span>

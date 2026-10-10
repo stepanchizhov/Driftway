@@ -102,3 +102,8 @@ services:
       # static site is nothing at all. There is no dev proxy in production.
       - key: VITE_API_BASE
         sync: false            # set to the backend's URL, no trailing slash
+      # The app's final address (docs/ANDROID.md). Set it once the custom
+      # domain is verified: the old address then shows "Driftway has a new
+      # address". Leave unset until then.
+      - key: VITE_CANONICAL_ORIGIN
+        sync: false            # e.g. https://driftway.stepan.chizhov.com
