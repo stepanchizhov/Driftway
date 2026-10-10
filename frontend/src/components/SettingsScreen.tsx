@@ -1,4 +1,6 @@
+import { useRef, useState } from "react";
 import type { RoadProfile } from "../types";
+import { APP_VERSION, BUILD, RELEASES } from "../version";
 import type { Settings, Units } from "../hooks/useSettings";
 import { ChipGroup } from "./ChipGroup";
 import { AccountSection } from "../auth/AccountSection";
@@ -6,6 +8,8 @@ import { AccountSection } from "../auth/AccountSection";
 interface Props {
   settings: Settings;
   update: (patch: Partial<Settings>) => void;
+  /** The server's release and build, once it has answered. */
+  server: { version: string; build: string } | null;
 }
 
 const PROFILE_OPTS: { value: RoadProfile; label: string }[] = [
@@ -23,10 +27,32 @@ const NAV_APPS = [
   { id: "apple_maps", label: "Apple Maps" },
 ];
 
-export function SettingsScreen({ settings, update }: Props) {
+export function SettingsScreen({ settings, update, server }: Props) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const history = useRef<HTMLDetailsElement | null>(null);
+  // Builds are compared, not versions: two builds of one release differ too.
+  // A frontend and API deploy separately on Render, so for a few minutes after
+  // a push they can legitimately differ.
+  const mismatch =
+    server !== null && BUILD !== "dev" && server.build !== "dev" && server.build !== BUILD;
+
   return (
     <main className="settings">
       <h2 className="settings-title">Settings</h2>
+      <p className="settings-version">
+        Driftway {APP_VERSION} · build <span className="mono">{BUILD}</span> ·{" "}
+        <a
+          href="#whats-new"
+          onClick={(e) => {
+            e.preventDefault();
+            setHistoryOpen(true);
+            // After the details element has opened.
+            window.setTimeout(() => history.current?.scrollIntoView({ behavior: "smooth" }), 0);
+          }}
+        >
+          What&rsquo;s new?
+        </a>
+      </p>
 
       {/* First, because it is the only block here that is about the person
           rather than the drive - and because the data controls inside it are
@@ -71,6 +97,61 @@ export function SettingsScreen({ settings, update }: Props) {
           premature babies. This doesn't replace advice from a healthcare
           professional.
         </p>
+
+        <h3 className="settings-about-title">Version</h3>
+        <dl className="settings-builds">
+          <div>
+            <dt>App</dt>
+            <dd>
+              {APP_VERSION} · build <span className="mono">{BUILD}</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Server</dt>
+            <dd>
+              {server ? (
+                <>
+                  {server.version} · build <span className="mono">{server.build}</span>
+                </>
+              ) : (
+                "not reached yet"
+              )}
+            </dd>
+          </div>
+        </dl>
+        {mismatch && (
+          <p className="settings-note" role="status">
+            The app and the server are from different builds. Just after an
+            update one may still be deploying; if it lasts, close Driftway
+            completely and open it again to load the newest app.
+          </p>
+        )}
+
+        <details
+          id="whats-new"
+          ref={history}
+          className="settings-whatsnew"
+          open={historyOpen}
+          onToggle={(e) => setHistoryOpen(e.currentTarget.open)}
+        >
+          <summary>What&rsquo;s new?</summary>
+          {RELEASES.map((r) => (
+            <section key={r.version} className="release">
+              <h4>
+                {r.version} <span className="release-date">{r.date}</span>
+              </h4>
+              <ul>
+                {r.changes.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          <p className="settings-note">
+            Versions before 0.7.0 weren&rsquo;t shown in the app at the time;
+            they were numbered afterwards from the project history.
+          </p>
+        </details>
 
         <h3 className="settings-about-title">What's coming</h3>
         <ul className="settings-roadmap">

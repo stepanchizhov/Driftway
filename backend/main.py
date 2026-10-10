@@ -36,6 +36,7 @@ from routes.api import router as api_router
 from routes.meetups import router as meetup_router
 from routes.walks import router as walks_router
 from core.db import init_db
+from core.version import APP_VERSION, build
 
 # Importing the meetup tables registers them on the shared metadata so
 # init_db() creates them. It must happen before init_db() runs, and it must not
@@ -49,7 +50,7 @@ logging.basicConfig(level=logging.INFO)
 # Create tables on startup (SQLite locally, Postgres on Render).
 init_db()
 
-app = FastAPI(title="Driftway API", version="0.1.0")
+app = FastAPI(title="Driftway API", version=APP_VERSION)
 
 
 @app.exception_handler(RequestValidationError)
@@ -96,4 +97,4 @@ app.include_router(walks_router, prefix="/api")
 
 @app.get("/")
 async def root():
-    return {"name": "Driftway API", "version": "0.1.0", "docs": "/docs"}
+    return {"name": "Driftway API", "version": APP_VERSION, "build": build(), "docs": "/docs"}

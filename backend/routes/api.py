@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from core.accounts import UserAccount
 from core.db import Favourite, Feedback, get_session, storage_available
+from core.version import APP_VERSION, build
 from core.generator import generate_routes
 from core.models import (
     Coord,
@@ -204,6 +205,9 @@ async def health():
     # far less than one that says which part is down.
     return {
         "status": "ok",
+        # Which release and commit is answering, so a tester can tell whether
+        # the app on their phone and the server are from the same build.
+        "version": {"app": APP_VERSION, "build": build()},
         "provider": get_router().name,
         "search": get_search().name,
         "storage": "ok" if storage_available() else "unavailable",

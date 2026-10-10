@@ -23,14 +23,25 @@ export interface Features {
   walking: boolean;
   /** Walks can be made from any start (an openrouteservice key is set). */
   walkGeneration: boolean;
+  /**
+   * The server's release and build, from the live answer only - never the
+   * cached one, which would claim a version the server may no longer run.
+   * Null until the server has answered.
+   */
+  server: { version: string; build: string } | null;
 }
 
-const NONE: Features = { meetHalfway: false, walking: false, walkGeneration: false };
+const NONE: Features = {
+  meetHalfway: false,
+  walking: false,
+  walkGeneration: false,
+  server: null,
+};
 
 function cached(): Features {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...NONE, ...JSON.parse(raw) } : NONE;
+    return raw ? { ...NONE, ...JSON.parse(raw), server: null } : NONE;
   } catch {
     return NONE;
   }
@@ -49,10 +60,14 @@ export function useFeatures(): Features {
           meetHalfway: Boolean(body.meet_halfway),
           walking: Boolean(body.walking),
           walkGeneration: Boolean(body.walk_generation),
+          server:
+            body.version && typeof body.version.app === "string"
+              ? { version: body.version.app, build: String(body.version.build ?? "") }
+              : null,
         };
         setFeatures(live);
         try {
-          localStorage.setItem(KEY, JSON.stringify(live));
+          localStorage.setItem(KEY, JSON.stringify({ ...live, server: undefined }));
         } catch {
           /* private mode: works, just not remembered */
         }

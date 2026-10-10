@@ -534,7 +534,7 @@ export default function App() {
       )}
 
       {screen.name === "settings" && (
-        <SettingsScreen settings={settings} update={update} />
+        <SettingsScreen settings={settings} update={update} server={features.server} />
       )}
 
       {tab === "walk" && !isSecondary && (
