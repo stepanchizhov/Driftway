@@ -442,6 +442,7 @@ function PrefsPanel({
             setup.maxRetrace >= 1 ? null : setup.maxRetrace > 0.1 ? "little retracing" : "no retracing",
             setup.character === "any" ? null : setup.character === "green" ? "greener" : "quieter",
             setup.allowTravel ? null : "doorstep only",
+            setup.checkpointReach > 25 ? `checkpoints within ${setup.checkpointReach} m` : null,
           ]
             .filter(Boolean)
             .join(" · ") || "all walks"}
@@ -481,6 +482,23 @@ function PrefsPanel({
         says when the data along it doesn&rsquo;t vary. Rivers, canals and the
         seaside can&rsquo;t be chosen yet: the provider doesn&rsquo;t offer
         them.
+      </p>
+      <ChipGroup
+        legend="How close a walk must come to your checkpoint"
+        columns={4}
+        options={[
+          { value: "25", label: "To it" },
+          { value: "100", label: "100 m" },
+          { value: "250", label: "250 m" },
+          { value: "500", label: "500 m" },
+        ]}
+        value={String(setup.checkpointReach)}
+        onChange={(v) => update({ checkpointReach: Number(v) })}
+      />
+      <p className="walks-hint">
+        For a checkpoint you only want to pass, like a statue on a hill: the
+        walk turns back where it first comes this close, instead of climbing up
+        to it.
       </p>
       <ChipGroup
         legend="Walks that need travel to the start"
@@ -970,7 +988,13 @@ function MakeWalks({
         minutes: setup.minutes,
         allow_out_and_back: setup.maxRetrace >= 0.5,
         character: setup.character,
-        ...(checkpoint ? { via: checkpoint.coord, via_label: checkpoint.label } : {}),
+        ...(checkpoint
+          ? {
+              via: checkpoint.coord,
+              via_label: checkpoint.label,
+              via_reach_m: setup.checkpointReach,
+            }
+          : {}),
         start: start.coord,
         start_label: start.label,
         ...(setup.profile === "pram"
@@ -1116,7 +1140,11 @@ function MakeWalks({
       </button>
       <p className="walks-hint">
         {pending
-          ? "Up to three different walks out to your checkpoint and back, each avoiding the paths of the others. Their length follows from where the checkpoint is."
+          ? `Up to three different walks out to ${
+              setup.checkpointReach > 25
+                ? `within ${setup.checkpointReach} m of your checkpoint`
+                : "your checkpoint"
+            } and back, each avoiding the paths of the others. Their length follows from where the checkpoint is.`
           : "Up to three walks from mapped paths, judged for your setup."}{" "}
         To plan them, your start{pending ? " and checkpoint are" : " is"} sent to
         openrouteservice as {pending ? "points" : "a point"} on the map, with nothing
@@ -1164,9 +1192,10 @@ function MakeWalks({
           {confirmNeeded && outcome ? (
             <div className="walks-conflict" role="alert">
               <p>
-                The nearest way suitable for {WHO[setup.profile]} is about{" "}
-                {distance(outcome.offset_m, units)} from your checkpoint, so the
-                walks go there instead. Check both on the map before you accept:
+                The closest a way suitable for {WHO[setup.profile]} comes is about{" "}
+                {distance(outcome.offset_m, units)} from your checkpoint
+                {outcome.reach_m > 25 ? `, further than the ${distance(outcome.reach_m, units)} you allow` : ""},
+                so the walks go there instead. Check both on the map before you accept:
                 the nearest path can be across water, behind a fence, or on the
                 wrong side of a wall.
               </p>

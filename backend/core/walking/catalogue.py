@@ -222,6 +222,7 @@ def _markers(route: Route) -> List[Dict]:
                     "at_m": None, "basis": "reported", "label": route.via.get("label")})
         asked = route.via.get("requested")
         if asked and (route.via.get("offset_m") or 0) > 0:
+            # (A walk allowed to pass at a distance turns this far away too.)
             # And the parent's own marker, when the two are apart, so a moved
             # checkpoint is visible on the map rather than silently replaced.
             out.append({"kind": "via_requested", "lat": asked["lat"], "lng": asked["lng"],

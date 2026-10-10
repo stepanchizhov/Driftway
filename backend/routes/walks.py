@@ -189,6 +189,10 @@ class GenerateIn(AssessIn):
     #: different way; without it, round trips from the start.
     via: Optional[Point] = None
     via_label: str = Field("your checkpoint", max_length=80)
+    #: How close the walk must come to the checkpoint, in metres. 25 means
+    #: "to it"; more lets it pass at a distance - a statue on a hill seen from
+    #: the path below. Founder decision, 10 Oct 2026.
+    via_reach_m: int = Field(25, ge=25, le=500)
 
 
 #: Each generation is three provider calls. The free plan allows 40 a minute
@@ -247,7 +251,8 @@ async def generate_walks(
             routes = await gen.via_walk((body.start.lat, body.start.lng),
                                         (body.via.lat, body.via.lng), body.profile,
                                         body.start_label, body.via_label,
-                                        character=body.character, minutes=minutes)
+                                        character=body.character, minutes=minutes,
+                                        reach_m=body.via_reach_m)
         else:
             routes = await gen.generate((body.start.lat, body.start.lng), body.profile,
                                         minutes, body.start_label,
@@ -271,9 +276,10 @@ async def generate_walks(
             "requested": via["requested"],
             "routed": {"lat": via["lat"], "lng": via["lng"]},
             "offset_m": via["offset_m"],
-            # Moved further than a path's width: the parent sees both points
-            # and accepts the moved one before the walks are shown.
-            "needs_confirmation": via["offset_m"] > gen.CHECKPOINT_ON_ROUTE_M,
+            "reach_m": via["reach_m"],
+            # Further than the parent allowed: they see both points and accept
+            # the moved one before the walks are shown.
+            "needs_confirmation": via["offset_m"] > via["reach_m"] + 1,
             # Every walk through it takes longer than asked: said, not hidden,
             # and the time is not changed for them.
             "over_time": over,

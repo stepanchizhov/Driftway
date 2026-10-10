@@ -434,3 +434,38 @@ I would consider them for this alpha:
    favourites and feedback reset each time.
 3. **Move to a paid instance** before any closed beta. The Bible already flags
    this as the pre-beta migration.
+
+## Versions and builds
+
+Founder request, 10 Oct 2026: testers must be able to tell which Driftway they
+are using.
+
+- **The release number** is the newest entry in `frontend/src/version.ts`,
+  which is also the history under Settings → "What's new?". The API's own
+  copy is `backend/core/version.py`; `tests/test_version.py` fails if they
+  differ. A release bumps both and adds a history entry in plain words.
+- **The build** is the commit. The app takes it at build time from Render's
+  `RENDER_GIT_COMMIT` (or `git` locally; "dev" without either). The API
+  reads the same variable at run time. Settings shows both, and says when
+  they differ. That is normal for a few minutes after a push, because the
+  static site and the API deploy separately; if it lasts, the phone is
+  holding an old copy of the app.
+- `/api/health` carries `"version": {"app": ..., "build": ...}`.
+- Versions before 0.7.0 were numbered afterwards from the project history.
+  Project Bible document versions are a separate numbering.
+
+## openrouteservice quota (10 Oct 2026)
+
+After about 80 developer calls that day, the API answered
+`403 {"error": "Quota exceeded"}` to every request, still minutes later,
+so most likely the daily quota. It sent no rate-limit headers to say which
+quota or when it resets. The key is shared with production, so walk
+generation was unavailable there too until the reset. The app reported it
+as "couldn't find a walking route"; it now says the provider's usage limit
+was reached.
+
+What used the quota is not established. Before the test suite blanked the
+key (`tests/__init__.py`), runs on a machine with the key in `backend/.env`
+could reach the live API. Production traffic shares the key. **Check the
+HeiGIT dashboard** for that day's count and the plan's actual limits, and
+consider a separate developer key so testing cannot starve production.

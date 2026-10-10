@@ -67,7 +67,8 @@ class _Base(unittest.TestCase):
     def tearDown(self):
         os.environ.pop("ORS_API_KEY", None)
 
-    def run_via(self, handler, profile="carrier", via=VIA, minutes=None, character="any"):
+    def run_via(self, handler, profile="carrier", via=VIA, minutes=None, character="any",
+                reach_m=25):
         from core.walking import generate as gen
         seen = []
 
@@ -78,7 +79,7 @@ class _Base(unittest.TestCase):
         client = httpx.AsyncClient(transport=httpx.MockTransport(record))
         routes = asyncio.run(gen.via_walk(START, via, profile, "Start", "the oak",
                                           character=character, client=client,
-                                          minutes=minutes))
+                                          minutes=minutes, reach_m=reach_m))
         return routes, seen
 
 
@@ -190,13 +191,39 @@ class FailureTests(_Base):
             self.run_via(lambda r, n: calls.append(n), minutes=10)
         self.assertEqual(calls, [])
         self.assertEqual(e.exception.code, "too_far")
-        self.assertEqual(e.exception.minimum_minutes, 31)   # 2.0016 km at 4 km/h
+        self.assertEqual(e.exception.minimum_minutes, 30)   # 2 x (1000.8 - 25) m at 4 km/h
 
     def test_a_checkpoint_at_the_start_is_refused(self):
         from core.walking.generate import CheckpointProblem
         with self.assertRaises(CheckpointProblem) as e:
             self.run_via(out_and_back(line()), via=(52.0002, 13.0))
         self.assertEqual(e.exception.code, "too_close")
+
+
+class ProviderLimitTests(_Base):
+    """Found live, 10 Oct 2026: a spent quota was reported as an unreachable
+    checkpoint."""
+
+    def test_a_spent_quota_is_not_called_an_unreachable_place(self):
+        from core.walking.generate import CheckpointProblem, ProviderRefused
+        with self.assertRaises(ProviderRefused) as e:
+            self.run_via(lambda r, n: httpx.Response(403, json={"error": "Quota exceeded"}))
+        self.assertNotIsInstance(e.exception, CheckpointProblem)
+        self.assertIn("usage limit", str(e.exception))
+
+    def test_loops_say_so_too(self):
+        from core.walking import generate as gen
+        client = httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda r: httpx.Response(429, json={"error": "Rate limit exceeded"})))
+        with self.assertRaises(gen.ProviderRefused) as e:
+            asyncio.run(gen.generate(START, "walker", 30, "Start", client))
+        self.assertIn("usage limit", str(e.exception))
+
+    def test_a_rejected_key_is_not_a_quota(self):
+        from core.walking.generate import ProviderRefused
+        with self.assertRaises(ProviderRefused) as e:
+            self.run_via(lambda r, n: httpx.Response(403, json={"error": "Access to this API has been disallowed"}))
+        self.assertNotIn("usage limit", str(e.exception))
 
 
 class RetracingTests(_Base):
@@ -216,6 +243,73 @@ class RetracingTests(_Base):
         self.assertTrue(any("same ground twice" in n for n in routes[0].notes))
         card = assess_route(routes[0], "carrier", CarrierSetup(), 30)
         self.assertGreaterEqual(card["retrace_share"], 0.35)   # shown, measured
+
+
+def between(a, b, bow_m, n=11):
+    """A line from (lat, lng) a to b, [lng, lat, ele], bowed east by bow_m."""
+    pts = []
+    for i in range(n):
+        t = i / (n - 1)
+        east = bow_m * math.sin(math.pi * t)
+        pts.append([a[1] + (b[1] - a[1]) * t + east / M_PER_DEG_LNG,
+                    a[0] + (b[0] - a[0]) * t, 30])
+    return pts
+
+
+def honest_router():
+    """Routes between the points actually requested: out bowed east, back west."""
+    def handler(request, n):
+        (lng1, lat1), (lng2, lat2) = json.loads(request.read())["coordinates"]
+        bow = 150 if (lat1, lng1) == START else -150
+        return httpx.Response(200, json=fc(between((lat1, lng1), (lat2, lng2), bow)))
+    return handler
+
+
+class ReachTests(_Base):
+    """How close the walk must come - founder decision, 10 Oct: a walk along
+    the Long Walk "via" the King George III statue need not climb to it."""
+
+    def test_with_a_wider_reach_the_walk_turns_where_it_first_comes_that_close(self):
+        from core.walking.generate import closest_m
+        routes, seen = self.run_via(honest_router(), reach_m=250)
+        r = routes[0]
+        self.assertTrue(240 <= r.via["offset_m"] <= 251, r.via)
+        # The way back starts where the walk turned, not at the checkpoint.
+        back = json.loads(seen[1].read())
+        turn_lat = back["coordinates"][0][1]
+        self.assertLess(turn_lat, VIA[0] - 0.002)
+        pts = [[p[1], p[0]] for s in r.sections for p in s.geometry]
+        self.assertGreater(closest_m(pts, VIA), 200)          # never climbs to it
+        self.assertLessEqual(closest_m(pts, VIA), 251)        # but comes that close
+        self.assertTrue(any("as close as you asked" in n for n in r.notes))
+
+    def test_the_provider_may_look_as_far_as_the_reach(self):
+        _, seen = self.run_via(out_and_back(line(bow_m=150)), reach_m=400)
+        self.assertEqual(json.loads(seen[0].read())["radiuses"], [400, 400])
+        _, seen = self.run_via(out_and_back(line(bow_m=150)), reach_m=100)
+        self.assertEqual(json.loads(seen[0].read())["radiuses"], [400, 150])
+
+    def test_the_time_floor_counts_only_the_distance_beyond_reach(self):
+        # 1 km away: too far for 20 minutes when the walk must reach it, fine
+        # when it only has to come within 500 m.
+        from core.walking.generate import CheckpointProblem
+        with self.assertRaises(CheckpointProblem):
+            self.run_via(out_and_back(line(bow_m=150)), minutes=20)
+        routes, _ = self.run_via(out_and_back(line(bow_m=150)), minutes=20, reach_m=500)
+        self.assertTrue(routes)
+
+    def test_a_start_already_within_reach_is_refused(self):
+        from core.walking.generate import CheckpointProblem
+        with self.assertRaises(CheckpointProblem) as e:
+            self.run_via(out_and_back(line()), via=(52.0025, 13.0), reach_m=250)
+        self.assertEqual(e.exception.code, "too_close")
+        self.assertIn("within about 250 m", str(e.exception))
+
+    def test_a_walk_that_cannot_get_that_close_still_needs_acceptance(self):
+        # The only way ends 400 m east of the marker: beyond a 250 m reach.
+        routes, _ = self.run_via(out_and_back(line(end_east_m=400)), reach_m=250)
+        self.assertGreater(routes[0].via["offset_m"], 250)
+        self.assertEqual(routes[0].via["reach_m"], 250)
 
 
 class EndpointTests(unittest.TestCase):
@@ -275,6 +369,16 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(cp["requested"], {"lat": VIA[0], "lng": VIA[1]})
         self.assertFalse(cp["needs_confirmation"])
 
+    def test_reach_is_bounded_and_decides_confirmation(self):
+        for bad in (10, 600):
+            self.assertEqual(self.post(self.body(via_reach_m=bad)).status_code, 422)
+        moved = line(end_east_m=80, bow_m=150)
+        r = self.post(self.body(via_reach_m=100), lambda req: httpx.Response(200, json=fc(moved)))
+        self.assertEqual(r.status_code, 200, r.text)
+        cp = r.json()["checkpoint"]
+        self.assertEqual(cp["reach_m"], 100)
+        self.assertFalse(cp["needs_confirmation"])   # 80 m is within the 100 allowed
+
     def test_a_moved_point_needs_the_parents_confirmation(self):
         moved = line(end_east_m=80, bow_m=150)
         r = self.post(self.body(), lambda req: httpx.Response(200, json=fc(moved)))
@@ -286,7 +390,7 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(r.status_code, 422)
         detail = r.json()["detail"]
         self.assertEqual(detail["code"], "too_far")
-        self.assertEqual(detail["minimum_minutes"], 31)
+        self.assertEqual(detail["minimum_minutes"], 30)
 
     def test_walks_longer_than_asked_are_flagged_not_trimmed(self):
         # 1 km away as the crow flies (fits 30 min), but the only paths bow

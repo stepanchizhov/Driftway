@@ -133,7 +133,9 @@ export interface CheckpointOutcome {
   /** Where the route provider took the walks - the point they visit. */
   routed: { lat: number; lng: number };
   offset_m: number;
-  /** Moved further than a path's width: show both, ask before showing walks. */
+  /** How close the parent asked the walk to come. */
+  reach_m: number;
+  /** Further than the parent allowed: show both, ask before showing walks. */
   needs_confirmation: boolean;
   /** Every walk through it is longer than the time asked for. */
   over_time: boolean;
@@ -173,6 +175,7 @@ export async function generateWalks(body: {
   character?: "any" | "green" | "quiet";
   via?: { lat: number; lng: number };
   via_label?: string;
+  via_reach_m?: number;
   pram?: PramSetup;
   carrier?: CarrierSetup;
 }): Promise<GeneratedWalks> {

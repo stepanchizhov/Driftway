@@ -25,6 +25,12 @@ export interface WalkSetup {
   character: "any" | "green" | "quiet";
   /** Show walks that need driving or travelling to the start. */
   allowTravel: boolean;
+  /**
+   * How close a walk must come to a checkpoint, in metres: 25 means "to it".
+   * Founder decision, 10 Oct: a walk along the Long Walk "via" the King
+   * George III statue need not climb to it; passing 200 m away is the walk.
+   */
+  checkpointReach: number;
   pram: PramSetup;
   carrier: CarrierSetup;
 }
@@ -35,6 +41,7 @@ const DEFAULTS: WalkSetup = {
   maxRetrace: 1,
   character: "any",
   allowTravel: true,
+  checkpointReach: 25,
   pram: { wheels: "standard", width_cm: null, double: false },
   carrier: {
     kind: "soft",
