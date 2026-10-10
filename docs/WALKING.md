@@ -163,6 +163,25 @@ corridors and dragging the route itself are LATER.
   the walk keep the profile's access options.
 - Within **25 m** of the parent's marker, the walk visits the marker. The 25 m
   is a HYPOTHESIS: about a path's width plus a marker placed by finger.
+- **How close is close enough is the parent's to set** (DECISION, founder,
+  10 Oct): Walk preferences → "How close a walk must come to your
+  checkpoint": to it (25 m, default), 100, 250 or 500 m. The founder's case is
+  the King George III statue (OSM way 931857501) at the end of the Long Walk:
+  the walk should pass it about 200 m away, not climb Snow Hill to it. Above
+  25 m:
+  - the way out is cut where it first comes that close, and the way back
+    starts there;
+  - the provider may search that far for a path;
+  - the time floor counts only the distance beyond that circle;
+  - a start already within reach is refused;
+  - only a walk that cannot get that close needs the parent's acceptance;
+  - each kept walk is checked to come within reach;
+  - the card says how far from the checkpoint it turns.
+
+  Live check: going "to it", a Just me walk from the Long Walk's Park Street
+  end came within 18 m of the statue, with 89 m of climb. The 250 m
+  comparison was cut short when openrouteservice's quota ran out (see
+  `DEPLOY.md`), and is still to be run.
 - Snapped further, up to **150 m**, the walks are made but not shown until the
   parent has seen both points on the map and accepted the moved one, or moved
   their marker. Distance alone does not show two places are equivalent: the
