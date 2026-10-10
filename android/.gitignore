@@ -1,0 +1,8 @@
+# Only twa-manifest.json and README.md belong here. Bubblewrap generates the
+# Android project from twa-manifest.json; build it outside this repository,
+# in a folder whose path is plain ASCII (see README.md). Keys and passwords
+# never go in the repository.
+*
+!.gitignore
+!twa-manifest.json
+!README.md

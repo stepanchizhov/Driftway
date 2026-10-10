@@ -10,9 +10,14 @@ Founder decisions, 10 Oct 2026:
 - Domain: **`driftway.stepan.chizhov.com`**. `driftway.app` belongs to someone
   else. The Auth0 API audience `https://api.driftway.app` is only an
   identifier, never fetched, and stays as it is.
-- Published by **iBookBinding Ltd**'s Play developer account. It is an
-  organisation account, so the rule that new personal accounts must run a
-  closed test with 12 testers for 14 days does not apply.
+- Published by **iBookBinding Ltd**'s Play developer account, which already
+  runs another app's test. Google's rule on closed testing before production
+  (Play Console Help 14151465, read 10 Oct 2026) is worded for "developers
+  with personal accounts created after November 13, 2023": 12 testers opted
+  in for 14 days. It does not mention organisation accounts, so by its own
+  wording it does not apply here. Play Console's dashboard shows any
+  requirement that does apply. Internal testing has no review and no access
+  requirement, and builds reach testers "within seconds".
 - The Render API is on the Pro plan, so it does not sleep when idle.
 
 A Trusted Web Activity is tied to one web origin. The app proves it owns the
@@ -77,60 +82,56 @@ link opened on the old address continues on the new one.
 ## 2. Play Console (founder)
 
 1. Create the app "Driftway" in iBookBinding Ltd's developer account.
-2. Choose the **package name**. It is permanent once an app is uploaded.
-   Proposed: `com.ibookbinding.driftway`. DECISION pending.
-3. Turn on Play App Signing (the default), then copy the **SHA-256
-   certificate fingerprint** of the app signing key: Test and release,
-   App integrity, App signing.
-4. Send the package name and fingerprint. The developer adds
-   `frontend/public/.well-known/assetlinks.json`; Vite copies that folder into
-   the build (checked 10 Oct 2026). Once it is live, check that
-   `https://driftway.stepan.chizhov.com/.well-known/assetlinks.json` answers
-   with that JSON.
+2. Package name: **`com.ibookbinding.driftway`** (DECISION, founder, 10 Oct).
+   Permanent once an app is uploaded.
+3. Keep Play App Signing on (the default). Create an **upload key**
+   deliberately: see `android/README.md`, "Keys: three different things".
+   Do not upload a build signed with the local test key.
+4. Copy the **SHA-256 fingerprint of the app signing key**: Test and
+   release, App integrity, App signing. The developer adds it to
+   `frontend/public/.well-known/assetlinks.json`, next to the local test
+   key's fingerprint that is already there. Vite copies `.well-known` into
+   the build (checked 10 Oct 2026). Once deployed, check that
+   `https://<address>/.well-known/assetlinks.json` returns that JSON.
 
-The file will look like this, with the real values:
+## 3. Build with Bubblewrap
 
-```json
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "com.ibookbinding.driftway",
-    "sha256_cert_fingerprints": ["AA:BB:...:FF"]
-  }
-}]
-```
+`android/twa-manifest.json` is the app's source, and `android/README.md` has
+the PowerShell build steps. The developer built it on 10 Oct 2026 on the
+founder's machine, with the Bubblewrap install already there (1.25.0, JDK 17,
+Android SDK in `C:\Users\stepa\.bubblewrap`), for the **current** address,
+signed with the **local test key**. See the state table at the end for what
+that build has and has not been checked for.
 
-If the app ever opens with a browser address bar across the top, this
-verification has failed. The usual cause is a fingerprint that does not match
-the key that signed the installed build.
+For the Play build:
 
-## 3. Build with Bubblewrap (founder's machine)
+1. Once the domain move is verified, set `host`, the icon URLs,
+   `webManifestUrl` and `fullScopeUrl` in `android/twa-manifest.json` to
+   `driftway.stepan.chizhov.com`.
+2. Point `signingKey` at the upload key.
+3. Raise `appVersionCode` by one for every upload.
+4. Run `bubblewrap update`, then `bubblewrap build`.
+5. Upload `app-release-bundle.aab` to **Internal testing**.
 
-Bubblewrap is Google Chrome Labs' command-line tool. It can download the Java
-and Android tools it needs on first run.
+When the web manifest changes, run `bubblewrap merge`, then `update`, then
+`build`. Changes to the web app itself need no new build: the app shows the
+live site.
 
-```powershell
-npm install -g @bubblewrap/cli
-mkdir driftway-android; cd driftway-android
-bubblewrap init --manifest https://driftway.stepan.chizhov.com/manifest.webmanifest
-bubblewrap build
-```
+**On a phone, before anyone else gets it.** None of these has been checked
+on a device yet:
 
-During `init`:
-
-- package name: the one chosen above;
-- **location delegation: yes**. Every tab uses location, and Android then
-  shows its own permission prompt, as for a native app;
-- signing key: create one and keep it safe outside the repository. With
-  Play App Signing it is the upload key; Google holds the app signing key.
-
-`build` produces `app-release-bundle.aab`. Upload it to **Internal testing**
-first.
-
-When the web manifest changes, run `bubblewrap merge`, then
-`bubblewrap update`, then `bubblewrap build`. Web app changes themselves need
-no new build: the app shows the live site.
+- [ ] It opens full-screen, with no address bar (asset links verified).
+- [ ] Sign in goes to Auth0 (shown with an address bar, because it is a
+  different site) and comes back signed in.
+- [ ] Location: allow, deny, then allow again from settings. The prompt
+  is Android's own (location delegation). Each tab copes with refusal.
+- [ ] An invitation link and a meetup link, tapped in an email, open in
+  the app.
+- [ ] Opening a drive in Google Maps, then coming back.
+- [ ] Back button: within the app, and at the first screen.
+- [ ] Settings links: privacy, deleting your account, the guide for testers.
+- [ ] Feedback sends.
+- [ ] After a web deploy, the app shows the new version (Settings).
 
 ## 4. Store listing and Data safety (founder, with these answers)
 
@@ -169,10 +170,13 @@ no new build: the app shows the live site.
 
 | Item | State |
 |---|---|
-| Privacy policy page, guide for testers, Feedback on every tab | IMPLEMENTED (0.8.0, in progress) |
-| Maskable app icon, manifest describing walks and meetups | IMPLEMENTED |
+| Privacy policy 1.1, deleting your account without the app, guide for testers, Feedback on every tab | IMPLEMENTED (0.8.0, in progress) |
+| Maskable app icon, site icon, iPhone icon, manifest describing walks and meetups | IMPLEMENTED |
 | No search text, positions or link tokens in server logs | IMPLEMENTED |
+| Data safety answers | IMPLEMENTED as `docs/DATA_SAFETY.md`; to be entered in Play Console by the founder |
+| `android/twa-manifest.json`, package `com.ibookbinding.driftway`, location delegation on | IMPLEMENTED, for the current address |
+| Local test build (APK and AAB, local test key) | Built on the founder's machine by the developer; **not yet installed on a phone** |
+| `assetlinks.json` | Local test key only. The Play app signing key: OPEN, founder, section 2 |
 | Domain `driftway.stepan.chizhov.com` | OPEN: founder, section 1 |
-| Package name, Play App Signing fingerprint | OPEN: founder, section 2 |
-| `assetlinks.json` | Waiting on section 2 |
-| Bubblewrap build, internal test | Waiting on sections 1–3 |
+| Upload key | OPEN: founder, `android/README.md` |
+| On-phone checks (section 3) | OPEN: nobody has done them yet |

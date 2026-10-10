@@ -1,0 +1,51 @@
+{
+  "packageId": "com.ibookbinding.driftway",
+  "host": "driftway-front.onrender.com",
+  "name": "Driftway",
+  "launcherName": "Driftway",
+  "display": "standalone",
+  "themeColor": "#161C36",
+  "themeColorDark": "#161C36",
+  "navigationColor": "#161C36",
+  "navigationColorDark": "#161C36",
+  "navigationDividerColor": "#161C36",
+  "navigationDividerColorDark": "#161C36",
+  "backgroundColor": "#161C36",
+  "enableNotifications": false,
+  "startUrl": "/",
+  "iconUrl": "https://driftway-front.onrender.com/icon-512.png",
+  "maskableIconUrl": "https://driftway-front.onrender.com/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "C:\\Users\\stepa\\.driftway\\driftway-localtest.jks",
+    "alias": "driftway-localtest"
+  },
+  "appVersionName": "0.8.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://driftway-front.onrender.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://driftway-front.onrender.com/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "protocolHandlers": [],
+  "fileHandlers": [],
+  "launchHandlerClientMode": "",
+  "displayOverride": [],
+  "appVersion": "0.8.0"
+}

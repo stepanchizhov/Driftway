@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.ibookbinding.driftway",
+      "sha256_cert_fingerprints": [
+        "28:E3:53:56:07:88:C0:CC:12:0A:97:31:57:F0:C8:5B:74:D1:7A:B7:6E:8F:D4:BC:2A:54:6B:B8:CE:25:DD:6D"
+      ]
+    }
+  }
+]
