@@ -40,7 +40,7 @@ from typing import Dict, List, Optional, Tuple
 
 import httpx
 
-from .catalogue import PACE_KMH, Route
+from .catalogue import Route, pace_kmh
 from .evidence import Barrier, BarrierKind, Evidence, Section, Status, Surface
 from .terrain import attach_gradients, smooth
 
@@ -171,7 +171,7 @@ def is_configured() -> bool:
 def target_length_m(minutes: int) -> float:
     """The round-trip length to ask for. A preference, not a promise: the
     result is fitted to the time afterwards, like any other walk."""
-    return minutes / 60.0 * PACE_KMH * 1000.0
+    return minutes / 60.0 * pace_kmh() * 1000.0
 
 
 #: Walk characters openrouteservice can weigh. Documented for foot-* profiles
@@ -729,7 +729,7 @@ def minimum_via_minutes(start: Tuple[float, float], via: Tuple[float, float],
     the straight line there and back. A floor, not an estimate: real paths are
     longer."""
     beyond = max(0.0, _haversine(start, via) - max(reach_m, CHECKPOINT_ON_ROUTE_M))
-    return 2 * beyond / 1000.0 / PACE_KMH * 60.0
+    return 2 * beyond / 1000.0 / pace_kmh() * 60.0
 
 
 #: Most checkpoints in one walk (founder request, 11 Oct 2026).
@@ -745,7 +745,7 @@ def minimum_chain_minutes(start: Tuple[float, float], pins: List[Tuple[float, fl
     chain = [start, *pins, start]
     straight = sum(_haversine(a, b) for a, b in zip(chain, chain[1:]))
     beyond = max(0.0, straight - 2 * max(reach_m, CHECKPOINT_ON_ROUTE_M) * len(pins))
-    return beyond / 1000.0 / PACE_KMH * 60.0
+    return beyond / 1000.0 / pace_kmh() * 60.0
 
 
 def check_checkpoints(start: Tuple[float, float], pins: List[Tuple[float, float]],

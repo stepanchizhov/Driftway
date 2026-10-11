@@ -178,6 +178,8 @@ export class CheckpointError extends Error {
 export async function generateWalks(body: {
   profile: "pram" | "carrier" | "walker";
   minutes: number;
+  /** The parent's pace, km/h; servers before 11 Oct ignore it (4 km/h). */
+  pace_kmh?: number;
   allow_out_and_back?: boolean;
   start: { lat: number; lng: number };
   start_label: string;
@@ -228,6 +230,7 @@ export class NotAdmitted extends Error {}
 export async function assessWalks(body: {
   profile: "pram" | "carrier" | "walker";
   minutes: number;
+  pace_kmh?: number;
   allow_out_and_back?: boolean;
   pram?: PramSetup;
   carrier?: CarrierSetup;

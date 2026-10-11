@@ -179,7 +179,6 @@ export function SettingsScreen({ settings, update, server }: Props) {
           <li>Calmer drives that steer away from mapped speed bumps</li>
           <li>Drives that turn around less often</li>
           <li>More saved places, not just Home</li>
-          <li>Your own walking pace, for walk times</li>
           <li>Walks by rivers and canals</li>
           <li>Later: in the car (Android Auto), and iPhone</li>
         </ul>

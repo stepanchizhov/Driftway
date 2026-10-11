@@ -533,3 +533,15 @@ person.
 
 LATER: a map view, live rerouting, load-based timing models, crowdsourced
 reports, mountain or technical terrain.
+
+## Walking pace (11 Oct 2026)
+
+Times assumed 4 km/h for everyone; the founder walks at about 5, so every
+walk he was offered came out shorter than he asked for. Walk preferences now
+have a pace, 3 to 6.5 km/h, kept on the device and sent with each request as
+`pace_kmh` (never stored; the server accepts 2 to 7, and 4 when it is
+missing). It sets every time on a card, where a long walk turns back, how
+long a walk made from the start is asked to be, and the shortest possible
+time through checkpoints. The climb allowance stays a minute per 10 m. The
+card says which pace it used. On the server the pace is set once per request
+(`catalogue.walking_pace`) and read wherever a time is worked out.

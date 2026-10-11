@@ -28,7 +28,8 @@ from sqlalchemy.orm import Session
 from core.config import WalksAccess, walking_enabled, walks_access
 from core.current_user import CredentialsRejected, current_account
 from core.db import get_session, storage_available
-from core.walking.catalogue import assess_all
+from core.walking.catalogue import (PACE_MAX_KMH, PACE_MIN_KMH, assess_all,
+                                    walking_pace)
 from core.walking.profiles import CarrierSetup, PramSetup
 
 log = logging.getLogger("driftway")
@@ -61,6 +62,10 @@ class AssessIn(BaseModel):
     #: False for parents who would rather not walk the same ground twice: a
     #: long circuit is then not shortened by turning back.
     allow_out_and_back: bool = True
+    #: The parent's own walking pace, km/h (11 Oct 2026). Unset: 4 km/h.
+    #: Kept on their device and sent with each request; never stored.
+    pace_kmh: Optional[float] = Field(None, ge=PACE_MIN_KMH, le=PACE_MAX_KMH,
+                                      allow_inf_nan=False)
 
 
 #: Shown with every response. Sources checked 8 Oct 2026.
@@ -170,9 +175,11 @@ def assess_walks(
                                     else "carrier_soft"])
         carried = setup.carried_kg()
 
+    with walking_pace(body.pace_kmh):
+        walks = assess_all(body.profile, setup, body.minutes,
+                           allow_out_and_back=body.allow_out_and_back)
     return {
-        "walks": assess_all(body.profile, setup, body.minutes,
-                            allow_out_and_back=body.allow_out_and_back),
+        "walks": walks,
         "guidance": guidance,
         # The carrying adult's own arithmetic, echoed back - not a judgement.
         "carried_kg": carried,
@@ -273,6 +280,12 @@ async def generate_walks(
             else [(body.via.lat, body.via.lng)] if body.via is not None else [])
     labels = ([(lab or "")[:80] for lab in (body.via_labels or [])] if body.vias
               else [body.via_label])
+    with walking_pace(body.pace_kmh):
+        return await _generate(body, setup, minutes, pins, labels)
+
+
+async def _generate(body: GenerateIn, setup, minutes: int, pins, labels):
+    """generate_walks, at the parent's pace (set by the caller)."""
     try:
         if pins:
             routes = await gen.via_walk((body.start.lat, body.start.lng),

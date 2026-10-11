@@ -180,6 +180,7 @@ export function Walks({
       assessWalks({
         profile: applied.profile,
         minutes: applied.minutes,
+        pace_kmh: applied.paceKmh,
         allow_out_and_back: applied.maxRetrace >= 0.5,
         ...(applied.profile === "pram"
           ? { pram: applied.pram }
@@ -248,7 +249,7 @@ export function Walks({
       />
 
       <SetupPanel setup={setup} update={update} />
-      <PrefsPanel setup={setup} update={update} />
+      <PrefsPanel setup={setup} update={update} units={units} />
 
       <ChipGroup
         legend="About how long"
@@ -425,13 +426,23 @@ function Gate({
   );
 }
 
+/** The paces offered, km/h. 4 is the usual assumption. */
+const PACES = [3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5];
+
+/** "4.5 km/h", or "2.8 mph" for someone who uses miles. */
+function pace(kmh: number, units: Units): string {
+  return units === "mi" ? `${(kmh / 1.609344).toFixed(1)} mph` : `${kmh} km/h`;
+}
+
 /** Walk preferences, kept on this device. */
 function PrefsPanel({
   setup,
   update,
+  units,
 }: {
   setup: WalkSetup;
   update: (patch: Partial<WalkSetup>) => void;
+  units: Units;
 }) {
   return (
     <details className="walks-setup">
@@ -447,11 +458,28 @@ function PrefsPanel({
                 : "quieter",
             setup.allowTravel ? null : "doorstep only",
             setup.checkpointReach > 25 ? `checkpoints within ${setup.checkpointReach} m` : null,
+            setup.paceKmh !== 4 ? pace(setup.paceKmh, units) : null,
           ]
             .filter(Boolean)
             .join(" · ") || "all walks"}
         </span>
       </summary>
+      <ChipGroup
+        legend="Your walking pace"
+        columns={4}
+        options={PACES.map((k) => ({
+          value: k,
+          label: pace(k, units),
+          ...(k === 4 ? { sub: "usual" } : {}),
+        }))}
+        value={setup.paceKmh}
+        onChange={(v) => update({ paceKmh: Number(v) })}
+      />
+      <p className="walks-hint">
+        Walk times use this pace, plus a minute for every 10 m climbed, and
+        walks made from your start are made long enough for it. Most people
+        walk a little slower with a pram or a carrier than alone.
+      </p>
       <ChipGroup
         legend="Walking the same path twice"
         columns={3}
@@ -1014,6 +1042,7 @@ function MakeWalks({
       const res = await generateWalks({
         profile: setup.profile,
         minutes: setup.minutes,
+        pace_kmh: setup.paceKmh,
         allow_out_and_back: setup.maxRetrace >= 0.5,
         // A pram is always made with pram routing (0.8); never send a weighting.
         character: setup.profile === "pram" ? "any" : setup.character,

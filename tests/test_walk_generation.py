@@ -640,3 +640,19 @@ class TimeFitTests(unittest.TestCase):
         from core.walking.catalogue import _full_minutes
         self.assertAlmostEqual(_full_minutes(routes[0]), 30, delta=6)
 
+
+
+class PaceLengthTests(unittest.TestCase):
+    """Walks made from a start are asked for at the parent's pace."""
+
+    def test_the_length_asked_for_follows_the_pace(self):
+        from core.walking import generate as gen
+        from core.walking.catalogue import walking_pace
+        self.assertAlmostEqual(gen.target_length_m(60), 4000)
+        with walking_pace(5):
+            self.assertAlmostEqual(gen.target_length_m(60), 5000)
+            self.assertAlmostEqual(
+                gen.minimum_via_minutes((51.48, -0.60), (51.48, -0.5655), reach_m=25),
+                2 * (gen._haversine((51.48, -0.60), (51.48, -0.5655)) - 25) / 5000 * 60,
+                places=3)
+        self.assertAlmostEqual(gen.target_length_m(60), 4000)

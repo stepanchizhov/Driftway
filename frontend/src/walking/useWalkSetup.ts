@@ -31,6 +31,12 @@ export interface WalkSetup {
    * George III statue need not climb to it; passing 200 m away is the walk.
    */
   checkpointReach: number;
+  /**
+   * Walking pace in km/h, for walk times and for how long a made walk is.
+   * Founder request, 11 Oct 2026: he walks at about 5, and 4 made every walk
+   * shorter than he asked for.
+   */
+  paceKmh: number;
   pram: PramSetup;
   carrier: CarrierSetup;
 }
@@ -42,6 +48,7 @@ const DEFAULTS: WalkSetup = {
   character: "any",
   allowTravel: true,
   checkpointReach: 25,
+  paceKmh: 4,
   pram: { wheels: "standard", width_cm: null, double: false },
   carrier: {
     kind: "soft",

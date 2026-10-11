@@ -182,3 +182,39 @@ class ProfileResponseTests(WalkingApiTestCase):
                  for t in Base.metadata.sorted_tables}
         s.close()
         self.assertEqual(before, after)
+
+
+class PaceTests(WalkingApiTestCase):
+    """The parent's own walking pace (founder request, 11 Oct 2026)."""
+
+    def minutes(self, **extra):
+        r = self.client.post("/api/walks/assess", json={**PRAM, **extra})
+        self.assertEqual(r.status_code, 200, r.text)
+        return {w["id"]: w for w in r.json()["walks"]}
+
+    def test_a_faster_pace_makes_every_walk_quicker(self):
+        """The whole walk takes less time. A walk shortened to fit the time
+        asked for still fits it; it just turns back further along."""
+        full = lambda w: w["fit"]["full_minutes"] if w.get("fit") else w["minutes"]
+        usual, brisk = self.minutes(), self.minutes(pace_kmh=5)
+        for walk_id, w in usual.items():
+            self.assertLess(full(brisk[walk_id]), full(w), walk_id)
+            if w.get("fit") and w["fit"].get("turn_back_at_m"):
+                self.assertGreaterEqual(brisk[walk_id]["fit"]["turn_back_at_m"],
+                                        w["fit"]["turn_back_at_m"], walk_id)
+
+    def test_the_card_states_the_pace_used(self):
+        w = next(iter(self.minutes(pace_kmh=4.5).values()))
+        self.assertIn("About 4.5 km/h", w["assumptions"])
+        w = next(iter(self.minutes().values()))
+        self.assertIn("About 4 km/h", w["assumptions"])
+
+    def test_the_pace_does_not_outlive_its_request(self):
+        before = self.minutes()
+        self.minutes(pace_kmh=6)
+        self.assertEqual(self.minutes(), before)
+
+    def test_impossible_paces_are_refused(self):
+        for bad in (0, 1.5, 7.5, "fast"):
+            r = self.client.post("/api/walks/assess", json={**PRAM, "pace_kmh": bad})
+            self.assertEqual(r.status_code, 422, bad)

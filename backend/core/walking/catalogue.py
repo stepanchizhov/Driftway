@@ -14,12 +14,14 @@ backend/tools/build_walk.py, so every section traces back to a source.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 import json
 import math
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterator, List, Optional, Union
 
 from .evidence import (
     Barrier,
@@ -46,8 +48,34 @@ log = logging.getLogger("driftway")
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))), "data", "walks")
 
-#: HYPOTHESIS. Stated on every card rather than hidden in a number.
+#: HYPOTHESIS. Stated on every card rather than hidden in a number. The
+#: default when the parent hasn't set their own pace.
 PACE_KMH = 4.0
+#: The paces a parent can set (founder request, 11 Oct 2026: he walks at
+#: about 5 km/h, so every walk came out shorter than asked).
+PACE_MIN_KMH, PACE_MAX_KMH = 2.0, 7.0
+
+# The pace for the request being answered. Set once by the endpoint with
+# walking_pace(), read by every time calculation below and in generate.py,
+# so it need not be passed through each of them. A ContextVar is per request:
+# concurrent requests each see their own.
+_pace: ContextVar[float] = ContextVar("walking_pace_kmh", default=PACE_KMH)
+
+
+def pace_kmh() -> float:
+    """Walking pace for the request being answered, in km/h."""
+    return _pace.get()
+
+
+@contextmanager
+def walking_pace(kmh: Optional[float]) -> Iterator[None]:
+    """Answer one request at the parent's pace (None: the default)."""
+    token = _pace.set(PACE_KMH if kmh is None else
+                      min(PACE_MAX_KMH, max(PACE_MIN_KMH, float(kmh))))
+    try:
+        yield
+    finally:
+        _pace.reset(token)
 #: HYPOTHESIS. Naismith's rule: about a minute per ten metres climbed.
 MIN_PER_10M_ASCENT = 1.0
 
@@ -161,7 +189,7 @@ def _return_leg(route: Route) -> List[Section]:
 
 
 def _minutes(distance_m: float, ascent_m: float) -> float:
-    return distance_m / 1000.0 / PACE_KMH * 60.0 + ascent_m / 10.0 * MIN_PER_10M_ASCENT
+    return distance_m / 1000.0 / pace_kmh() * 60.0 + ascent_m / 10.0 * MIN_PER_10M_ASCENT
 
 
 def _full_minutes(route: Route) -> float:
@@ -462,7 +490,7 @@ def assess_route(route: Route, profile: str,
     else:
         verdict = Verdict.OK
 
-    minutes = (distance / 1000.0) / PACE_KMH * 60.0
+    minutes = (distance / 1000.0) / pace_kmh() * 60.0
     if have_gradient:
         minutes += ascent / 10.0 * MIN_PER_10M_ASCENT
 
@@ -483,7 +511,7 @@ def assess_route(route: Route, profile: str,
         "minutes": round(minutes),
         "fit": _fit(whole, requested, full, turn_m),
         "assumptions": (
-            f"About {PACE_KMH:g} km/h"
+            f"About {pace_kmh():g} km/h"
             + (", plus a minute for every 10 m climbed" if have_gradient else "")
             + ". No stops included."
         ),

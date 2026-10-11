@@ -29,6 +29,7 @@ export const RELEASES: Release[] = [
     version: "0.8.0",
     date: "in progress",
     changes: [
+      "Your own walking pace, in Walk preferences: walk times, and how long walks made from your start are, follow it.",
       "Walks work for everyone, without signing in, and accounts no longer need an invitation (privacy policy 1.4).",
       "Location never blocks the app: after 12 seconds Driftway says why, and you can search where you are instead, in Still asleep too. A position that arrives later still counts.",
       "Walks can go through up to three checkpoints, in the order you add them, then home another way. Drop pins on the map or search for places.",
