@@ -11,7 +11,7 @@ Play Console and domain steps, is in `docs/ANDROID.md`.
 | `packageId` | `com.ibookbinding.driftway` | Founder decision, 10 Oct. Permanent once uploaded to Play |
 | `host` | `driftway.stepan.chizhov.com` | The final address. It went live on 10 Oct 2026: HTTPS, asset links and the API's CORS were checked from outside |
 | `features.locationDelegation` | on | Every tab uses location. Android then asks for it as it would for a native app. Foreground only: no background location |
-| `enableNotifications` | **on** (11 Oct) | Needed for location, not for notifications. Bubblewrap switches its background service on only with notifications, and the location permission prompt lives in that service. With it off, the app never asked for location: with permission not yet granted, the page waited forever (founder's phone, 11 Oct). Driftway never asks to send notifications, so none appear; the app does declare Android's notification permission |
+| `enableNotifications` | **on** (11 Oct) | Needed for location, not for notifications. It switches on the app's service, nothing on the phone: the notification permission stays off, and no one is asked to allow notifications. Checked on the founder's phone, 11 Oct: notification permission not granted, location granted, a location fix in the page within a second. Bubblewrap switches its background service on only with notifications, and the location permission prompt lives in that service. With it off, the app never asked for location: with permission not yet granted, the page waited forever (founder's phone, 11 Oct). Driftway never asks to send notifications, so none appear; the app does declare Android's notification permission |
 | `appVersionCode` | 2 | 1 was the first local build, without the location prompt |
 | `signingKey` | `C:\Users\stepa\.driftway\driftway-localtest.jks`, alias `driftway-localtest` | A **local test key** for builds you install by hand. Never use it as the Play upload key; see below |
 
@@ -32,14 +32,26 @@ sandboxes set it, and that was the cause here on 10 Oct. Clear it for the
 build: `Remove-Item Env:NoDefaultCurrentDirectoryInExePath`.
 
 ```powershell
-mkdir $HOME\driftway-android -Force
-Copy-Item .\android\twa-manifest.json $HOME\driftway-android\
-cd $HOME\driftway-android
-bubblewrap update --skipVersionUpgrade
-$env:BUBBLEWRAP_KEYSTORE_PASSWORD = Get-Content $HOME\.driftway\driftway-localtest.password
-$env:BUBBLEWRAP_KEY_PASSWORD = $env:BUBBLEWRAP_KEYSTORE_PASSWORD
-bubblewrap build --skipPwaValidation
+.\android\build.ps1          # Driftway, built in $HOME\driftway-android
+.\android\build.ps1 -Next    # Driftway Next, in $HOME\driftway-android-next
 ```
+
+`build.ps1` sets up Bubblewrap's JDK, checks that `jarsigner` is there
+**before** anything is signed, and replaces the test key's password with
+`***` in everything Bubblewrap and Gradle print. It clears the password from
+the session when it finishes. Use it rather than setting the password
+variables by hand.
+
+Why: on 11 Oct 2026, with `jarsigner` missing from PATH, Bubblewrap printed
+the failed signing command, `-storepass` and `-keypass` included, and the
+test key's password appeared in tool output (the second time). Checked
+after the fix: a stand-in Bubblewrap failing in exactly that way prints
+`-storepass "***"`; a missing JDK stops before anything runs; a real build
+of the stable app succeeded with the password nowhere in its output.
+
+The first build of **Driftway Next** in a new folder needs Bubblewrap's
+interactive `init` once (it asks questions); after that the script works
+for it too.
 
 This produces `app-release-signed.apk`, which you can install by hand, and
 `app-release-bundle.aab`, which Play takes.
