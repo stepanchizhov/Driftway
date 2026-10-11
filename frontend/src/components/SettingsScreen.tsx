@@ -178,7 +178,6 @@ export function SettingsScreen({ settings, update, server }: Props) {
           <li>Driftway as an app from Google Play, for beta testers first</li>
           <li>Calmer drives that steer away from mapped speed bumps</li>
           <li>Drives that turn around less often</li>
-          <li>More saved places, not just Home</li>
           <li>Walks by rivers and canals</li>
           <li>Recording a walk as you go, to keep in My walks</li>
           <li>Walks that learn from the ones you take: paths you like, stretches you skip</li>

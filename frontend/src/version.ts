@@ -37,6 +37,15 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.5",
+    date: "11 Oct 2026",
+    changes: [
+      "Saved places: keep Home and anywhere else you go often, under ★ Saved. They're one tap away in Still asleep and wherever you search for a place, and stay on this phone (privacy policy 1.6).",
+      "Removing Home asks first and leaves no Home, rather than quietly treating another place as Home.",
+      "My walks shows your own route on the map next to the walk Driftway follows, and says where they differ.",
+    ],
+  },
+  {
     version: "0.8.4",
     date: "11 Oct 2026",
     changes: [
