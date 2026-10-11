@@ -133,6 +133,8 @@ services:
       # A tenth of the shared openrouteservice plan; stable keeps the rest.
       - key: ORS_BUDGET_SHARE
         value: "0.1"
+      # And set ORS_BUDGET_SHARE to "0.8" on the stable server, Driftway,
+      # when this one starts (docs/CHANNELS.md, Readiness).
 
   - type: web
     name: Driftway-Front-Next
