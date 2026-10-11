@@ -1,12 +1,12 @@
 import type { Coord } from "../types";
 
 /**
- * One optional checkpoint for walks: a point the walk must visit.
+ * Checkpoints for walks: up to three points the walk must pass, in order.
  *
- * Founder request, 10 Oct: searching for a long feature such as the Long Walk
- * picked one geocoded midpoint, not the stretch the parent meant. Now the
- * checkpoint can also be placed on the map. Search and map edit this same
- * state, and nothing here calls a route provider: confirming or removing a
+ * Founder requests: on 10 Oct, place a checkpoint on the map (searching for
+ * a long feature such as the Long Walk picked one geocoded midpoint); on
+ * 11 Oct, two or three of them. Search and map edit this same list, and
+ * nothing here calls a route provider: adding, moving or removing a
  * checkpoint only changes the settings being edited, and walks are made from
  * `applied` when the parent taps "Update walks". Kept as a pure reducer so
  * those rules are tested without a browser.
@@ -16,6 +16,8 @@ import type { Coord } from "../types";
  * walks.
  */
 
+export const MAX_CHECKPOINTS = 3;
+
 export interface Checkpoint {
   coord: Coord;
   label: string;
@@ -23,31 +25,37 @@ export interface Checkpoint {
 }
 
 export interface CheckpointState {
-  /** As edited: what the next "Update walks" will use. */
-  pending: Checkpoint | null;
+  /** As edited: what the next "Update walks" will use, in order. */
+  pending: Checkpoint[];
   /** What the walks on screen were made with. */
-  applied: Checkpoint | null;
-  /** Map selection mode, with its draft marker (null until placed). */
-  picking: { draft: Coord | null } | null;
+  applied: Checkpoint[];
+  /**
+   * Map selection mode: which checkpoint is being moved (null: a new one is
+   * being added), and the draft pin (null until placed).
+   */
+  picking: { index: number | null; draft: Coord | null } | null;
 }
 
 export type CheckpointAction =
-  | { type: "open" }
+  /** Open the map: move checkpoint `index`, or add a new one. */
+  | { type: "open"; index?: number }
   | { type: "place"; coord: Coord }
   | { type: "confirm" }
   | { type: "cancel" }
-  | { type: "remove" }
-  | { type: "search"; checkpoint: Checkpoint | null }
+  /** Remove checkpoint `index`, or every checkpoint. */
+  | { type: "remove"; index?: number }
+  /** A search result: replaces checkpoint `index`, or is added. */
+  | { type: "search"; checkpoint: Checkpoint; index?: number }
   | { type: "apply" }
   | { type: "undo" }
-  /** The parent accepts the point the provider moved the checkpoint to. */
-  | { type: "accept_routed"; coord: Coord };
+  /** The parent accepts the points the provider moved checkpoints to. */
+  | { type: "accept_routed"; coords: (Coord | null)[] };
 
 export const MAP_POINT_LABEL = "Point on map";
 
 export const initialCheckpoint: CheckpointState = {
-  pending: null,
-  applied: null,
+  pending: [],
+  applied: [],
   picking: null,
 };
 
@@ -68,14 +76,29 @@ export function sameCoord(a: Coord | null | undefined, b: Coord | null | undefin
   return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lng - b.lng) < 1e-6;
 }
 
-export function sameCheckpoint(a: Checkpoint | null, b: Checkpoint | null): boolean {
-  if (!a || !b) return !a && !b;
-  return sameCoord(a.coord, b.coord) && a.label === b.label;
+export function sameCheckpoints(a: Checkpoint[], b: Checkpoint[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((p, i) => sameCoord(p.coord, b[i].coord) && p.label === b[i].label)
+  );
 }
 
-/** Whether the checkpoint being edited differs from the one in use. */
+/** Whether the checkpoints being edited differ from the ones in use. */
 export function checkpointChanged(s: CheckpointState): boolean {
-  return !sameCheckpoint(s.pending, s.applied);
+  return !sameCheckpoints(s.pending, s.applied);
+}
+
+/** What a checkpoint is called in messages and walk names: map pins by
+ *  their number, searched places by name. */
+export function checkpointLabel(p: Checkpoint, index: number): string {
+  return p.source === "map" ? `pin ${index + 1}` : p.label;
+}
+
+function put(list: Checkpoint[], index: number | null | undefined, item: Checkpoint) {
+  if (index == null || index >= list.length) {
+    return list.length < MAX_CHECKPOINTS ? [...list, item] : list;
+  }
+  return list.map((p, i) => (i === index ? item : p));
 }
 
 export function checkpointReducer(
@@ -83,36 +106,51 @@ export function checkpointReducer(
   a: CheckpointAction,
 ): CheckpointState {
   switch (a.type) {
-    case "open":
-      // Start the draft where the checkpoint already is, if there is one.
-      return { ...s, picking: { draft: s.pending?.coord ?? null } };
+    case "open": {
+      const index = a.index ?? null;
+      if (index === null && s.pending.length >= MAX_CHECKPOINTS) return s;
+      // Moving one: start the draft where it already is.
+      const draft = index !== null ? s.pending[index]?.coord ?? null : null;
+      return { ...s, picking: { index, draft } };
+    }
     case "place":
       if (!s.picking || !validCoord(a.coord)) return s;
-      return { ...s, picking: { draft: a.coord } };
+      return { ...s, picking: { ...s.picking, draft: a.coord } };
     case "confirm":
       if (!s.picking?.draft) return s;
       return {
         ...s,
-        pending: { coord: s.picking.draft, label: MAP_POINT_LABEL, source: "map" },
+        pending: put(s.pending, s.picking.index, {
+          coord: s.picking.draft,
+          label: MAP_POINT_LABEL,
+          source: "map",
+        }),
         picking: null,
       };
     case "cancel":
-      // The confirmed checkpoint, whatever it was, stays as it was.
+      // The checkpoints, whatever they were, stay as they were.
       return { ...s, picking: null };
     case "remove":
-      return { ...s, pending: null, picking: null };
+      return {
+        ...s,
+        pending: a.index === undefined ? [] : s.pending.filter((_, i) => i !== a.index),
+        picking: null,
+      };
     case "search":
-      if (a.checkpoint && !validCoord(a.checkpoint.coord)) return s;
-      return { ...s, pending: a.checkpoint, picking: null };
+      if (!validCoord(a.checkpoint.coord)) return s;
+      return { ...s, pending: put(s.pending, a.index, a.checkpoint), picking: null };
     case "apply":
       return { ...s, applied: s.pending };
     case "undo":
       return { ...s, pending: s.applied, picking: null };
     case "accept_routed": {
-      if (!s.applied || !validCoord(a.coord)) return s;
-      // The walks on screen already go to this point, so it becomes both the
-      // edited and the applied checkpoint: accepting it makes no new request.
-      const moved: Checkpoint = { ...s.applied, coord: a.coord };
+      if (!s.applied.length) return s;
+      // The walks on screen already go to these points, so they become both
+      // the edited and the applied checkpoints: accepting makes no request.
+      const moved = s.applied.map((p, i) => {
+        const c = a.coords[i];
+        return c && validCoord(c) ? { ...p, coord: c } : p;
+      });
       return { ...s, pending: moved, applied: moved };
     }
   }

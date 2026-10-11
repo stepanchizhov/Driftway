@@ -1,57 +1,69 @@
 import { describe, expect, it } from "vitest";
 import {
   MAP_POINT_LABEL,
+  MAX_CHECKPOINTS,
   checkpointChanged,
+  checkpointLabel,
   checkpointReducer as r,
   initialCheckpoint,
   latestOnly,
   roundUpMinutes,
   validCoord,
+  type CheckpointAction,
   type CheckpointState,
 } from "./checkpoint";
 
 // Synthetic points, nobody's address.
 const A = { lat: 51.4633, lng: -0.6063 };
 const B = { lat: 51.4701, lng: -0.6052 };
+const C = { lat: 51.4751, lng: -0.6012 };
+const D = { lat: 51.4801, lng: -0.6002 };
 
-function run(...actions: Parameters<typeof r>[1][]): CheckpointState {
+function run(...actions: CheckpointAction[]): CheckpointState {
   return actions.reduce(r, initialCheckpoint);
 }
+const pin = (coord: typeof A): CheckpointAction[] => [
+  { type: "open" },
+  { type: "place", coord },
+  { type: "confirm" },
+];
 
 describe("placing a checkpoint on the map", () => {
-  it("places, repositions and confirms one point", () => {
+  it("drops, repositions and confirms a pin", () => {
     const s = run({ type: "open" }, { type: "place", coord: A }, { type: "place", coord: B });
     expect(s.picking?.draft).toEqual(B);
-    expect(s.pending).toBeNull(); // nothing confirmed yet
+    expect(s.pending).toEqual([]); // nothing confirmed yet
     const done = r(s, { type: "confirm" });
-    expect(done.pending).toEqual({ coord: B, label: MAP_POINT_LABEL, source: "map" });
+    expect(done.pending).toEqual([{ coord: B, label: MAP_POINT_LABEL, source: "map" }]);
     expect(done.picking).toBeNull();
   });
 
   it("ignores taps outside selection mode", () => {
-    const s = run({ type: "place", coord: A });
-    expect(s).toEqual(initialCheckpoint);
+    expect(run({ type: "place", coord: A })).toEqual(initialCheckpoint);
   });
 
-  it("cancelling restores the previous checkpoint", () => {
-    const before = run({ type: "open" }, { type: "place", coord: A }, { type: "confirm" });
+  it("cancelling leaves the checkpoints as they were", () => {
+    const before = run(...pin(A));
     const s = [
-      { type: "open" } as const,
+      { type: "open", index: 0 } as const,
       { type: "place", coord: B } as const,
       { type: "cancel" } as const,
     ].reduce(r, before);
-    expect(s.pending?.coord).toEqual(A);
+    expect(s.pending.map((p) => p.coord)).toEqual([A]);
     expect(s.picking).toBeNull();
   });
 
-  it("opens with the draft where the checkpoint already is", () => {
-    const s = run({ type: "open" }, { type: "place", coord: A }, { type: "confirm" }, { type: "open" });
-    expect(s.picking?.draft).toEqual(A);
+  it("moving one starts the draft where it is, and replaces only it", () => {
+    const two = run(...pin(A), ...pin(B));
+    const opened = r(two, { type: "open", index: 0 });
+    expect(opened.picking?.draft).toEqual(A);
+    const moved = [{ type: "place", coord: C } as const, { type: "confirm" } as const].reduce(r, opened);
+    expect(moved.pending.map((p) => p.coord)).toEqual([C, B]);
   });
 
-  it("cannot confirm before a point is placed", () => {
+  it("cannot confirm before a pin is placed", () => {
     const s = run({ type: "open" }, { type: "confirm" });
-    expect(s.pending).toBeNull();
+    expect(s.pending).toEqual([]);
     expect(s.picking).not.toBeNull();
   });
 
@@ -69,51 +81,62 @@ describe("placing a checkpoint on the map", () => {
   });
 });
 
-describe("search and map share one checkpoint", () => {
-  it("a search result replaces a map point, and the reverse", () => {
-    const s1 = run({ type: "open" }, { type: "place", coord: A }, { type: "confirm" },
-      { type: "search", checkpoint: { coord: B, label: "The Long Walk", source: "search" } });
-    expect(s1.pending?.label).toBe("The Long Walk");
-    const s2 = [{ type: "open" } as const, { type: "place", coord: A } as const,
-      { type: "confirm" } as const].reduce(r, s1);
-    expect(s2.pending).toEqual({ coord: A, label: MAP_POINT_LABEL, source: "map" });
+describe("several checkpoints (11 Oct)", () => {
+  it("keeps up to three, in the order added", () => {
+    const s = run(...pin(A), ...pin(B), ...pin(C));
+    expect(s.pending.map((p) => p.coord)).toEqual([A, B, C]);
+    expect(MAX_CHECKPOINTS).toBe(3);
+    // A fourth cannot be added, by map or by search.
+    expect(r(s, { type: "open" })).toBe(s);
+    const searched = r(s, { type: "search", checkpoint: { coord: D, label: "D", source: "search" } });
+    expect(searched.pending).toHaveLength(3);
   });
 
-  it("removing clears it whichever way it was set", () => {
-    const s = run({ type: "search", checkpoint: { coord: B, label: "X", source: "search" } },
-      { type: "remove" });
-    expect(s.pending).toBeNull();
+  it("removes one, or all", () => {
+    const s = run(...pin(A), ...pin(B), ...pin(C));
+    expect(r(s, { type: "remove", index: 1 }).pending.map((p) => p.coord)).toEqual([A, C]);
+    expect(r(s, { type: "remove" }).pending).toEqual([]);
+  });
+
+  it("names map pins by number and searched places by name", () => {
+    const s = run(...pin(A), { type: "search", checkpoint: { coord: B, label: "The oak", source: "search" } });
+    expect(s.pending.map(checkpointLabel)).toEqual(["pin 1", "The oak"]);
+  });
+
+  it("accepting moved points changes only the moved ones, without a request", () => {
+    const applied = run(...pin(A), ...pin(B), { type: "apply" });
+    const s = r(applied, { type: "accept_routed", coords: [null, C] });
+    expect(s.applied.map((p) => p.coord)).toEqual([A, C]);
+    expect(checkpointChanged(s)).toBe(false);
+  });
+});
+
+describe("search and map share one list", () => {
+  it("a search result is added, or replaces the one given", () => {
+    const s1 = run(...pin(A), { type: "search", checkpoint: { coord: B, label: "The Long Walk", source: "search" } });
+    expect(s1.pending.map((p) => p.label)).toEqual([MAP_POINT_LABEL, "The Long Walk"]);
+    const s2 = r(s1, { type: "search", index: 0, checkpoint: { coord: C, label: "Snow Hill", source: "search" } });
+    expect(s2.pending.map((p) => p.label)).toEqual(["Snow Hill", "The Long Walk"]);
   });
 });
 
 describe("nothing is made until Update", () => {
-  it("confirming or removing marks settings changed but does not apply them", () => {
-    const s = run({ type: "open" }, { type: "place", coord: A }, { type: "confirm" });
-    expect(s.applied).toBeNull();
+  it("adding or removing marks settings changed but does not apply them", () => {
+    const s = run(...pin(A));
+    expect(s.applied).toEqual([]);
     expect(checkpointChanged(s)).toBe(true);
     const applied = r(s, { type: "apply" });
-    expect(applied.applied?.coord).toEqual(A);
+    expect(applied.applied.map((p) => p.coord)).toEqual([A]);
     expect(checkpointChanged(applied)).toBe(false);
-    const removed = r(applied, { type: "remove" });
-    expect(removed.applied?.coord).toEqual(A); // still in use until Update
+    const removed = r(applied, { type: "remove", index: 0 });
+    expect(removed.applied.map((p) => p.coord)).toEqual([A]); // still in use until Update
     expect(checkpointChanged(removed)).toBe(true);
   });
 
-  it("undo returns to the checkpoint in use", () => {
-    const applied = run({ type: "open" }, { type: "place", coord: A }, { type: "confirm" },
-      { type: "apply" });
+  it("undo returns to the checkpoints in use", () => {
+    const applied = run(...pin(A), { type: "apply" });
     const s = [{ type: "remove" } as const, { type: "undo" } as const].reduce(r, applied);
-    expect(s.pending?.coord).toEqual(A);
-    expect(checkpointChanged(s)).toBe(false);
-  });
-
-  it("accepting a moved point changes both without a new request", () => {
-    const applied = run({ type: "search", checkpoint: { coord: A, label: "The oak", source: "search" } },
-      { type: "apply" });
-    const s = r(applied, { type: "accept_routed", coord: B });
-    expect(s.pending?.coord).toEqual(B);
-    expect(s.applied?.coord).toEqual(B);
-    expect(s.pending?.label).toBe("The oak");
+    expect(s.pending.map((p) => p.coord)).toEqual([A]);
     expect(checkpointChanged(s)).toBe(false);
   });
 });

@@ -35,6 +35,7 @@ export function CheckpointPicker({
   start,
   draft,
   confirmed,
+  others = [],
   onPlace,
   onConfirm,
   onCancel,
@@ -44,6 +45,8 @@ export function CheckpointPicker({
   draft: Coord | null;
   /** The checkpoint already chosen, shown faintly for comparison. */
   confirmed: Coord | null;
+  /** The other checkpoints, numbered, for context (not movable here). */
+  others?: { coord: Coord; n: number }[];
   onPlace: (c: Coord) => void;
   onConfirm: () => void;
   onCancel: () => void;
@@ -67,6 +70,18 @@ export function CheckpointPicker({
       L.circleMarker([start.lat, start.lng], {
         radius: 9, color: CASING, weight: 3, fillColor: "#ffffff", fillOpacity: 1,
       }).bindTooltip("Start").addTo(m);
+    }
+    for (const o of others) {
+      L.marker([o.coord.lat, o.coord.lng], {
+        icon: L.divIcon({
+          className: "cp-pin",
+          html: `<span class="cp-pin-num">${o.n}</span>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        }),
+        interactive: false,
+        keyboard: false,
+      }).addTo(m);
     }
     if (confirmed) {
       L.circleMarker([confirmed.lat, confirmed.lng], {

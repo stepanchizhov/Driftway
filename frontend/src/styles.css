@@ -2123,3 +2123,19 @@ body {
 .moved-banner p { margin: 0; font-size: 14px; }
 .moved-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .moved-actions .btn-primary { margin-top: 0; text-decoration: none; }
+
+/* --- Several checkpoints (11 Oct) --------------------------------- */
+.cp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.cp-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cp-num {
+  flex: none; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 13px; font-weight: 700;
+  background: #7c3aed; color: #ffffff;
+}
+.cp-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-small { padding: 4px 10px; font-size: 13px; }
+.cp-pin-num {
+  display: grid; place-items: center; width: 22px; height: 22px; margin: 1px;
+  border-radius: 50%; background: #7c3aed; color: #ffffff; font: 700 12px/1 system-ui, sans-serif;
+  border: 2px solid #ffffff; box-shadow: 0 0 0 1px #10162e; opacity: 0.85;
+}

@@ -24,7 +24,9 @@ import {
   type Checkpoint,
   type CheckpointAction,
   type CheckpointState,
+  MAX_CHECKPOINTS,
   checkpointChanged,
+  checkpointLabel,
   checkpointReducer,
   initialCheckpoint,
   latestOnly,
@@ -913,17 +915,23 @@ const WHO: Record<WalkSetup["profile"], string> = {
 };
 
 /** Identity of the settings walks were made with, to tell when they are old. */
-function madeKeyOf(setup: WalkSetup, cp: Checkpoint | null, start: Coord | null): string {
+function madeKeyOf(setup: WalkSetup, cps: Checkpoint[], start: Coord | null): string {
   return JSON.stringify([
     setup,
-    cp ? [cp.coord.lat, cp.coord.lng, cp.label] : null,
+    cps.map((cp) => [cp.coord.lat, cp.coord.lng, cp.label]),
     start ? [start.lat, start.lng] : null,
   ]);
 }
 
+/** "the oak", "the oak and pin 2", "the oak, pin 2 and the gate". */
+function chainName(labels: string[]): string {
+  if (labels.length < 2) return labels[0] ?? "";
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
 /**
  * Make walks from a start you choose - where you are, or anywhere you search -
- * optionally through one checkpoint.
+ * optionally through up to three checkpoints.
  *
  * Founder testing showed curated walks starting at fixed public places are the
  * wrong shape for real use: a tester walked eight minutes to the start of her
@@ -964,7 +972,9 @@ function MakeWalks({
   onApply: () => void;
   onSetMinutes: (n: number) => void;
 }) {
-  const checkpoint = cp.applied;
+  // The checkpoints in use, in order (11 Oct: up to three).
+  const checkpoints = cp.applied;
+  const chain = chainName(checkpoints.map(checkpointLabel));
   const [start, setStart] = useState<Endpoint | null>(
     here ? { coord: here, label: "Your location", source: "current" } : null,
   );
@@ -984,7 +994,7 @@ function MakeWalks({
     if (start) setNeedStart(false);
   }, [start]);
 
-  const key = madeKeyOf(setup, checkpoint, start?.coord ?? null);
+  const key = madeKeyOf(setup, checkpoints, start?.coord ?? null);
   const stale = made !== null && (dirty || madeKey !== key);
 
   // Location usually arrives after the screen opens. Use it then - unless a
@@ -1007,10 +1017,10 @@ function MakeWalks({
         allow_out_and_back: setup.maxRetrace >= 0.5,
         // A pram is always made with pram routing (0.8); never send a weighting.
         character: setup.profile === "pram" ? "any" : setup.character,
-        ...(checkpoint
+        ...(checkpoints.length
           ? {
-              via: checkpoint.coord,
-              via_label: checkpoint.label,
+              vias: checkpoints.map((c) => c.coord),
+              via_labels: checkpoints.map(checkpointLabel),
               via_reach_m: setup.checkpointReach,
             }
           : {}),
@@ -1045,7 +1055,7 @@ function MakeWalks({
       setNeedStart(true);
       return;
     }
-    if (runToken > 0 && start && (made || checkpoint || wantMake.current)) {
+    if (runToken > 0 && start && (made || checkpoints.length || wantMake.current)) {
       wantMake.current = false;
       void make();
     }
@@ -1062,16 +1072,31 @@ function MakeWalks({
   }, [autoMake, start]);
 
   const outcome = made?.checkpoint;
+  // Per checkpoint: where the provider took the walks, and whether that is
+  // further than the parent allows. Older servers report only one.
+  const outcomePins =
+    outcome?.pins ??
+    (outcome
+      ? checkpoints.map((c, i) =>
+          i === checkpoints.length - 1
+            ? { label: c.label, requested: outcome.requested, routed: outcome.routed,
+                offset_m: outcome.offset_m, moved: outcome.needs_confirmation }
+            : { label: c.label, requested: c.coord, routed: c.coord, offset_m: 0, moved: false })
+      : []);
   // A moved checkpoint is accepted by making the moved point the checkpoint;
   // until then the walks to it are not shown.
-  const confirmNeeded =
-    !!outcome && outcome.needs_confirmation && !sameCoord(checkpoint?.coord, outcome.routed);
+  const movedPins = outcomePins
+    .map((p, i) => ({ ...p, index: i }))
+    .filter((p) => p.moved && !sameCoord(checkpoints[p.index]?.coord, p.routed));
+  const confirmNeeded = !!outcome && outcome.needs_confirmation && movedPins.length > 0;
 
   function acceptMoved() {
-    if (!outcome || !checkpoint) return;
-    dispatchCp({ type: "accept_routed", coord: outcome.routed });
+    if (!outcome || !checkpoints.length) return;
+    const coords = outcomePins.map((p) => (p.moved ? p.routed : null));
+    dispatchCp({ type: "accept_routed", coords });
     // The walks on screen already go there: they are current, not stale.
-    setMadeKey(madeKeyOf(setup, { ...checkpoint, coord: outcome.routed }, start?.coord ?? null));
+    const accepted = checkpoints.map((c, i) => (coords[i] ? { ...c, coord: coords[i] as Coord } : c));
+    setMadeKey(madeKeyOf(setup, accepted, start?.coord ?? null));
   }
 
   const limit = setup.maxRetrace + 0.02;
@@ -1096,51 +1121,86 @@ function MakeWalks({
       />
 
       <fieldset className="walks-checkpoint">
-        <legend>Checkpoint (optional)</legend>
-        <PlaceSearch
-          legend="Search for a place to walk through"
-          value={pending ? { coord: pending.coord, label: pending.label, source: pending.source } : null}
-          onChange={(e) =>
-            dispatchCp({
-              type: "search",
-              checkpoint: e
-                ? { coord: e.coord, label: e.label, source: e.source === "map" ? "map" : "search" }
-                : null,
-            })
-          }
-          near={start?.coord ?? here}
-          placeholder="A place to walk through"
-        />
-        <div className="cp-buttons">
-          <button
-            type="button"
-            className="btn-quiet"
-            aria-expanded={cp.picking !== null}
-            disabled={cp.picking !== null}
-            onClick={() => dispatchCp({ type: "open" })}
-          >
-            {pending ? "Move the pin on the map" : "Drop a pin on the map"}
-          </button>
-          {pending && (
-            <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "remove" })}>
-              Remove checkpoint
-            </button>
-          )}
-        </div>
+        <legend>Checkpoints (optional, up to {MAX_CHECKPOINTS})</legend>
+        {pending.length > 0 && (
+          <ol className="cp-list">
+            {pending.map((p, n) => (
+              <li key={n} className="cp-row">
+                <span className="cp-num" aria-hidden="true">
+                  {n + 1}
+                </span>
+                <span className="cp-name">
+                  {p.source === "map" ? `Pin ${n + 1} on the map` : p.label}
+                </span>
+                <button
+                  type="button"
+                  className="btn-quiet cp-small"
+                  disabled={cp.picking !== null}
+                  onClick={() => dispatchCp({ type: "open", index: n })}
+                  aria-label={`Move checkpoint ${n + 1} on the map`}
+                >
+                  Move
+                </button>
+                <button
+                  type="button"
+                  className="btn-quiet cp-small"
+                  onClick={() => dispatchCp({ type: "remove", index: n })}
+                  aria-label={`Remove checkpoint ${n + 1}`}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
+        {pending.length < MAX_CHECKPOINTS && (
+          <>
+            <PlaceSearch
+              legend={pending.length ? "Add another: search for a place" : "Search for a place to walk through"}
+              value={null}
+              onChange={(e) =>
+                e &&
+                dispatchCp({
+                  type: "search",
+                  checkpoint: { coord: e.coord, label: e.label, source: "search" },
+                })
+              }
+              near={start?.coord ?? here}
+              placeholder="A place to walk through"
+            />
+            <div className="cp-buttons">
+              <button
+                type="button"
+                className="btn-quiet"
+                aria-expanded={cp.picking !== null && cp.picking.index === null}
+                disabled={cp.picking !== null}
+                onClick={() => dispatchCp({ type: "open" })}
+              >
+                {pending.length ? "Drop another pin on the map" : "Drop a pin on the map"}
+              </button>
+            </div>
+          </>
+        )}
         {cp.picking && (
           <CheckpointPicker
             start={start?.coord ?? here}
             draft={cp.picking.draft}
-            confirmed={pending?.coord ?? null}
+            confirmed={cp.picking.index !== null ? pending[cp.picking.index]?.coord ?? null : null}
+            others={pending
+              .map((p, n) => ({ coord: p.coord, n: n + 1 }))
+              .filter((o) => o.n - 1 !== cp.picking?.index)}
             onPlace={(coord) => dispatchCp({ type: "place", coord })}
             onConfirm={() => dispatchCp({ type: "confirm" })}
             onCancel={() => dispatchCp({ type: "cancel" })}
           />
         )}
-        {checkpointChanged(cp) && !cp.picking && (
+        {pending.length > 1 && (
           <p className="walks-hint">
-            {pending ? "Checkpoint changed." : "Checkpoint removed."} Tap Update walks to use it.
+            Walks go through them in this order, then home another way.
           </p>
+        )}
+        {checkpointChanged(cp) && !cp.picking && (
+          <p className="walks-hint">Checkpoints changed. Tap Update walks to use them.</p>
         )}
       </fieldset>
 
@@ -1165,8 +1225,8 @@ function MakeWalks({
           ? "Making walks…"
           : dirty
             ? "Update and make walks"
-            : checkpoint
-              ? `Make walks via ${checkpoint.label}`
+            : checkpoints.length
+              ? `Make walks via ${chain}`
               : `Make walks of about ${duration(setup.minutes)}`}
       </button>
       {needStart && (
@@ -1176,16 +1236,16 @@ function MakeWalks({
         </p>
       )}
       <p className="walks-hint">
-        {pending
-          ? `Up to three different walks out to ${
+        {pending.length
+          ? `Up to three different walks ${
               setup.checkpointReach > 25
-                ? `within ${setup.checkpointReach} m of your checkpoint`
-                : "your checkpoint"
-            } and back, each avoiding the paths of the others. Their length follows from where the checkpoint is.`
+                ? `passing within ${setup.checkpointReach} m of ${pending.length > 1 ? "each checkpoint" : "your checkpoint"}`
+                : `through ${pending.length > 1 ? "your checkpoints" : "your checkpoint"}`
+            } and back, each avoiding the paths of the others. Their length follows from where the checkpoints are.`
           : "Up to three walks from mapped paths, judged for your setup."}{" "}
-        To plan them, your start{pending ? " and checkpoint are" : " is"} sent to
-        openrouteservice as {pending ? "points" : "a point"} on the map, with nothing
-        that names you. Driftway doesn&rsquo;t keep {pending ? "them" : "it"}.
+        To plan them, your start{pending.length ? " and checkpoints are" : " is"} sent to
+        openrouteservice as {pending.length ? "points" : "a point"} on the map, with nothing
+        that names you. Driftway doesn&rsquo;t keep {pending.length ? "them" : "it"}.
       </p>
 
       {error && <p className="account-error">{error}</p>}
@@ -1202,14 +1262,14 @@ function MakeWalks({
                 Set time to {duration(roundUpMinutes(cpError.minimumMinutes))}
               </button>
             )}
-            <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "open" })}>
-              Move the checkpoint
-            </button>
             <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "remove" })}>
-              Remove it
+              {checkpoints.length > 1 ? "Remove all checkpoints" : "Remove the checkpoint"}
             </button>
           </div>
-          <p className="walks-hint">Then tap Update walks.</p>
+          <p className="walks-hint">
+            Or move or remove {checkpoints.length > 1 ? "a checkpoint" : "it"} in the
+            list above. Then tap Update walks.
+          </p>
         </div>
       )}
 
@@ -1223,16 +1283,19 @@ function MakeWalks({
           )}
           <h3 className="walks-group-title">
             From {start?.label ?? "your start"}
-            {outcome && checkpoint ? ` via ${checkpoint.label}` : ""}
+            {outcome && checkpoints.length ? ` via ${chain}` : ""}
           </h3>
 
           {confirmNeeded && outcome ? (
             <div className="walks-conflict" role="alert">
               <p>
-                The closest a way suitable for {WHO[setup.profile]} comes is about{" "}
-                {distance(outcome.offset_m, units)} from your checkpoint
+                {movedPins.length === 1 && checkpoints.length === 1
+                  ? `The closest a way suitable for ${WHO[setup.profile]} comes is about ${distance(movedPins[0].offset_m, units)} from your checkpoint`
+                  : `The closest a way suitable for ${WHO[setup.profile]} comes is ${movedPins
+                      .map((p) => `about ${distance(p.offset_m, units)} from checkpoint ${p.index + 1}`)
+                      .join(", and ")}`}
                 {outcome.reach_m > 25 ? `, further than the ${distance(outcome.reach_m, units)} you allow` : ""},
-                so the walks go there instead. Check both on the map before you accept:
+                so the walks go there instead. Check on the map before you accept:
                 the nearest path can be across water, behind a fence, or on the
                 wrong side of a wall.
               </p>
@@ -1244,8 +1307,12 @@ function MakeWalks({
                 <button type="button" className="btn-primary" onClick={acceptMoved}>
                   Use the point on the path
                 </button>
-                <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "open" })}>
-                  Move my checkpoint
+                <button
+                  type="button"
+                  className="btn-quiet"
+                  onClick={() => dispatchCp({ type: "open", index: movedPins[0]?.index ?? 0 })}
+                >
+                  {movedPins.length > 1 ? `Move checkpoint ${movedPins[0].index + 1}` : "Move my checkpoint"}
                 </button>
               </div>
             </div>
@@ -1254,7 +1321,7 @@ function MakeWalks({
               {outcome?.over_time && outcome.shortest_minutes != null && (
                 <div className="walks-conflict" role="status">
                   <p>
-                    Every walk via {checkpoint?.label ?? "your checkpoint"} takes longer
+                    Every walk via {chain || "your checkpoint"} takes longer
                     than the {duration(setup.minutes)} you asked for: the shortest is
                     about {duration(outcome.shortest_minutes)}. A walk to a checkpoint
                     isn&rsquo;t cut short before it gets there.
@@ -1267,8 +1334,12 @@ function MakeWalks({
                     >
                       Set time to {duration(roundUpMinutes(outcome.shortest_minutes))}
                     </button>
-                    <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "open" })}>
-                      Choose a nearer checkpoint
+                    <button
+                      type="button"
+                      className="btn-quiet"
+                      onClick={() => dispatchCp({ type: "open", index: checkpoints.length - 1 })}
+                    >
+                      {checkpoints.length > 1 ? "Move the last checkpoint nearer" : "Choose a nearer checkpoint"}
                     </button>
                   </div>
                 </div>

@@ -152,10 +152,29 @@ straight back the same way. openrouteservice treats a round trip's length as
 Live check, 11 Oct, from the Long Walk's Park Street end, best walk against
 the time asked: 40 min for 45 (Just me), 64 for 60 (Carrier), 29 for 30 (Just
 me), with 4 or 5 provider calls each. Loops that cross themselves are not yet
-handled, pending the founder's examples. LATER: several checkpoints, as asked
-for the same day.
+handled, pending the founder's examples. Several checkpoints: see
+Checkpoints.
 
 ## Checkpoints
+
+**Up to three** (founder request, 11 Oct 2026; IMPLEMENTED). Walks go through
+them in the order they were added, then home another way, in one request
+for the way out. "How close a walk must come" applies to every checkpoint:
+
+- at the last, the way out is cut where it first comes that close, as
+  before;
+- at one in between, the walk is routed through it, then the stretch inside
+  that distance is replaced by the direct path between where it enters and
+  leaves, when that is shorter. That costs one extra call per checkpoint.
+
+Later walks leave openings round every checkpoint in the paths they avoid.
+Before any call, the chain is checked: the first checkpoint at the start,
+two in the same place, and a time floor (straight legs, less twice the reach
+per checkpoint). Each walk records every checkpoint, and the map numbers
+them. Several checkpoints are not founder-tested yet, and the controls have
+not been seen on a phone.
+
+What follows was written for one checkpoint and holds for each of them.
 
 A checkpoint means **"visit this point"**, not "follow this avenue". Founder
 request, 9 Oct: a walk via the Long Walk went to the single midpoint the place
