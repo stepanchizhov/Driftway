@@ -18,12 +18,16 @@ evidence?
   count mapped calming along each of the up to 8 candidate drives it already
   evaluates, and prefer the candidate with fewer. That is a ranking change,
   not a routing change, and fits the existing pipeline.
-- **One finding matters for the product now:** mapped calming is densest on
-  exactly the roads "Quieter" prefers. Residential and tertiary roads carry
-  about 1.3 mapped features per km; primary roads 0.07. HYPOTHESIS: a
-  "Quieter" drive meets *more* speed bumps than a "Mixed" one around
-  Windsor, which works against the "smoothest for a sleeping baby" promise.
-  Not yet measured on real drives.
+- **Measured on real drives (20 drives, 160 candidates; below):** the
+  candidates for one drive differ a lot, from 1 to 50 mapped bumps. The
+  drive Driftway offers today is often already among the calmest, but in
+  about a third of drives an equally acceptable candidate has 4 to 29 fewer.
+  So counting would change the drive offered, sometimes a lot.
+- **Quieter is not bumpier than Mixed, at the level of whole drives.**
+  Mapped calming is densest on the roads Quieter prefers (residential and
+  tertiary about 1.3 per km, primary 0.07), so we expected it to be. On the
+  20 drives it wasn't: 0.77 against 0.70 bumps per km, and Quieter had more
+  in 5 of 10 starts and fewer in 4. The earlier HYPOTHESIS is not supported.
 
 ## What OpenStreetMap holds (Windsor area)
 
@@ -122,14 +126,58 @@ doesn't change.
 **Honesty rules for the card.** "Mapped" never becomes "none": an area with
 nothing mapped says so. Islands and chokers are not counted as bumps.
 
-## Before building: one measurement
+## The measurement (11 Oct 2026, evening)
 
-OPEN: does counting actually change which drive is offered? Take about 20
-drives in the founder's area (8 candidates each: about 160 TomTom calls,
-within the free allowance), count mapped calming on every candidate, and
-compare "Quieter" with "Mixed". If candidates differ by a few bumps or
-less, option 1 isn't worth building; if "Quieter" carries clearly more, the
-"Quieter" label and its promise need rethinking either way.
+Ten public start points around Windsor (stations, village greens, a leisure
+centre, a Great Park gate), a 30-minute loop each, Quieter and Mixed: the
+same 8 candidates Driftway's generator builds (`_loop_candidates`,
+`_evaluate_all`), from TomTom with live traffic (160 calls), and the drive
+it would offer first (`_pick_top_three`, without the refinement step).
+Mapped vertical calming (hump, bump, table, cushion, dip) within 12 m of
+each candidate, each point counted once, from a wider extract (51.33 to
+51.62 N, 0.88 to 0.40 W: 3,437 vertical points). "Calmest acceptable" is
+the candidate with fewest bumps among those Driftway already treats as
+best: on time (within 10 minutes) and passing validation.
+
+| Start | Profile | Bumps on the 8 candidates | Offered | Calmest acceptable |
+|---|---|---|---|---|
+| Windsor & Eton Central | Quieter | 1, 4, 8, 14, 19, 29, 34, 50 | 8 | 8 |
+| | Mixed | 7, 7, 14, 15, 17, 18, 24, 30 | 7 | 7 |
+| Windsor Leisure Centre | Quieter | 19 to 62 | 19 | 19 |
+| | Mixed | 8 to 69 | 8 | 8 |
+| Dedworth Road | Quieter | 21 to 48 | 21 | 21 |
+| | Mixed | 17 to 52 | 19 | 17 |
+| Eton Wick | Quieter | 19 to 52 | 27 | none on time |
+| | Mixed | 11 to 42 | 18 | 18 |
+| Datchet | Quieter | 6 to 35 | 15 | **6** |
+| | Mixed | 6 to 35 | 35 | **6** |
+| Old Windsor | Quieter | 7 to 46 | 13 | **9** |
+| | Mixed | 12 to 23 | 12 | 12 |
+| Englefield Green | Quieter | 2 to 15 | 7 | **2** |
+| | Mixed | 6 to 40 | 13 | **7** |
+| Holyport | Quieter | 0 to 32 | 2 | 0 |
+| | Mixed | 0 to 24 | 2 | 2 |
+| Bray | Quieter | 7 to 45 | 7 | 7 |
+| | Mixed | 0 to 21 | 8 | **0** |
+| Great Park, Ranger's Gate | Quieter | 1 to 23 | 2 | 1 |
+| | Mixed | 2 to 27 | 6 | 2 |
+
+- Offered drives: median 10 to 10.5 mapped bumps, about 0.7 to 0.8 per km.
+- Counting would offer a calmer, equally acceptable drive in 9 of the 19
+  drives with an on-time candidate; by 4 or more bumps in 6 (Datchet both,
+  Old Windsor and Englefield Green Quieter, Englefield Green and Bray
+  Mixed); by 29 at most.
+- The calmest acceptable candidate can be worse on what Driftway ranks by
+  today (road mix, smoothness, closeness to the time), so the right change is
+  a penalty in the score, not "fewest bumps wins".
+- All counts are lower bounds: unmapped calming isn't counted (the founder
+  confirmed Drift Road, Holyport Road and Woodland Avenue have none, which
+  matches the data; the other empty areas are unknown).
+
+DECISION (proposed): build option 1, count and rank, as the next driving
+slice: an extract built ahead of time, a bump penalty in `score_route`
+weighed against what it already ranks by, and "about N speed bumps mapped"
+on the drive card with the coverage caveat. Measure it the same way after.
 
 ## Reproducing the survey
 
@@ -144,4 +192,6 @@ naming the project; servers refuse requests without one):
 
 Calming points were matched to roads by shared vertex (rounded to about
 1 m); squares are 0.009 degrees of latitude by 0.0144 of longitude, about
-1 km by 1 km. The downloads were not committed.
+1 km by 1 km. The downloads were not committed. The measurement used the generator's own
+functions with the routing provider configured in `backend/.env`, ran from
+a developer machine, and printed counts only, never routes or keys.
