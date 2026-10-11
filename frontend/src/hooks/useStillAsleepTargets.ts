@@ -37,7 +37,9 @@ export function buildStillAsleepTargets(
 ): StillAsleepTarget[] {
   const targets: StillAsleepTarget[] = [];
 
-  const home = places.find((p) => p.isDefault) ?? places.find((p) => p.label === "Home");
+  // Home is the place marked Home, or none: a place merely called "Home"
+  // is not promoted (lib/places.ts settles that once, on loading).
+  const home = places.find((p) => p.isDefault);
   if (home) {
     targets.push({
       id: `place-${home.id}`,
@@ -52,6 +54,7 @@ export function buildStillAsleepTargets(
     targets.push({
       id: `place-${place.id}`,
       label: place.label || "Saved place",
+      detail: place.detail,
       coord: { lat: place.lat, lng: place.lng },
       kind: "saved",
     });

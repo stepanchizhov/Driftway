@@ -17,6 +17,8 @@ interface Props {
   /** Why the phone's location isn't available, once that is known. */
   locationMessage?: string | null;
   targets: StillAsleepTarget[];
+  /** Saved places, Home first: one tap to say where you are parked. */
+  savedPlaces?: Endpoint[];
   /** Remembered planner defaults, reused rather than re-asked. */
   profile: RoadProfile;
   tolerance: number;
@@ -42,6 +44,7 @@ export function StillAsleep({
   locating = false,
   locationMessage = null,
   targets,
+  savedPlaces,
   profile,
   tolerance,
   onOpenPreferences,
@@ -234,6 +237,7 @@ export function StillAsleep({
             legend="Where are you now?"
             value={typed}
             onChange={setTyped}
+            saved={savedPlaces}
             placeholder="Search where you're parked"
           />
         </div>

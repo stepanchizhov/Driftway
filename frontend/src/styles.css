@@ -2147,3 +2147,26 @@ body {
 .my-walk-row .cp-name { white-space: normal; }
 .my-walk-meta { color: var(--ink-dim); font-size: 13px; }
 .route-drawer .walks-check { margin: 0; }
+
+/* Saved places (11 Oct): above saved drives on the Saved screen. */
+.places { display: grid; gap: 10px; margin-bottom: 28px; }
+.places .favs-title { margin: 0; }
+.places-note { color: var(--ink-dim); font-size: 14px; margin: 0; }
+.places-ok { color: var(--ink-dim); font-size: 14px; margin: 0; }
+.places-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.place-row {
+  display: grid; gap: 8px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface);
+}
+.place-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.place-label { font-weight: 600; overflow-wrap: anywhere; }
+.place-home {
+  font-size: 12px; padding: 1px 8px; border-radius: 999px;
+  border: 1px solid var(--accent); color: var(--accent);
+}
+.place-detail { flex-basis: 100%; color: var(--ink-dim); font-size: 13px; overflow-wrap: anywhere; }
+.place-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.place-actions .btn-primary { margin-top: 0; }
+.place-confirm p { margin: 0 0 8px; font-size: 14px; }
+.place-form { display: grid; gap: 10px; }
+.places-add { justify-self: start; }

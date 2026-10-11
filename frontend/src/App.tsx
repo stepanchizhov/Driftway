@@ -12,6 +12,7 @@ import { generateRoutes, saveFavourite } from "./api";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useSettings } from "./hooks/useSettings";
 import { usePlaces } from "./hooks/usePlaces";
+import { PlacesManager } from "./components/PlacesManager";
 import { useOwner } from "./hooks/useOwner";
 import { useRecentDestination } from "./hooks/useRecentDestination";
 import { ChipGroup } from "./components/ChipGroup";
@@ -101,7 +102,7 @@ const DIRECTION_OPTS: { value: Direction; label: string }[] = [
 export default function App() {
   const { state: geo, locate } = useGeolocation();
   const { settings, update } = useSettings();
-  const { places, defaultPlace, saveHome } = usePlaces();
+  const { places, defaultPlace, saveHome, change: changePlace, store: placeStore } = usePlaces();
   const { recent, remember } = useRecentDestination();
   const owner = useOwner();
   // Feedback about the app, from any tab (0.8, for the beta).
@@ -146,6 +147,21 @@ export default function App() {
     ? { lat: defaultPlace.lat, lng: defaultPlace.lng }
     : null;
   const liveCoord: Coord | null = geo.status === "ready" ? geo.coord : null;
+
+  // Every saved place, Home first, for the one-tap choices in each place
+  // search (11 Oct 2026: more than Home).
+  const placeEndpoints: Endpoint[] = useMemo(
+    () =>
+      [...places]
+        .sort((a, b) => Number(b.isDefault) - Number(a.isDefault))
+        .map((p) => ({
+          coord: { lat: p.lat, lng: p.lng },
+          label: p.label,
+          detail: p.detail,
+          source: p.isDefault ? ("home" as const) : ("saved" as const),
+        })),
+    [places],
+  );
 
   const homeEndpoint: Endpoint | null = useMemo(
     () =>
@@ -294,8 +310,18 @@ export default function App() {
     });
   }
 
+  // "Save as Home" says whether it was kept, never "saved" when it wasn't.
+  const [homeNote, setHomeNote] = useState<string | null>(null);
   function saveHomeFromLocation() {
-    if (geo.status === "ready") saveHome(geo.coord);
+    if (geo.status !== "ready") return;
+    const r = saveHome(geo.coord);
+    setHomeNote(
+      !r.ok
+        ? r.message
+        : r.persisted
+          ? "Home saved on this device."
+          : "Home is set for this visit only: this browser isn't keeping data just now.",
+    );
   }
 
   const isSecondary =
@@ -348,6 +374,7 @@ export default function App() {
           locating={geo.status === "locating" || geo.status === "idle"}
           locationMessage={geo.status === "error" ? geo.message : null}
           targets={stillAsleepTargets}
+          savedPlaces={placeEndpoints}
           profile={settings.quickDriveProfile}
           tolerance={tolerance}
           onOpenPreferences={() => setScreen({ name: "settings" })}
@@ -368,6 +395,7 @@ export default function App() {
             onRetry={locate}
             onSaveHome={saveHomeFromLocation}
           />
+          {homeNote && <p className="mode-note" role="status">{homeNote}</p>}
 
           <ChipGroup
             legend="Route type"
@@ -387,7 +415,7 @@ export default function App() {
                 currentEndpoint ? () => setFromEndpoint(null) : undefined
               }
               currentLocationLabel="Use my location"
-              home={homeEndpoint}
+              saved={placeEndpoints}
               placeholder="Search a starting point"
             />
 
@@ -397,7 +425,7 @@ export default function App() {
                 value={toEndpoint}
                 onChange={setToEndpoint}
                 near={liveCoord ?? homeCoord}
-                home={homeEndpoint}
+                saved={placeEndpoints}
                 placeholder="Search a destination"
               />
             )}
@@ -543,6 +571,9 @@ export default function App() {
       )}
 
       {screen.name === "favourites" && (
+        <PlacesManager places={places} store={placeStore} change={changePlace} here={liveCoord} />
+      )}
+      {screen.name === "favourites" && (
         <Favourites
           owner={owner}
           units={settings.units}
@@ -558,6 +589,7 @@ export default function App() {
         <Walks
           units={settings.units}
           here={liveCoord}
+          savedPlaces={placeEndpoints}
           canGenerate={features.walkGeneration}
           onOpenSettings={() => setScreen({ name: "settings" })}
         />
@@ -589,6 +621,7 @@ export default function App() {
         <MeetHalfway
           currentLocation={liveCoord}
           home={homeEndpoint}
+          saved={placeEndpoints}
           onExit={() => {
             // Clear the meetup query string so a reload does not bounce
             // straight back into it.

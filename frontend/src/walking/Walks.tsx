@@ -139,12 +139,15 @@ function numberOrNull(raw: string): number | null {
 export function Walks({
   units,
   here,
+  savedPlaces = [],
   canGenerate,
   onOpenSettings,
 }: {
   units: Units;
   /** Your position, if known. Used on this device only, to group walks. */
   here: Coord | null;
+  /** Saved places, Home first: one-tap starts and checkpoints. */
+  savedPlaces?: Endpoint[];
   /** Whether this deployment can make walks from any start. */
   canGenerate: boolean;
   onOpenSettings: () => void;
@@ -332,6 +335,7 @@ export function Walks({
               onApply={applyChanges}
               onSetMinutes={setMinutes}
               onSaveWalk={(w) => mine.add(w.name, lineOfWalk(w), "made")}
+              savedPlaces={savedPlaces}
             />
           )}
 
@@ -1014,6 +1018,7 @@ function MakeWalks({
   onApply,
   onSetMinutes,
   onSaveWalk,
+  savedPlaces,
 }: {
   setup: WalkSetup;
   here: Coord | null;
@@ -1030,6 +1035,7 @@ function MakeWalks({
   onApply: () => void;
   /** Keep a made walk in My walks. */
   onSaveWalk: (w: Walk) => void;
+  savedPlaces: Endpoint[];
   onSetMinutes: (n: number) => void;
 }) {
   // The checkpoints in use, in order (11 Oct: up to three).
@@ -1182,6 +1188,7 @@ function MakeWalks({
             : undefined
         }
         currentLocationLabel="Where I am"
+        saved={savedPlaces}
         placeholder="Where I am, or search a place"
       />
 
@@ -1231,6 +1238,7 @@ function MakeWalks({
                 })
               }
               near={start?.coord ?? here}
+              saved={savedPlaces}
               placeholder="A place to walk through"
             />
             <div className="cp-buttons">

@@ -13,8 +13,11 @@ interface Props {
   /** Offered as a one-tap choice when available. */
   onUseCurrentLocation?: () => void;
   currentLocationLabel?: string;
-  /** Offered as a one-tap choice when a Home is saved. */
+  /** Offered as a one-tap choice when a Home is saved. Ignored when
+   *  `saved` is given, which includes Home. */
   home?: Endpoint | null;
+  /** Saved places, Home first, each offered as a one-tap choice. */
+  saved?: Endpoint[];
   placeholder?: string;
 }
 
@@ -24,7 +27,7 @@ export interface Endpoint {
   coord: Coord;
   label: string;
   detail?: string;
-  source: "search" | "current" | "home" | "map";
+  source: "search" | "current" | "home" | "saved" | "map";
   approximate?: boolean;
 }
 
@@ -58,8 +61,10 @@ export function PlaceSearch({
   onUseCurrentLocation,
   currentLocationLabel,
   home,
+  saved,
   placeholder = "Search address, postcode or place",
 }: Props) {
+  const shortcuts = saved ?? (home ? [{ ...home, label: "Home" }] : []);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Place[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "empty" | "error">("idle");
@@ -179,17 +184,18 @@ export function PlaceSearch({
             {currentLocationLabel ?? "Use my location"}
           </button>
         )}
-        {home && (
+        {shortcuts.map((place, i) => (
           <button
+            key={`${i}-${place.label}`}
             className="ps-shortcut"
             onClick={() => {
-              onChange(home);
+              onChange(place);
               setOpen(false);
             }}
           >
-            Home
+            {place.label}
           </button>
-        )}
+        ))}
       </div>
 
       <input

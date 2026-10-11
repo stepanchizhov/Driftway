@@ -55,10 +55,13 @@ function linkFor(params: Record<string, string>): string {
 interface Props {
   currentLocation: Coord | null;
   home: Endpoint | null;
+  /** Saved places, Home first: one-tap choices for your own start only.
+   *  Never offered as meeting places, which the other parent sees. */
+  saved?: Endpoint[];
   onExit: () => void;
 }
 
-export function MeetHalfway({ currentLocation, home, onExit }: Props) {
+export function MeetHalfway({ currentLocation, home, saved, onExit }: Props) {
   const [screen] = useState<Screen>(screenFromUrl);
   const [view, setView] = useState<MeetupView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -111,6 +114,7 @@ export function MeetHalfway({ currentLocation, home, onExit }: Props) {
         <CreateScreen
           currentLocation={currentLocation}
           home={home}
+          saved={saved}
           busy={busy}
           onCreated={(made) => {
             setInvite({
@@ -135,6 +139,7 @@ export function MeetHalfway({ currentLocation, home, onExit }: Props) {
           busy={busy}
           currentLocation={currentLocation}
           home={home}
+          saved={saved}
           onJoin={(input) =>
             run(() => joinMeetup(screen.meetupId, screen.joinToken, input))
           }
@@ -177,12 +182,16 @@ export function MeetHalfway({ currentLocation, home, onExit }: Props) {
 function CreateScreen({
   currentLocation,
   home,
+  saved,
   busy,
   onCreated,
   onError,
 }: {
   currentLocation: Coord | null;
   home: Endpoint | null;
+  /** Saved places, Home first: one-tap choices for your own start only.
+   *  Never offered as meeting places, which the other parent sees. */
+  saved?: Endpoint[];
   busy: boolean;
   onCreated: (made: Awaited<ReturnType<typeof createMeetup>>) => void;
   onError: (message: string) => void;
@@ -248,6 +257,7 @@ function CreateScreen({
         onUseCurrentLocation={currentLocation ? () => setStart(null) : undefined}
         currentLocationLabel="Use my location"
         home={home}
+        saved={saved}
         placeholder="Search a starting point"
       />
 
@@ -317,6 +327,7 @@ function ParticipantScreen({
   busy,
   currentLocation,
   home,
+  saved,
   onJoin,
   onAddVenue,
   onRemoveVenue,
@@ -329,6 +340,9 @@ function ParticipantScreen({
   busy: boolean;
   currentLocation: Coord | null;
   home: Endpoint | null;
+  /** Saved places, Home first: one-tap choices for your own start only.
+   *  Never offered as meeting places, which the other parent sees. */
+  saved?: Endpoint[];
   onJoin: (input: {
     start: Coord;
     hide_exact_origin: boolean;
@@ -358,6 +372,7 @@ function ParticipantScreen({
       <JoinScreen
         currentLocation={currentLocation}
         home={home}
+        saved={saved}
         busy={busy}
         onJoin={onJoin}
       />
@@ -461,11 +476,15 @@ function ParticipantScreen({
 function JoinScreen({
   currentLocation,
   home,
+  saved,
   busy,
   onJoin,
 }: {
   currentLocation: Coord | null;
   home: Endpoint | null;
+  /** Saved places, Home first: one-tap choices for your own start only.
+   *  Never offered as meeting places, which the other parent sees. */
+  saved?: Endpoint[];
   busy: boolean;
   onJoin: (input: {
     start: Coord;
@@ -506,6 +525,7 @@ function JoinScreen({
         onUseCurrentLocation={currentLocation ? () => setStart(null) : undefined}
         currentLocationLabel="Use my location"
         home={home}
+        saved={saved}
         placeholder="Search a starting point"
       />
 

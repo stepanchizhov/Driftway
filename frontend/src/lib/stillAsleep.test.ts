@@ -116,4 +116,24 @@ describe("target ordering", () => {
     const targets = buildStillAsleepTargets([HOME, NURSERY], null, NOW);
     expect(targets.map((t) => t.label)).toEqual(["Home", "Nursery"]);
   });
+
+  it("puts Home first under its own name, wherever it is in the list", () => {
+    const flat = { ...HOME, label: "Our flat" };
+    const targets = buildStillAsleepTargets([NURSERY, flat], null, NOW);
+    expect(targets.map((t) => [t.label, t.kind])).toEqual([
+      ["Our flat", "home"],
+      ["Nursery", "saved"],
+    ]);
+  });
+
+  it("has no Home when none is marked, and promotes nothing", () => {
+    const named = { ...HOME, isDefault: false };
+    const targets = buildStillAsleepTargets([NURSERY, named], null, NOW);
+    expect(targets.every((t) => t.kind === "saved")).toBe(true);
+  });
+
+  it("never lets a saved place expire", () => {
+    const yearLater = NOW + 365 * 24 * HOUR;
+    expect(buildStillAsleepTargets([HOME, NURSERY], null, yearLater)).toHaveLength(2);
+  });
 });
