@@ -638,7 +638,51 @@ reusable, around Windsor (51.40 to 51.55 N, 0.75 to 0.50 W):
   Needs a sharing step, a review step and a privacy change (a route often
   starts at a door), so it is not automatic.
 
-LATER (proposed next walking slice): import OSM walking route relations for
-the founder's area with `tools/build_walk.py`, starting with the National
-Trust accessible and family trails.
+**IMPLEMENTED, 0.8.8 (11 Oct 2026): trails from OpenStreetMap.**
+`tools/import_osm_routes.py SOUTH WEST NORTH EAST` finds circular local
+walking routes (network=lwn, roundtrip=yes, up to 8 km by their own mapped
+paths), writes one spec each to `data/walks/specs/osm-*.spec.json`, and
+builds them with `tools/build_walk.py`, which now takes `osm_relation`:
+
+- **Followed along the trail's own paths**, in the order the route lists
+  them, each turned round if mapped the other way. Members that aren't paths
+  (car parks, a cafe, a pub: every National Trust trail here lists them) are
+  not walked. Where paths don't join, or one can't be used on foot, the walk
+  goes round on mapped paths and says so.
+- **Starts where the trail says:** its `from` grid reference (converted from
+  OSGB36, checked against the Ordnance Survey worked example to about 1 m),
+  else its own car park. Within 17 to 78 m of the named start for every
+  trail built.
+- **Copied:** route line, name, operator, distance, suggested time, start
+  and website (ODbL). **Not copied:** the `description` text, which repeats
+  the operator's wording; summaries are written from the facts and each walk
+  links to the operator's page.
+- **Held back unless faithful:** more than 2 gaps, more than 15% + 200 m
+  added by going round them, or less than 70% of the stated distance mapped
+  means it isn't the trail. Held specs keep the reason in `review` and no
+  walk is shipped.
+
+Result for the Windsor area (51.40 to 51.55 N, 0.75 to 0.50 W):
+
+| Trail | Built | Stated | Pram | Carrier | On foot |
+|---|---|---|---|---|---|
+| Cliveden Blue Walking Trail | 3.1 km | 2.6 | harder going | harder going | fine |
+| Cliveden Gold Walking Trail | 4.4 km | 5.0 | harder going | harder going | fine |
+| Cliveden Green Walking Trail | 3.5 km | 3.7 | harder going | harder going | harder going |
+| Cookham Wetland and Wildlife Trail | 4.6 km | 4.8 | blocked: 5 mapped steps | surface not recorded in places | fine |
+| Runnymede Summer Route | 3.1 km | 3.0 | harder going | surface not recorded in places | fine |
+| Runnymede Views Route | 2.4 km | 2.5 | blocked: steps | fine | fine |
+| St Ann's Hill circular route, Chertsey | 2.4 km | 2.5 | blocked: steps | harder going | fine |
+
+Held, with the reason in each spec: Runnymede Accessible Route (only
+0.8 km of its 1.5 km mapped), Cliveden Woodland (going round gaps adds
+1.6 km), Egham to Runnymede circular (9 gaps), Runnymede Memorial Route (28
+gaps), both Ankerwycke walks (4 gaps; 0.8 km of 1 mapped). Skipped:
+Maidenhead Boundary Walk (24 km of paths, no distance tag).
+
+OPEN: the held trails are incomplete or out of order **in OpenStreetMap**,
+which anyone can fix. The Accessible Route is the one that matters most
+for prams. Fixed in the map, a re-run of the importer picks it up.
+LATER: order members by connection rather than by list, which would
+rescue some out-of-order routes automatically.
 

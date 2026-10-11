@@ -9,9 +9,11 @@ the app reads, so every walk is a reviewable artefact with its sources in it,
 and the free public services see one burst of polite requests per build rather
 than one per parent.
 
-A spec gives either `waypoints` (positions taken from OSM nodes, so nothing is
-an invented coordinate) or `gpx` (a recorded trace, e.g. exported from a
-fitness app). The route follows mapped paths between waypoints; a GPX trace is
+A spec gives `waypoints` (positions taken from OSM nodes, so nothing is
+an invented coordinate), `gpx` (a recorded trace, e.g. exported from a
+fitness app), or `osm_relation` (a walking route mapped in OpenStreetMap,
+followed along its own member paths: tools/import_osm_routes.py writes these
+specs). The route follows mapped paths between waypoints; a GPX trace is
 matched to the nearest mapped path, and stretches that match nothing are kept
 as "not on a mapped path" with an unknown surface rather than dropped.
 
@@ -59,7 +61,8 @@ OUT_DIR = os.path.join(BACKEND, "data", "walks")
 #: themselves; a public repository URL does that without handing out anyone's
 #: contact details.
 USER_AGENT = "Driftway-dev/0.1 (+https://github.com/stepanchizhov/Driftway)"
-OVERPASS = ["https://overpass-api.de/api/interpreter",
+OVERPASS = ["https://lz4.overpass-api.de/api/interpreter",
+            "https://overpass-api.de/api/interpreter",
             "https://z.overpass-api.de/api/interpreter"]
 ELEVATION = "https://api.opentopodata.org/v1/eudem25m"
 
@@ -127,6 +130,209 @@ def fetch_osm(bbox: Tuple[float, float, float, float]) -> Dict:
         raise RuntimeError(f"Overpass unavailable after retries: {last!r}")
 
     return json.loads(_cached("osm:" + query, fetch))
+
+
+def _overpass(query: str) -> Dict:
+    def fetch():
+        last = None
+        for attempt in range(6):
+            for host in OVERPASS:
+                try:
+                    body = _http(host, urllib.parse.urlencode({"data": query}).encode())
+                    if body.lstrip().startswith(b"{"):
+                        return body
+                    last = body[:200]
+                except Exception as e:  # noqa: BLE001
+                    last = repr(e)
+            time.sleep(min(120, 15 * 2 ** attempt))
+        raise RuntimeError(f"Overpass unavailable after retries: {last!r}")
+    return json.loads(_cached("osm:" + query, fetch))
+
+
+def fetch_relation(rel_id: int) -> Dict:
+    """A route relation with its member ways (nodes and geometry)."""
+    data = _overpass(f"[out:json][timeout:90];relation({int(rel_id)});out body;"
+                     f"way(r);out body geom;")
+    rel = next(e for e in data["elements"] if e["type"] == "relation")
+    ways = {e["id"]: e for e in data["elements"] if e["type"] == "way"}
+    return {"relation": rel, "ways": ways,
+            "osm_base": data.get("osm3s", {}).get("timestamp_osm_base", "")}
+
+
+def osgb_to_wgs84(ref: str) -> Optional[Tuple[float, float]]:
+    """An Ordnance Survey grid reference ("SU9968973089") to WGS84 lat/lng,
+    to a few metres: Airy 1830 transverse Mercator, then the standard
+    OSGB36-to-WGS84 Helmert transform. National Trust trail starts carry
+    these. None for anything that isn't one."""
+    ref = ref.replace(" ", "").upper()
+    if len(ref) < 4 or not ref[:2].isalpha() or not ref[2:].isdigit() or len(ref[2:]) % 2:
+        return None
+    l1, l2 = ord(ref[0]) - 65, ord(ref[1]) - 65
+    l1 -= l1 > 7
+    l2 -= l2 > 7
+    e100 = ((l1 - 2) % 5) * 5 + (l2 % 5)
+    n100 = (19 - (l1 // 5) * 5) - (l2 // 5)
+    half = len(ref[2:]) // 2
+    unit = 10 ** (5 - half)
+    E = e100 * 100000 + int(ref[2:2 + half]) * unit + unit / 2
+    N = n100 * 100000 + int(ref[2 + half:]) * unit + unit / 2
+
+    a, b, F0 = 6377563.396, 6356256.909, 0.9996012717
+    lat0, lon0, N0, E0 = math.radians(49), math.radians(-2), -100000.0, 400000.0
+    e2 = 1 - (b * b) / (a * a)
+    n = (a - b) / (a + b)
+    lat, M = lat0, 0.0
+    while True:
+        lat = (N - N0 - M) / (a * F0) + lat
+        dl, sl = lat - lat0, lat + lat0
+        M = b * F0 * ((1 + n + 1.25 * n**2 + 1.25 * n**3) * dl
+                      - (3 * n + 3 * n**2 + 21 / 8 * n**3) * math.sin(dl) * math.cos(sl)
+                      + (15 / 8 * n**2 + 15 / 8 * n**3) * math.sin(2 * dl) * math.cos(2 * sl)
+                      - 35 / 24 * n**3 * math.sin(3 * dl) * math.cos(3 * sl))
+        if abs(N - N0 - M) < 0.00001:
+            break
+    sinl, cosl, tanl = math.sin(lat), math.cos(lat), math.tan(lat)
+    nu = a * F0 / math.sqrt(1 - e2 * sinl**2)
+    rho = a * F0 * (1 - e2) / (1 - e2 * sinl**2) ** 1.5
+    eta2 = nu / rho - 1
+    sec = 1 / cosl
+    VII = tanl / (2 * rho * nu)
+    VIII = tanl / (24 * rho * nu**3) * (5 + 3 * tanl**2 + eta2 - 9 * tanl**2 * eta2)
+    IX = tanl / (720 * rho * nu**5) * (61 + 90 * tanl**2 + 45 * tanl**4)
+    X = sec / nu
+    XI = sec / (6 * nu**3) * (nu / rho + 2 * tanl**2)
+    XII = sec / (120 * nu**5) * (5 + 28 * tanl**2 + 24 * tanl**4)
+    XIIA = sec / (5040 * nu**7) * (61 + 662 * tanl**2 + 1320 * tanl**4 + 720 * tanl**6)
+    dE = E - E0
+    lat = lat - VII * dE**2 + VIII * dE**4 - IX * dE**6
+    lon = lon0 + X * dE - XI * dE**3 + XII * dE**5 - XIIA * dE**7
+
+    # OSGB36 (Airy) to WGS84 by Helmert transform.
+    nu = a / math.sqrt(1 - e2 * math.sin(lat) ** 2)
+    x = nu * math.cos(lat) * math.cos(lon)
+    y = nu * math.cos(lat) * math.sin(lon)
+    z = (1 - e2) * nu * math.sin(lat)
+    tx, ty, tz, sc = 446.448, -125.157, 542.060, -20.4894e-6
+    rx, ry, rz = (math.radians(v / 3600) for v in (0.1502, 0.2470, 0.8421))
+    x2 = tx + (1 + sc) * x - rz * y + ry * z
+    y2 = ty + rz * x + (1 + sc) * y - rx * z
+    z2 = tz - ry * x + rx * y + (1 + sc) * z
+    a2, b2 = 6378137.0, 6356752.3142
+    e22 = 1 - (b2 * b2) / (a2 * a2)
+    p_ = math.hypot(x2, y2)
+    lat = math.atan2(z2, p_ * (1 - e22))
+    for _ in range(10):
+        nu2 = a2 / math.sqrt(1 - e22 * math.sin(lat) ** 2)
+        lat = math.atan2(z2 + e22 * nu2 * math.sin(lat), p_)
+    return math.degrees(lat), math.degrees(math.atan2(y2, x2))
+
+
+#: Member roles that are part of the route itself. "alternative",
+#: "excursion", "approach" and the like are not walked.
+_ROUTE_ROLES = {"", "main", "forward", "backward", "route"}
+
+
+def _walk_from_relation(graph: Graph, rel: Dict, start_near=None):
+    """[(coord, way_id, node_id)] along a route relation's own member paths,
+    in the order it lists them, and notes on anything that had to change.
+
+    Members are chained end to end, each turned round if it was mapped the
+    other way. Where two members don't meet, or a member is not usable on
+    foot here (not a walkable path, closed to walkers, or excluded by the
+    spec's "avoid"), the walk goes round on mapped paths and says so. A
+    circular route that doesn't quite close is closed the same way. With
+    `start_near`, a circular route starts at its node nearest that point."""
+    notes: List[str] = []
+    # Only paths are walked. Trails also list their car park, a cafe or a pub
+    # as members (11 Oct 2026: every National Trust trail near Windsor did);
+    # those are places on the way, not ways.
+    members = [m["ref"] for m in rel["relation"].get("members", [])
+               if m["type"] == "way" and m.get("role", "") in _ROUTE_ROLES
+               and "highway" in rel["ways"].get(m["ref"], {}).get("tags", {})]
+    if start_near is None:
+        # No grid reference: start at the trail's own car park, if it lists one.
+        for m in rel["relation"].get("members", []):
+            w = rel["ways"].get(m["ref"]) if m["type"] == "way" else None
+            if w and w.get("tags", {}).get("amenity") == "parking" and w.get("geometry"):
+                g = w["geometry"]
+                start_near = (sum(x["lat"] for x in g) / len(g), sum(x["lon"] for x in g) / len(g))
+                break
+    seq: List[Tuple[int, Optional[int]]] = []      # (node, way used to reach it)
+    detoured = 0
+
+    def append_route(a: int, b: int):
+        nonlocal detoured
+        if a == b:
+            return
+        leg = graph.route(a, b)
+        detoured += 1
+        for nid, way in leg[1:]:
+            seq.append((nid, way if way != -1 else None))
+
+    for i, wid in enumerate(members):
+        way = rel["ways"].get(wid)
+        if way is None:
+            continue
+        nodes = list(way["nodes"])
+        usable = wid in graph.ways
+        if not seq:
+            # Orient the first member towards the second.
+            nxt = rel["ways"].get(members[i + 1]) if i + 1 < len(members) else None
+            if nxt and nodes[0] in (nxt["nodes"][0], nxt["nodes"][-1]):
+                nodes.reverse()
+            seq.append((nodes[0], wid if usable else None))
+            start_idx = 1
+        else:
+            end = seq[-1][0]
+            if nodes[-1] == end:
+                nodes.reverse()
+            elif nodes[0] != end and end in nodes:
+                k = nodes.index(end)                    # joins part-way along
+                nodes = nodes[k:] if len(nodes) - k >= k + 1 else nodes[:k + 1][::-1]
+            elif nodes[0] != end:
+                near = min((nodes[0], nodes[-1]),
+                           key=lambda n: haversine(graph.coord.get(n, (0, 0)), graph.coord.get(end, (0, 0))))
+                if near == nodes[-1]:
+                    nodes.reverse()
+                if nodes[0] in graph.adj and end in graph.adj:
+                    append_route(end, nodes[0])
+            start_idx = 1 if nodes[0] == seq[-1][0] else 0
+        if usable:
+            for nid in nodes[start_idx:]:
+                seq.append((nid, wid))
+        elif seq[-1][0] in graph.adj and nodes[-1] in graph.adj:
+            append_route(seq[-1][0], nodes[-1])
+        else:
+            raise RuntimeError(f"member way {wid} is unusable and can't be walked round")
+
+    if not seq:
+        raise RuntimeError("the relation has no usable member ways")
+    if detoured:
+        notes.append(f"The mapped trail has {detoured} place{'s' if detoured > 1 else ''} where "
+                     "its paths don't join or can't be used on foot here; the walk "
+                     "goes round there on mapped paths.")
+    circular = rel["relation"].get("tags", {}).get("roundtrip") == "yes"
+    if circular and seq[0][0] != seq[-1][0]:
+        gap = haversine(graph.coord[seq[0][0]], graph.coord[seq[-1][0]])
+        if gap <= 500 and seq[-1][0] in graph.adj and seq[0][0] in graph.adj:
+            append_route(seq[-1][0], seq[0][0])
+            if gap > 30:
+                notes.append("The mapped trail stops short of where it began; "
+                             "the last part follows the mapped way back to the start.")
+    if circular and start_near and seq[0][0] == seq[-1][0]:
+        nodes_only = [n for n, _ in seq]
+        k = min(range(len(nodes_only) - 1),
+                key=lambda i: haversine(graph.coord[nodes_only[i]], tuple(start_near)))
+        if k:
+            # Rotate the loop: start (and finish) at the node nearest the
+            # trail's named start. The way used to reach each node moves with it.
+            body = seq[1:]
+            seq = [(seq[k][0], None)] + body[k:] + body[:k]
+
+    pts = [(graph.coord[n], w, n) for n, w in seq]
+    if len(pts) > 1 and pts[0][1] is None:
+        pts[0] = (pts[0][0], pts[1][1], pts[0][2])
+    return pts, notes
 
 
 def fetch_elevations(points: List[Tuple[float, float]]) -> List[float]:
@@ -526,7 +732,13 @@ def build(spec_path: str) -> str:
     with open(spec_path, encoding="utf-8") as f:
         spec = json.load(f)
 
-    if "gpx" in spec:
+    rel = None
+    if "osm_relation" in spec:
+        rel = fetch_relation(spec["osm_relation"])
+        paths = [w for w in rel["ways"].values() if "highway" in w.get("tags", {})]
+        lats = [g["lat"] for w in paths for g in w["geometry"]]
+        lngs = [g["lon"] for w in paths for g in w["geometry"]]
+    elif "gpx" in spec:
         gpx = os.path.join(os.path.dirname(spec_path), spec["gpx"])
         lats, lngs = [], []
         for el in ET.parse(gpx).getroot().iter():
@@ -543,7 +755,11 @@ def build(spec_path: str) -> str:
     bbox = (min(lats) - margin, min(lngs) - margin, max(lats) + margin, max(lngs) + margin)
 
     graph = Graph(fetch_osm(bbox), avoid=tuple(spec.get("avoid", ())))
-    if "gpx" in spec:
+    extra_notes: List[str] = []
+    if rel is not None:
+        pts, extra_notes = _walk_from_relation(graph, rel, spec.get("start_near"))
+        sections = _sections(graph, pts, matched_by_proximity=False)
+    elif "gpx" in spec:
         pts = _walk_from_gpx(graph, gpx)
         sections = _sections(graph, pts, matched_by_proximity=True)
         if spec.get("start_at"):
@@ -576,7 +792,7 @@ def build(spec_path: str) -> str:
     sections = _split_long(sections)
     _attach_gradients(sections)
     obs_path = spec_path.replace(".spec.json", ".observations.json")
-    notes = list(spec.get("notes", [])) + _apply_observations(sections, obs_path)
+    notes = list(spec.get("notes", [])) + extra_notes + _apply_observations(sections, obs_path)
 
     first = sections[0].geometry[0]
     route = {
@@ -593,6 +809,13 @@ def build(spec_path: str) -> str:
         "sources": [
             {"id": "osm", "label": "OpenStreetMap", "as_of": graph.osm_base,
              "licence": "ODbL", "attribution": "© OpenStreetMap contributors"},
+        ] + ([
+            {"id": "osm-route", "label": f"OpenStreetMap route relation {spec['osm_relation']}",
+             "as_of": rel["osm_base"], "licence": "ODbL",
+             "attribution": "© OpenStreetMap contributors",
+             "limitation": "The trail as mapped by volunteers. The trail itself "
+                           "belongs to its operator; check their page on the day."},
+        ] if rel is not None else []) + [
             {"id": "eudem25m", "label": "EU-DEM 25 m terrain model via Open Topo Data",
              "licence": "Copernicus",
              "attribution": "Produced using Copernicus data and information "

@@ -199,9 +199,11 @@ class PaceTests(WalkingApiTestCase):
         usual, brisk = self.minutes(), self.minutes(pace_kmh=5)
         for walk_id, w in usual.items():
             self.assertLess(full(brisk[walk_id]), full(w), walk_id)
-            if w.get("fit") and w["fit"].get("turn_back_at_m"):
-                self.assertGreaterEqual(brisk[walk_id]["fit"]["turn_back_at_m"],
-                                        w["fit"]["turn_back_at_m"], walk_id)
+            # Where both are shortened, the brisker one turns back further.
+            # (At a brisker pace a walk may fit whole and not turn at all.)
+            turn, brisk_turn = ((x.get("fit") or {}).get("turn_back_at_m") for x in (w, brisk[walk_id]))
+            if turn and brisk_turn:
+                self.assertGreaterEqual(brisk_turn, turn, walk_id)
 
     def test_the_card_states_the_pace_used(self):
         w = next(iter(self.minutes(pace_kmh=4.5).values()))

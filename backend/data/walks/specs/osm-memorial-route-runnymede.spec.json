@@ -1,0 +1,19 @@
+{
+  "id": "osm-memorial-route-runnymede",
+  "name": "Memorial Route",
+  "area": "Runnymede",
+  "summary": "National Trust's circular trail, about 3.7 km, from Windsor Road, Bishopsgate.",
+  "shape": "loop",
+  "start_label": "Windsor Road, Bishopsgate",
+  "osm_relation": 19761173,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://nt.global.ssl.fastly.net/binaries/content/assets/website/national/regions/surrey/places/runnymede-and-ankerwycke/pdf/runnymede-and-ankerwycke-map2.pdf",
+    "National Trust suggests about 1 h."
+  ],
+  "start_near": [
+    51.448028,
+    -0.566846
+  ],
+  "review": "28 places where the mapped paths don't join; the route may be incomplete or out of order in OpenStreetMap"
+}

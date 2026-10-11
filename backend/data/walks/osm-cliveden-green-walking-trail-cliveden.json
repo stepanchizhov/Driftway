@@ -1,0 +1,3394 @@
+{
+ "id": "osm-cliveden-green-walking-trail-cliveden",
+ "name": "Cliveden Green Walking Trail",
+ "area": "Cliveden",
+ "summary": "National Trust's circular trail, about 3.7 km, from Woodland car park, Cliveden.",
+ "shape": "loop",
+ "start": {
+  "lat": 51.540903,
+  "lng": -0.690171,
+  "label": "Woodland car park, Cliveden"
+ },
+ "built_on": "2026-10-11",
+ "sample": false,
+ "notes": [
+  "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+  "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://www.nationaltrust.org.uk/visit/oxfordshire-buckinghamshire-berkshire/cliveden/cliveden-green-walking-trail",
+  "National Trust suggests about 1 h."
+ ],
+ "sources": [
+  {
+   "id": "osm",
+   "label": "OpenStreetMap",
+   "as_of": "2026-10-11T22:02:50Z",
+   "licence": "ODbL",
+   "attribution": "© OpenStreetMap contributors"
+  },
+  {
+   "id": "osm-route",
+   "label": "OpenStreetMap route relation 10361193",
+   "as_of": "2026-10-11T21:47:34Z",
+   "licence": "ODbL",
+   "attribution": "© OpenStreetMap contributors",
+   "limitation": "The trail as mapped by volunteers. The trail itself belongs to its operator; check their page on the day."
+  },
+  {
+   "id": "eudem25m",
+   "label": "EU-DEM 25 m terrain model via Open Topo Data",
+   "licence": "Copernicus",
+   "attribution": "Produced using Copernicus data and information funded by the European Union - EU-DEM layers",
+   "limitation": "25 m grid: sustained slopes only; short ramps and kerbs are not visible, and buildings or trees can distort values in town."
+  }
+ ],
+ "sections": [
+  {
+   "from_m": 0.0,
+   "to_m": 132.1,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.540903,
+     -0.690171
+    ],
+    [
+     51.540739,
+     -0.690286
+    ],
+    [
+     51.54043,
+     -0.690384
+    ],
+    [
+     51.540379,
+     -0.690494
+    ],
+    [
+     51.540322,
+     -0.690577
+    ],
+    [
+     51.540207,
+     -0.690722
+    ],
+    [
+     51.540098,
+     -0.69086
+    ],
+    [
+     51.540028,
+     -0.690939
+    ],
+    [
+     51.539988,
+     -0.69095
+    ],
+    [
+     51.539946,
+     -0.690934
+    ],
+    [
+     51.539901,
+     -0.691036
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/751522302",
+     "observed_on": null,
+     "note": "road surface; the pavement's own surface is not mapped"
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/751522302",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953571",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953571",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 1.3,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 132.1,
+   "to_m": 171.9,
+   "label": "Track",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.539901,
+     -0.691036
+    ],
+    [
+     51.539769,
+     -0.691179
+    ],
+    [
+     51.539722,
+     -0.69132
+    ],
+    [
+     51.539701,
+     -0.691412
+    ],
+    [
+     51.539688,
+     -0.691469
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/751522305",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/751522305",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 100,
+     "status": "mapped",
+     "source": "osm:way/751522305",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [
+    {
+     "kind": "other",
+     "at_m": 168,
+     "status": "mapped",
+     "source": "osm:node/13335947225",
+     "width_cm": 140,
+     "step_count": null,
+     "has_ramp": null,
+     "note": "Mapped as barrier=entrance"
+    }
+   ],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 171.9,
+   "to_m": 219.9,
+   "label": "Path",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.539688,
+     -0.691469
+    ],
+    [
+     51.539662,
+     -0.69157
+    ],
+    [
+     51.539642,
+     -0.691794
+    ],
+    [
+     51.539622,
+     -0.692152
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1131145286",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1131145286",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [
+    {
+     "kind": "kissing_gate",
+     "at_m": 179,
+     "status": "mapped",
+     "source": "osm:node/18294916",
+     "width_cm": 110,
+     "step_count": null,
+     "has_ramp": null,
+     "note": null
+    }
+   ],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 219.9,
+   "to_m": 495.3,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.539622,
+     -0.692152
+    ],
+    [
+     51.53984,
+     -0.69243
+    ],
+    [
+     51.539919,
+     -0.692828
+    ],
+    [
+     51.539969,
+     -0.693034
+    ],
+    [
+     51.540038,
+     -0.693086
+    ],
+    [
+     51.540097,
+     -0.693129
+    ],
+    [
+     51.540295,
+     -0.693082
+    ],
+    [
+     51.540453,
+     -0.693082
+    ],
+    [
+     51.540621,
+     -0.693145
+    ],
+    [
+     51.540888,
+     -0.693082
+    ],
+    [
+     51.541073,
+     -0.692933
+    ],
+    [
+     51.541244,
+     -0.692796
+    ],
+    [
+     51.541659,
+     -0.692494
+    ],
+    [
+     51.54166465598346,
+     -0.6924900058981001
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.2,
+    "descent_m": 12.9,
+    "steepest_up_pct": 1.7,
+    "steepest_down_pct": 10.5,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 495.3,
+   "to_m": 770.8,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.54166465598346,
+     -0.6924900058981001
+    ],
+    [
+     51.542064,
+     -0.692208
+    ],
+    [
+     51.542647,
+     -0.691842
+    ],
+    [
+     51.543151,
+     -0.69154
+    ],
+    [
+     51.543379,
+     -0.691302
+    ],
+    [
+     51.543557,
+     -0.691127
+    ],
+    [
+     51.543695,
+     -0.690984
+    ],
+    [
+     51.543912,
+     -0.691079
+    ],
+    [
+     51.543918935658695,
+     -0.6910750110978502
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 3.2,
+    "descent_m": 0.0,
+    "steepest_up_pct": 3.7,
+    "steepest_down_pct": 1.8,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 770.8,
+   "to_m": 1046.2,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.543918935658695,
+     -0.6910750110978502
+    ],
+    [
+     51.544298,
+     -0.690857
+    ],
+    [
+     51.544664,
+     -0.690682
+    ],
+    [
+     51.545,
+     -0.690634
+    ],
+    [
+     51.545445,
+     -0.690412
+    ],
+    [
+     51.54586,
+     -0.690189
+    ],
+    [
+     51.546275,
+     -0.690126
+    ],
+    [
+     51.546309529382604,
+     -0.6901201365199352
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 1.7,
+    "descent_m": 1.2,
+    "steepest_up_pct": 3.9,
+    "steepest_down_pct": 2.1,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1046.2,
+   "to_m": 1321.6,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.546309529382604,
+     -0.6901201365199352
+    ],
+    [
+     51.546434,
+     -0.690099
+    ],
+    [
+     51.546529,
+     -0.690071
+    ],
+    [
+     51.547006,
+     -0.689983
+    ],
+    [
+     51.547243,
+     -0.689903
+    ],
+    [
+     51.547411,
+     -0.689792
+    ],
+    [
+     51.54751,
+     -0.689538
+    ],
+    [
+     51.54753,
+     -0.689315
+    ],
+    [
+     51.547599,
+     -0.688981
+    ],
+    [
+     51.547639,
+     -0.688838
+    ],
+    [
+     51.547708,
+     -0.688759
+    ],
+    [
+     51.547817,
+     -0.688806
+    ],
+    [
+     51.547896,
+     -0.688997
+    ],
+    [
+     51.548004,
+     -0.689315
+    ],
+    [
+     51.548054,
+     -0.689506
+    ],
+    [
+     51.54806536324619,
+     -0.6895186948766032
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 7.5,
+    "descent_m": 6.0,
+    "steepest_up_pct": 10.3,
+    "steepest_down_pct": 8.2,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1321.6,
+   "to_m": 1597.0,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.54806536324619,
+     -0.6895186948766032
+    ],
+    [
+     51.548182,
+     -0.689649
+    ],
+    [
+     51.54839,
+     -0.689681
+    ],
+    [
+     51.548643,
+     -0.689681
+    ],
+    [
+     51.548746,
+     -0.689681
+    ],
+    [
+     51.549111,
+     -0.689697
+    ],
+    [
+     51.549447,
+     -0.689712
+    ],
+    [
+     51.549961,
+     -0.689744
+    ],
+    [
+     51.550041,
+     -0.689764
+    ],
+    [
+     51.550288,
+     -0.689792
+    ],
+    [
+     51.55038,
+     -0.689782
+    ],
+    [
+     51.55051308994218,
+     -0.6897676323357876
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 3.8,
+    "descent_m": 0.0,
+    "steepest_up_pct": 3.1,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1597.0,
+   "to_m": 1872.4,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.55051308994218,
+     -0.6897676323357876
+    ],
+    [
+     51.550732,
+     -0.689744
+    ],
+    [
+     51.551118,
+     -0.689601
+    ],
+    [
+     51.551533,
+     -0.689538
+    ],
+    [
+     51.551908,
+     -0.689522
+    ],
+    [
+     51.552215,
+     -0.689442
+    ],
+    [
+     51.552521,
+     -0.689411
+    ],
+    [
+     51.552709,
+     -0.689363
+    ],
+    [
+     51.552718,
+     -0.689299
+    ],
+    [
+     51.552756742470635,
+     -0.6889498304375796
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 2.0,
+    "descent_m": 4.2,
+    "steepest_up_pct": 1.5,
+    "steepest_down_pct": 4.7,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 1872.4,
+   "to_m": 2147.8,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.552756742470635,
+     -0.6889498304375796
+    ],
+    [
+     51.552877,
+     -0.687866
+    ],
+    [
+     51.553047,
+     -0.686339
+    ],
+    [
+     51.553123,
+     -0.685803
+    ],
+    [
+     51.55264076908128,
+     -0.6858978289459075
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 18.0,
+    "descent_m": 0.0,
+    "steepest_up_pct": 15.6,
+    "steepest_down_pct": 0.0,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2147.8,
+   "to_m": 2423.2,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.55264076908128,
+     -0.6858978289459075
+    ],
+    [
+     51.552467,
+     -0.685932
+    ],
+    [
+     51.551836,
+     -0.686088
+    ],
+    [
+     51.551041,
+     -0.686286
+    ],
+    [
+     51.550618,
+     -0.686386
+    ],
+    [
+     51.55019238774444,
+     -0.6864982333687609
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 2.4,
+    "descent_m": 0.0,
+    "steepest_up_pct": 2.2,
+    "steepest_down_pct": 0.6,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2423.2,
+   "to_m": 2698.6,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.55019238774444,
+     -0.6864982333687609
+    ],
+    [
+     51.549742,
+     -0.686617
+    ],
+    [
+     51.549658,
+     -0.686638
+    ],
+    [
+     51.548904,
+     -0.686833
+    ],
+    [
+     51.548663,
+     -0.68689
+    ],
+    [
+     51.548517,
+     -0.686925
+    ],
+    [
+     51.5479,
+     -0.687067
+    ],
+    [
+     51.547835,
+     -0.687086
+    ],
+    [
+     51.54774527206305,
+     -0.6871116704044982
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 11.3,
+    "steepest_up_pct": 0.0,
+    "steepest_down_pct": 5.9,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2698.6,
+   "to_m": 2974.0,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.54774527206305,
+     -0.6871116704044982
+    ],
+    [
+     51.546699,
+     -0.687411
+    ],
+    [
+     51.546306,
+     -0.687542
+    ],
+    [
+     51.545727,
+     -0.687734
+    ],
+    [
+     51.54531228664443,
+     -0.6878556267274993
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 1.0,
+    "steepest_up_pct": 0.6,
+    "steepest_down_pct": 2.2,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 2974.0,
+   "to_m": 3249.4,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.54531228664443,
+     -0.6878556267274993
+    ],
+    [
+     51.544745,
+     -0.688022
+    ],
+    [
+     51.543931,
+     -0.688268
+    ],
+    [
+     51.543038,
+     -0.68854
+    ],
+    [
+     51.542878868252316,
+     -0.6885968792877125
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 2.6,
+    "steepest_up_pct": 0.9,
+    "steepest_down_pct": 2.3,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  },
+  {
+   "from_m": 3249.4,
+   "to_m": 3524.8,
+   "label": "Green Drive",
+   "surface": "compacted",
+   "access_restricted": false,
+   "geometry": [
+    [
+     51.542878868252316,
+     -0.6885968792877125
+    ],
+    [
+     51.542305,
+     -0.688802
+    ],
+    [
+     51.541716,
+     -0.689013
+    ],
+    [
+     51.541754,
+     -0.689407
+    ],
+    [
+     51.541508,
+     -0.689481
+    ],
+    [
+     51.541311,
+     -0.689502
+    ],
+    [
+     51.541223,
+     -0.689611
+    ],
+    [
+     51.541145,
+     -0.689758
+    ],
+    [
+     51.541065,
+     -0.689967
+    ],
+    [
+     51.540903,
+     -0.690171
+    ]
+   ],
+   "evidence": [
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3690903",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "bad",
+     "status": "mapped",
+     "source": "osm:way/3690902",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 190,
+     "status": "mapped",
+     "source": "osm:way/3691056",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 200,
+     "status": "mapped",
+     "source": "osm:way/1453953575",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 120,
+     "status": "mapped",
+     "source": "osm:way/1453953566",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 450,
+     "status": "mapped",
+     "source": "osm:way/1453953570",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953567",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1453953574",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/1454167456",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "surface",
+     "value": "compacted",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "smoothness",
+     "value": "intermediate",
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    },
+    {
+     "attribute": "width_cm",
+     "value": 140,
+     "status": "mapped",
+     "source": "osm:way/58108829",
+     "observed_on": null,
+     "note": null
+    }
+   ],
+   "hazards": [],
+   "barriers": [],
+   "gradient": {
+    "ascent_m": 0.0,
+    "descent_m": 2.2,
+    "steepest_up_pct": 1.4,
+    "steepest_down_pct": 2.6,
+    "status": "modelled",
+    "source": "eudem25m via Open Topo Data"
+   }
+  }
+ ]
+}

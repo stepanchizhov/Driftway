@@ -1,0 +1,19 @@
+{
+  "id": "osm-accessible-route-runnymede",
+  "name": "Accessible Route",
+  "area": "Runnymede",
+  "summary": "National Trust's circular trail, about 1.5 km, from Windsor Road, Bishopsgate.",
+  "shape": "loop",
+  "start_label": "Windsor Road, Bishopsgate",
+  "osm_relation": 19761170,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://nt.global.ssl.fastly.net/binaries/content/assets/website/national/regions/surrey/places/runnymede-and-ankerwycke/pdf/runnymede-and-ankerwycke-map2.pdf",
+    "National Trust suggests about 30 minutes."
+  ],
+  "start_near": [
+    51.448028,
+    -0.566846
+  ],
+  "review": "built 2.2 km from 0.8 km of mapped paths: going round the gaps adds too much"
+}

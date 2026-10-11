@@ -1,0 +1,19 @@
+{
+  "id": "osm-cliveden-woodland-walking-trail-cliveden",
+  "name": "Cliveden Woodland Walking Trail",
+  "area": "Cliveden",
+  "summary": "National Trust's circular trail, about 3.2 km, from Cliveden Information Centre, Main Car Park.",
+  "shape": "loop",
+  "start_label": "Cliveden Information Centre, Main Car Park",
+  "osm_relation": 19887946,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://www.nationaltrust.org.uk/visit/oxfordshire-buckinghamshire-berkshire/cliveden/cliveden-woodland-walk",
+    "National Trust suggests about 1 h to 2 h."
+  ],
+  "start_near": [
+    51.562389,
+    -0.687894
+  ],
+  "review": "built 4.2 km from 2.6 km of mapped paths: going round the gaps adds too much"
+}

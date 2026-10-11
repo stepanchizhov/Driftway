@@ -1,0 +1,18 @@
+{
+  "id": "osm-cookham-wetland-and-wildlife-trial-maidenhead",
+  "name": "Cookham Wetland and Wildlife Trail",
+  "area": "Cookham Moor, Maidenhead",
+  "summary": "National Trust's circular trail, about 4.8 km, from Cookham Moor National Trust car park, Cookham.",
+  "shape": "loop",
+  "start_label": "Cookham Moor National Trust car park, Cookham",
+  "osm_relation": 19917505,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://www.nationaltrust.org.uk/visit/oxfordshire-buckinghamshire-berkshire/maidenhead-and-cookham-commons/cookham-wetland-and-wildlife-trail",
+    "National Trust suggests about 45 minutes to 1 h 30."
+  ],
+  "start_near": [
+    51.55998,
+    -0.71393
+  ]
+}

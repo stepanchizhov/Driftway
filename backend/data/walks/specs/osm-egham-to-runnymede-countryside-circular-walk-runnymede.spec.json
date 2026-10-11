@@ -1,0 +1,19 @@
+{
+  "id": "osm-egham-to-runnymede-countryside-circular-walk-runnymede",
+  "name": "Egham to Runnymede Countryside Circular Walk",
+  "area": "Runnymede",
+  "summary": "National Trust's circular trail, about 5.9 km, from Egham Station, Station Road.",
+  "shape": "loop",
+  "start_label": "Egham Station, Station Road",
+  "osm_relation": 19761174,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://www.nationaltrust.org.uk/visit/surrey/runnymede-and-ankerwycke/egham-to-runnymede-countryside-circular-walk",
+    "National Trust suggests about 2 h."
+  ],
+  "start_near": [
+    51.42935,
+    -0.547032
+  ],
+  "review": "9 places where the mapped paths don't join; the route may be incomplete or out of order in OpenStreetMap"
+}

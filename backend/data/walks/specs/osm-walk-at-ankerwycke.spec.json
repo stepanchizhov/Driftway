@@ -1,0 +1,15 @@
+{
+  "id": "osm-walk-at-ankerwycke",
+  "name": "Walk at Ankerwycke",
+  "area": "",
+  "summary": "National Trust's circular trail, about 1 km, from Ankerwycke, Magna Carta Lane.",
+  "shape": "loop",
+  "start_label": "Ankerwycke, Magna Carta Lane",
+  "osm_relation": 19770094,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://nt.global.ssl.fastly.net/binaries/content/assets/website/national/regions/surrey/places/runnymede-and-ankerwycke/pdf/runnymede-and-ankerwycke-map2.pdf",
+    "National Trust suggests about 30 minutes."
+  ],
+  "review": "built 1.6 km from 0.8 km of mapped paths: going round the gaps adds too much"
+}

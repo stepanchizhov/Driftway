@@ -37,6 +37,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.8",
+    date: "11 Oct 2026",
+    changes: [
+      "Seven more curated walks, from trails mapped on OpenStreetMap: the Cliveden Blue, Green and Gold trails, the Cookham Wetland and Wildlife Trail, Runnymede's Summer and Views routes, and the St Ann's Hill circular. Each is checked for your pram or carrier like every other walk, and links to its operator's page.",
+    ],
+  },
+  {
     version: "0.8.7",
     date: "11 Oct 2026",
     changes: [

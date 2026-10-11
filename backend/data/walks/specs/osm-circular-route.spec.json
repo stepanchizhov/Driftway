@@ -1,0 +1,13 @@
+{
+  "id": "osm-circular-route",
+  "name": "St Ann's Hill circular route",
+  "area": "St Ann's Hill, Chertsey",
+  "summary": "Runnymede Borough Council's circular trail on St Ann's Hill, about 2.5 km.",
+  "shape": "loop",
+  "start_label": "St Ann's Hill, where the mapped route begins",
+  "osm_relation": 21433461,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is Runnymede Borough Council's. Check their page on the day for opening times, parking, livestock and conditions."
+  ]
+}

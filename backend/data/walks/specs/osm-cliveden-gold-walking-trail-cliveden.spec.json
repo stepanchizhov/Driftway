@@ -1,0 +1,18 @@
+{
+  "id": "osm-cliveden-gold-walking-trail-cliveden",
+  "name": "Cliveden Gold Walking Trail",
+  "area": "Cliveden",
+  "summary": "National Trust's circular trail, about 5 km, from Woodland car park, Cliveden.",
+  "shape": "loop",
+  "start_label": "Woodland car park, Cliveden",
+  "osm_relation": 19887945,
+  "notes": [
+    "Route line from OpenStreetMap, built on the date shown. Nobody from Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+    "The trail is National Trust's. Check their page on the day for opening times, parking, livestock and conditions: https://www.nationaltrust.org.uk/visit/oxfordshire-buckinghamshire-berkshire/cliveden/cliveden-gold-walking-trail",
+    "National Trust suggests about 1 h 30 to 2 h."
+  ],
+  "start_near": [
+    51.540831,
+    -0.689956
+  ]
+}
