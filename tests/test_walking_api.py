@@ -1,8 +1,9 @@
 """
 The walking endpoint's gates.
 
-Access policy: the pram/carrier experiment is free for admitted beta accounts
-and nobody else, and it does not exist at all while WALKING_ENABLED is off.
+Access policy: since 11 Oct 2026 walks are open to everyone (WALKS_ACCESS
+unset or "everyone"); WALKS_ACCESS=admitted restores the beta-only gate. Either
+way they do not exist at all while WALKING_ENABLED is off.
 These check each gate holds on its own - the flag, admission, credentials,
 storage - and that the experiment leaves no trace when it is switched off.
 """
@@ -66,7 +67,44 @@ class FlagOffTests(WalkingApiTestCase):
         self.assertEqual(r.status_code, 200)
 
 
+class OpenAccessTests(WalkingApiTestCase):
+    """The default since 11 Oct 2026."""
+
+    def test_an_anonymous_request_gets_the_walks(self):
+        r = self.client.post("/api/walks/assess", json=PRAM)
+        self.assertEqual(r.status_code, 200, r.text)
+
+    def test_signed_in_without_an_invitation_gets_the_walks(self):
+        r = self.client.post("/api/walks/assess", json=PRAM,
+                             headers=auth(_token(sub="auth0|stranger")))
+        self.assertEqual(r.status_code, 200, r.text)
+
+    def test_an_expired_token_is_still_refused(self):
+        """Not quietly treated as signed out: the app asks them to sign in."""
+        r = self.client.post("/api/walks/assess", json=PRAM,
+                             headers=auth(_token(sub="auth0|walker", expired=True)))
+        self.assertEqual(r.status_code, 401)
+
+    def test_a_misspelled_setting_closes_rather_than_opens(self):
+        os.environ["WALKS_ACCESS"] = "evryone"
+        try:
+            r = self.client.post("/api/walks/assess", json=PRAM)
+        finally:
+            os.environ.pop("WALKS_ACCESS", None)
+        self.assertEqual(r.status_code, 403)
+
+
 class AdmissionTests(WalkingApiTestCase):
+    """WALKS_ACCESS=admitted: the 14 Sep beta-only policy, kept for later."""
+
+    def setUp(self):
+        super().setUp()
+        os.environ["WALKS_ACCESS"] = "admitted"
+
+    def tearDown(self):
+        os.environ.pop("WALKS_ACCESS", None)
+        super().tearDown()
+
     def test_an_anonymous_request_is_refused(self):
         r = self.client.post("/api/walks/assess", json=PRAM)
         self.assertEqual(r.status_code, 403)

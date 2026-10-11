@@ -77,7 +77,7 @@ but the privacy policy says so plainly.
 
 ## Account deletion declaration
 
-- **App lets users create an account:** yes, by invitation during the beta.
+- **App lets users create an account:** yes. Open to anyone since 11 Oct 2026 (`REGISTRATION_MODE=open`); invitations remain possible.
 - **Delete-account web link:**
   `https://driftway.stepan.chizhov.com/delete-account.html`. It names the
   app and the developer (iBookBinding Ltd) as on the listing, and puts the

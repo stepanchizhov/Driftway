@@ -48,6 +48,11 @@ def _fresh_app(**env):
     os.environ["REGISTRATION_MODE"] = env.get("REGISTRATION_MODE", "invite_only")
     os.environ["ADMIN_API_TOKEN"] = env.get("ADMIN_API_TOKEN", ADMIN_TOKEN)
     os.environ["ROUTING_PROVIDER"] = "mock"
+    # These cases use the staging cookie, which only exists while no
+    # identity provider is configured. Another test file, or a developer's
+    # backend/.env, may have left Auth0 settings behind.
+    for key in ("AUTH0_DOMAIN", "AUTH0_AUDIENCE"):
+        os.environ.pop(key, None)
     _reset_modules()
     main = importlib.import_module("main")
     from fastapi.testclient import TestClient

@@ -55,10 +55,16 @@ services:
       - key: MEET_HALFWAY_ENABLED
         value: "false"
 
-      # Account creation is server-side gated. Never set this to "open" while
-      # the product is running a closed test.
+      # Account creation is server-side gated. Founder decision, 11 Oct 2026:
+      # open, since the beta is found only through the founder. "invite_only"
+      # requires an invitation again; "closed" stops new accounts.
       - key: REGISTRATION_MODE
-        value: invite_only
+        value: open
+
+      # Who may use walks: unset or "everyone" (default), or "admitted" for
+      # accounts that redeemed a beta invitation only.
+      - key: WALKS_ACCESS
+        value: everyone
 
       # Founder-only secret for minting beta invites. With no value, the admin
       # endpoints refuse every request rather than defaulting to open.

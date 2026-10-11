@@ -1,14 +1,15 @@
 """
 The walking experiment's API: one read-only endpoint.
 
-Access, per the 14 Sep access policy: free for admitted beta accounts, and
-nobody else. Two separate gates, checked in this order:
+Access. Two separate gates, checked in this order:
 
   1. WALKING_ENABLED. Off, and the endpoint does not exist (404) - the same
      shape as a deployment that never had the feature.
-  2. An admitted account. Signing in to the identity provider is not enough;
-     a beta invitation must have been redeemed. Hiding the button in the UI is
-     not the control - this is.
+  2. WALKS_ACCESS. "everyone" (the default since 11 Oct 2026, founder
+     decision: the beta is small and found only through him) lets anyone in,
+     signed in or not. "admitted" restores the 14 Sep policy: only accounts
+     that redeemed a beta invitation; signing in to the identity provider is
+     not enough. Hiding the button in the UI is not the control - this is.
 
 Equipment and load arrive in the request body and are used for this one
 assessment only. Nothing here is stored: the brief keeps pram and carrier
@@ -24,7 +25,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from core.config import walking_enabled
+from core.config import WalksAccess, walking_enabled, walks_access
 from core.current_user import CredentialsRejected, current_account
 from core.db import get_session, storage_available
 from core.walking.catalogue import assess_all
@@ -106,6 +107,27 @@ HANDOFF = (
 )
 
 
+def _caller(request: Request, session: Session, cookie: Optional[str]):
+    """The account asking, or None for someone not signed in - after the
+    access gate. A token that was sent but cannot be verified is refused, not
+    quietly treated as anonymous: the app then asks them to sign in again."""
+    if walks_access() is WalksAccess.ADMITTED:
+        if not storage_available():
+            # Admission lives in the database. Without it nobody can be shown
+            # to be admitted, and an outage must never grant access by default.
+            raise HTTPException(status_code=503,
+                                detail="Walks are temporarily unavailable.")
+        return _require_admitted(request, session, cookie)
+    if not storage_available():
+        # Open to everyone: accounts only choose the rate-limit key, so an
+        # outage of the database does not stop walks.
+        return None
+    try:
+        return current_account(request, session, cookie)
+    except CredentialsRejected as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+
 def _require_admitted(request: Request, session: Session, cookie: Optional[str]):
     try:
         account = current_account(request, session, cookie)
@@ -129,12 +151,7 @@ def assess_walks(
 ):
     if not walking_enabled():
         raise HTTPException(status_code=404, detail="Not found.")
-    if not storage_available():
-        # Admission lives in the database. Without it nobody can be shown to
-        # be admitted, and an outage must never grant access by default.
-        raise HTTPException(status_code=503,
-                            detail="Walks are temporarily unavailable.")
-    _require_admitted(request, session, driftway_staging_session)
+    _caller(request, session, driftway_staging_session)
 
     if body.profile == "pram":
         p = body.pram or PramIn()
@@ -165,7 +182,8 @@ def assess_walks(
 
 # ---------------------------------------------------------------- generated
 
-from core.ratelimit import RateLimited, SlidingWindowLimiter, _Window  # noqa: E402
+from core.ratelimit import (RateLimited, SlidingWindowLimiter, _Window,  # noqa: E402
+                            client_address)
 from core.walking import generate as gen  # noqa: E402
 from core.walking.catalogue import assess_route  # noqa: E402
 
@@ -223,15 +241,16 @@ async def generate_walks(
     """
     if not walking_enabled():
         raise HTTPException(status_code=404, detail="Not found.")
-    if not storage_available():
-        raise HTTPException(status_code=503, detail="Walks are temporarily unavailable.")
-    account = _require_admitted(request, session, driftway_staging_session)
+    account = _caller(request, session, driftway_staging_session)
     if not gen.is_configured():
         raise HTTPException(status_code=503,
                             detail="Making walks from your location isn't switched on yet.")
     try:
         _generate_global.check("*", GLOBAL_WINDOWS, scope="service")
-        _generate_caller.check(f"account:{account.id}", CALLER_WINDOWS, scope="caller")
+        # Someone not signed in is counted by network address, held in
+        # memory for the window only (core.ratelimit), never stored.
+        caller = f"account:{account.id}" if account else f"ip:{client_address(request)}"
+        _generate_caller.check(caller, CALLER_WINDOWS, scope="caller")
     except RateLimited as limited:
         raise HTTPException(
             status_code=429,

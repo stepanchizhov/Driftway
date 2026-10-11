@@ -316,8 +316,12 @@ on provider weighting.
 - `WALKING_ENABLED` on the API, default **off**. Off means the endpoint answers
   404 and the app shows no entry point. Driving and meetups are unaffected
   either way (tested).
-- Then **admitted beta accounts only**, enforced on the server. Signing in is
-  not enough; an invitation must have been redeemed.
+- Then `WALKS_ACCESS`, enforced on the server. Unset or `everyone` (the
+  default since 11 Oct 2026, founder decision: the beta is small and found only
+  through him) lets anyone in, signed in or not; making walks is rate-limited
+  per account, or per network address for someone not signed in, inside the
+  shared provider budget. `admitted` restores the 14 Sep policy: only accounts
+  that redeemed an invitation.
 - Equipment and load are sent with each request and never stored. A test checks
   that an assessment leaves every table unchanged.
 

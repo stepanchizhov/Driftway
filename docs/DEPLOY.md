@@ -140,7 +140,7 @@ Backend service (**Driftway**) → **Environment**:
 | Key | Value |
 |---|---|
 | `MEET_HALFWAY_ENABLED` | `true` |
-| `REGISTRATION_MODE` | `invite_only` |
+| `REGISTRATION_MODE` | `open` (since 11 Oct 2026; `invite_only` to require invitations again) |
 | `ADMIN_API_TOKEN` | a long random string you keep private |
 
 `ADMIN_API_TOKEN` guards beta-invite creation and account disabling. **Leave it
@@ -274,8 +274,10 @@ that would survive. Treat the exposure window as unaudited.
 
 `WALKING_ENABLED=true` on the API turns on the pram and carrier walks. Off by
 default; off means the endpoint answers 404 and the app shows no **Walks**
-button. When on, only admitted beta accounts can use it - enforced on the
-server. It makes no provider calls at request time and stores nothing about
+button. Who may use it is `WALKS_ACCESS`: unset or `everyone` (the default
+since 11 Oct 2026) lets anyone in, signed in or not, rate-limited per account
+or per network address; `admitted` restores the beta-only gate. Enforced on
+the server. It makes no provider calls at request time and stores nothing about
 equipment or load. Details in [WALKING.md](WALKING.md).
 
 ### Rate limits and the provider bill

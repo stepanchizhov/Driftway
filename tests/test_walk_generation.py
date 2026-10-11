@@ -163,9 +163,26 @@ class EndpointTests(unittest.TestCase):
         self.assertFalse(self.client.get("/api/health").json()["walk_generation"])
 
     def test_anonymous_requests_are_refused_before_the_provider_is_called(self):
+        """With WALKS_ACCESS=admitted, the beta-only gate kept for later."""
+        os.environ["WALKS_ACCESS"] = "admitted"
+        try:
+            with self._with_ors():
+                r = self.client.post("/api/walks/generate", json=BODY)
+        finally:
+            os.environ.pop("WALKS_ACCESS", None)
+        self.assertEqual(r.status_code, 403)
+
+    def test_open_to_everyone_by_default(self):
+        """Founder decision, 11 Oct 2026."""
         with self._with_ors():
             r = self.client.post("/api/walks/generate", json=BODY)
-        self.assertEqual(r.status_code, 403)
+        self.assertEqual(r.status_code, 200, r.text)
+
+    def test_usage_is_capped_for_callers_not_signed_in(self):
+        with self._with_ors():
+            codes = [self.client.post("/api/walks/generate", json=BODY).status_code
+                     for _ in range(6)]
+        self.assertIn(429, codes)
 
     def test_an_admitted_account_gets_judged_walks(self):
         with self._with_ors():

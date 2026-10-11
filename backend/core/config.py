@@ -46,6 +46,30 @@ def registration_mode() -> RegistrationMode:
         return _DEFAULT_REGISTRATION_MODE
 
 
+class WalksAccess(str, Enum):
+    """Who may use walks, once WALKING_ENABLED is on."""
+
+    EVERYONE = "everyone"   # anyone, signed in or not
+    ADMITTED = "admitted"   # only accounts admitted to the beta
+
+
+def walks_access() -> WalksAccess:
+    """Founder decision, 11 Oct 2026: the beta is small and found only through
+    the founder, so walks are open to everyone, signed in or not. The invite
+    gate is kept: WALKS_ACCESS=admitted brings it back without a release.
+    A misspelled value falls back to the stricter of the two.
+    """
+    raw = (os.getenv("WALKS_ACCESS") or "").strip().lower()
+    if not raw:
+        return WalksAccess.EVERYONE
+    try:
+        return WalksAccess(raw)
+    except ValueError:
+        log.error("WALKS_ACCESS=%r is not one of %s; falling back to %s", raw,
+                  [m.value for m in WalksAccess], WalksAccess.ADMITTED.value)
+        return WalksAccess.ADMITTED
+
+
 def walking_enabled() -> bool:
     """Feature flag for the pram and carrier walking experiment.
 
