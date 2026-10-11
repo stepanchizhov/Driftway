@@ -120,9 +120,11 @@ export function CheckpointPicker({
   return (
     <div className="cp-picker" role="group" aria-label="Choose a checkpoint on the map">
       <p className="walks-hint" id="cp-picker-help">
-        Tap the map where the walk should go, or drag the marker. Moving and
-        zooming the map doesn&rsquo;t move it. Or line the cross up with the
-        spot and use &ldquo;Place at centre&rdquo;.
+        Tap the map to drop a pin where the walk should go, then drag it to
+        adjust. Moving and zooming the map doesn&rsquo;t move it. Or line the
+        cross up with the spot and use &ldquo;Place at centre&rdquo;. Searching
+        for a name can find a different place with the same name; a pin
+        can&rsquo;t.
       </p>
       <div className="cp-map-wrap">
         <div

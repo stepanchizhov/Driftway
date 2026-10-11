@@ -215,12 +215,10 @@ export function Walks({
     update({ minutes: n });
   }
 
-  // With no curated walk starting here that fits, make walks straight away.
-  const autoMake =
-    canGenerate &&
-    here !== null &&
-    result !== null &&
-    groupWalks(result.walks, here, applied).doorstep.length === 0;
+  // Make walks straight away once a start is known - from location or a
+  // searched place. Founder feedback, 11 Oct: after a refresh the tab showed
+  // no walks at all unless no curated walk happened to fit.
+  const autoMake = canGenerate && result !== null;
 
   return (
     <main className="walks">
@@ -980,6 +978,11 @@ function MakeWalks({
   const gate = useRef(latestOnly());
   const autoTried = useRef(false);
   const wantMake = useRef(false);
+  // Asked to make walks with no start yet: say what's needed, by the button.
+  const [needStart, setNeedStart] = useState(false);
+  useEffect(() => {
+    if (start) setNeedStart(false);
+  }, [start]);
 
   const key = madeKeyOf(setup, checkpoint, start?.coord ?? null);
   const stale = made !== null && (dirty || madeKey !== key);
@@ -1037,6 +1040,11 @@ function MakeWalks({
   // "Update walks": make walks again with the new settings - also the first
   // time, once a checkpoint has been chosen or the button asked for it.
   useEffect(() => {
+    if (runToken > 0 && !start) {
+      // Founder feedback, 11 Oct: Update with no start did nothing at all.
+      setNeedStart(true);
+      return;
+    }
     if (runToken > 0 && start && (made || checkpoint || wantMake.current)) {
       wantMake.current = false;
       void make();
@@ -1111,7 +1119,7 @@ function MakeWalks({
             disabled={cp.picking !== null}
             onClick={() => dispatchCp({ type: "open" })}
           >
-            {pending ? "Move it on the map" : "Choose on map"}
+            {pending ? "Move the pin on the map" : "Drop a pin on the map"}
           </button>
           {pending && (
             <button type="button" className="btn-quiet" onClick={() => dispatchCp({ type: "remove" })}>
@@ -1138,8 +1146,15 @@ function MakeWalks({
 
       <button
         className="btn-primary"
-        disabled={!start || busy}
+        // Never greyed out for want of a start (founder feedback, 11 Oct): a
+        // dead button doesn't say what's missing; this one does, below.
+        disabled={busy}
         onClick={() => {
+          if (!start) {
+            setNeedStart(true);
+            if (dirty) onApply();
+            return;
+          }
           if (dirty) {
             wantMake.current = true;
             onApply();
@@ -1154,6 +1169,12 @@ function MakeWalks({
               ? `Make walks via ${checkpoint.label}`
               : `Make walks of about ${duration(setup.minutes)}`}
       </button>
+      {needStart && (
+        <p className="account-error" role="alert">
+          Choose where to start first: search for a place under &ldquo;Start
+          from&rdquo;, or turn on location and choose &ldquo;Where I am&rdquo;.
+        </p>
+      )}
       <p className="walks-hint">
         {pending
           ? `Up to three different walks out to ${

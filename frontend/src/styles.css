@@ -838,7 +838,9 @@ body {
 }
 
 .mode-note {
-  margin: -4px 0 0;
+  /* Room below the place field above it (founder feedback, 11 Oct: the note
+     sat right against the field). */
+  margin: 8px 0 0;
   font-size: 0.86rem;
   color: var(--ink-dim);
 }

@@ -141,7 +141,7 @@ corridors and dragging the route itself are LATER.
 **Choosing it** (IMPLEMENTED, `frontend/src/walking/checkpoint.ts`,
 `CheckpointPicker.tsx`):
 
-- "Choose on map" opens an explicit selection mode. Inside it a tap places
+- "Drop a pin on the map" (until 0.8: "Choose on map") opens an explicit selection mode. Inside it a tap places
   the one draft marker and dragging moves it; panning and zooming never do
   (Leaflet reports a click only when the finger did not drag). The cross at
   the centre with "Place at centre" does the same without precise gestures,
