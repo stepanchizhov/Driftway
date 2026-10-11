@@ -150,10 +150,11 @@ On `https://next.driftway.stepan.chizhov.com`:
 
 ### 7. The Next Android app
 
-A test build signed with the local test key is in
-`C:\Users\stepa\driftway-android-next\app-release-signed.apk`. It opens
-full-screen once step 6 passes. To rebuild it, follow `android/README.md`
-with `android/next/twa-manifest.json` and that folder.
+Not built yet: in a new folder Bubblewrap asks questions first, so it is
+easiest once the Next website answers (step 6). Then follow
+`android/README.md` with `android/next/twa-manifest.json` in
+`C:\Users\stepa\driftway-android-next`, signed with the local test key;
+`assetlinks.json` already lists the Next package with it.
 
 On Play: Play Console, **Create app**, "Driftway Next", package
 `com.ibookbinding.driftway.next`, then a closed testing track with the
