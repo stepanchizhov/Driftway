@@ -85,3 +85,11 @@ but the privacy policy says so plainly.
 
 The domain went live on 10 Oct 2026: both URLs answer over HTTPS. The same
 pages remain on `driftway-front.onrender.com`.
+
+**0.8.9 (11 Oct 2026), walks for new areas:** a grid square about 10 km
+across is stored when a parent asks for walks where there are none, with a
+request count and nothing linking it to them; their position is used to
+find the square and discarded. This is approximate location at most, and
+not linked to an identity. Walk descriptions are written with AI by a
+developer-side job from public map data only; no user data goes to it.
+

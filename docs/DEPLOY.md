@@ -439,6 +439,27 @@ I would consider them for this alpha:
 3. **Move to a paid instance** before any closed beta. The Bible already flags
    this as the pre-beta migration.
 
+## Walks for new areas (11 Oct 2026)
+
+How it works: `docs/WALKING.md`, "Walks anywhere". One-time setup:
+
+1. **A token for the job.** Make a long random string. Render, `Driftway`
+   (API), Environment: `WALKS_JOB_TOKEN` = that string. GitHub, the
+   repository, Settings, Secrets and variables, Actions: a secret
+   `WALKS_JOB_TOKEN` with the same value. It can read the queue, upload
+   walks and add pending descriptions, nothing else.
+2. **The AI key (optional).** Anthropic console: create an API key, and set
+   a monthly spending limit there. GitHub: a secret `ANTHROPIC_API_KEY`.
+   Without it, walks are still built, just without descriptions. Each run
+   writes at most 20 descriptions, a few hundred words of output in all.
+3. **Run it once by hand.** GitHub, Actions, "Walk areas", Run workflow.
+   Then it runs every six hours.
+4. **Review.** `https://driftway.stepan.chizhov.com/review.html`, with the
+   admin token (`ADMIN_API_TOKEN`). Approve, correct or reject each
+   description; nothing AI-written is shown before that.
+
+Never give the job the admin token, and never put either key in the app.
+
 ## Two channels: stable and Next
 
 Since 11 Oct 2026 there are two websites, two servers and two Android apps:

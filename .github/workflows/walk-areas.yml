@@ -1,0 +1,60 @@
+# Curated walks for areas people ask about (core/walking/areas.py).
+#
+# Founder decision, 11 Oct 2026: runs on a schedule here, with the
+# developer's keys, never because a user asked. A user's request only queues
+# a rough area; this job builds the trails mapped there into curated walks
+# (published at once: map facts only) and writes AI descriptions, which wait
+# for the founder's approval before anyone sees them.
+#
+# Needs two repository secrets:
+#   WALKS_JOB_TOKEN    the same value as WALKS_JOB_TOKEN on the Render API.
+#                      It can read the queue, upload walks and add pending
+#                      descriptions; it cannot approve them or touch accounts.
+#   ANTHROPIC_API_KEY  optional. Without it, walks are built but get no
+#                      description. Cost is capped per run (MAX_DESCRIPTIONS)
+#                      and by the spending limit in the Anthropic console.
+#
+# Known limits, as for the other scheduled workflows: scheduled runs can
+# start late or be dropped when GitHub is busy, and stop after 60 days with
+# no repository activity.
+
+name: Walk areas
+
+on:
+  schedule:
+    # Every six hours, at 20 past.
+    - cron: "20 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: walk-areas
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r backend/requirements.txt
+      - name: Build walks for queued areas, then descriptions
+        working-directory: backend
+        env:
+          API: https://driftway.onrender.com
+          WALKS_JOB_TOKEN: ${{ secrets.WALKS_JOB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MAX_AREAS: "3"
+          MAX_DESCRIPTIONS: "20"
+        run: |
+          if [ -z "$WALKS_JOB_TOKEN" ]; then
+            echo "::error::WALKS_JOB_TOKEN is not set as a repository secret."
+            exit 1
+          fi
+          python -m tools.walk_area_job

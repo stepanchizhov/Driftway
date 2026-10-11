@@ -17,6 +17,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 import json
+import re
 import math
 import logging
 import os
@@ -103,6 +104,9 @@ class Route:
     via: Optional[Dict] = None
     #: Every checkpoint, in order (11 Oct 2026: up to three).
     vias: Optional[List[Dict]] = None
+    #: A short description written with AI from the walk's own data and
+    #: approved by the founder before it is shown (core/walking/areas.py).
+    description: Optional[str] = None
 
     @property
     def outbound_m(self) -> float:
@@ -140,6 +144,7 @@ def route_from_dict(raw: Dict) -> Route:
         start=raw["start"], sections=[_section_from(s) for s in raw["sections"]],
         sources=raw.get("sources", []), built_on=raw.get("built_on", ""),
         sample=bool(raw.get("sample")), notes=raw.get("notes", []),
+        description=raw.get("description"),
     )
 
 
@@ -157,6 +162,35 @@ def load_routes(directory: str = DATA_DIR) -> List[Route]:
                 routes.append(route_from_dict(json.load(f)))
         except Exception as e:  # noqa: BLE001
             log.error("walk %s could not be loaded (%s: %s)", name, type(e).__name__, e)
+    return routes
+
+
+def osm_relation_of(sources: List[Dict]) -> Optional[str]:
+    """The OpenStreetMap route a walk was built from, if any."""
+    for src in sources or []:
+        if src.get("id") == "osm-route":
+            m = re.search(r"(\d+)$", src.get("label", ""))
+            if m:
+                return m.group(1)
+    return None
+
+
+def all_routes() -> List[Route]:
+    """The walks in data/walks/, then those the area job built (stored in the
+    database; core/walking/areas.py). A file wins over a stored walk with the
+    same id, or built from the same mapped trail, so a walk curated by hand is
+    never replaced or repeated by an automatic one."""
+    routes = load_routes()
+    have = {r.id for r in routes}
+    trails = {t for t in (osm_relation_of(r.sources) for r in routes) if t}
+    from .areas import published_routes
+    for raw in published_routes():
+        if raw.get("id") in have or osm_relation_of(raw.get("sources", [])) in trails:
+            continue
+        try:
+            routes.append(route_from_dict(raw))
+        except Exception as e:  # noqa: BLE001
+            log.error("stored walk %s could not be loaded (%s)", raw.get("id"), type(e).__name__)
     return routes
 
 
@@ -499,6 +533,7 @@ def assess_route(route: Route, profile: str,
         "name": route.name,
         "area": route.area,
         "summary": route.summary,
+        "description": route.description,
         "shape": route.shape,
         "path_shape": path_shape(route),
         "retrace_share": round(retrace_share(route), 2),
@@ -633,7 +668,7 @@ def assess_all(profile: str, setup, minutes: Optional[int] = None,
     you nothing about why.
     """
     cards = [assess_route(r, profile, setup, minutes, allow_out_and_back)
-             for r in (routes if routes is not None else load_routes())]
+             for r in (routes if routes is not None else all_routes())]
     tier = {"ok": 0, "unknown": 0, "difficult": 1, "blocked": 2}
     if minutes:
         cards.sort(key=lambda c: (tier[c["verdict"]], abs(c["minutes"] - minutes)))

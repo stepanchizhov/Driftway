@@ -21,6 +21,7 @@ import { PlaceSearch, type Endpoint } from "../components/PlaceSearch";
 import { useDriftwayAuth } from "../auth/AuthProvider";
 import { CheckpointPicker } from "./CheckpointPicker";
 import { MyWalksSection } from "./MyWalksSection";
+import { NearbyTrails, needsArea } from "./NearbyTrails";
 import { lineOfWalk, useMyWalks } from "./myWalks";
 import {
   type Checkpoint,
@@ -358,6 +359,10 @@ export function Walks({
                 />
               )}
             />
+          )}
+
+          {here && needsArea(here, result.walks.map((w) => w.start)) && (
+            <NearbyTrails here={here} units={units} />
           )}
 
           {/* Curated walks follow, folded when walks can be made: outside the
@@ -813,6 +818,14 @@ function WalkCard({
       </p>
 
       <p className="walk-summary">{walk.summary}</p>
+      {walk.description && (
+        <div className="walk-description">
+          <p>{walk.description}</p>
+          <p className="walk-description-note">
+            Written with AI from this walk&rsquo;s map data, and checked by Driftway.
+          </p>
+        </div>
+      )}
 
       <Findings title="Stops you" items={walk.blocking} units={units} tone="blocked" />
       <Findings title="Harder going" items={walk.difficult} units={units} tone="difficult" />

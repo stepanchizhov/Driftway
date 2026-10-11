@@ -686,3 +686,44 @@ for prams. Fixed in the map, a re-run of the importer picks it up.
 LATER: order members by connection rather than by list, which would
 rescue some out-of-order routes automatically.
 
+## Walks anywhere (11 Oct 2026, 0.8.9)
+
+IMPLEMENTED. Founder decisions: the developer-side job runs on a GitHub
+Actions schedule; AI-written descriptions wait for the founder's approval.
+
+1. **Right away, for anyone, no AI.** In the Walk tab, when no curated walk
+   starts within 15 km, the app asks `POST /api/walks/areas` with the
+   position. The server keeps only its grid square (0.1 degree, about 11 by
+   7 km in Britain), queues it, and returns the walking routes mapped in it
+   (looked up from OpenStreetMap's Overpass service once per square, with
+   the square's edges only, kept 30 days): name, length, circular or not,
+   operator, the operator's page. Shown as "Trails mapped near you, not
+   checked yet". Walks made from the parent's start keep working as before.
+2. **Within hours, the job, no AI.** `.github/workflows/walk-areas.yml`
+   runs `tools/walk_area_job.py` every six hours: up to 3 queued squares per
+   run, each built with `import_area(..., broad=True)` (any walking route
+   whose own paths are 0.3 to 10 km; circular if it says so or its ends meet,
+   otherwise walked there and back; the same faithfulness gate). Walks that
+   pass are uploaded (`PUT /api/admin/curated-walks/{id}`, stored in the
+   `curated_walks` table) and appear in Curated walks at once. Slopes come
+   from EU-DEM in Europe and SRTM elsewhere; the walk names which.
+3. **The job, AI.** For up to 20 walks without a description per run, the
+   job sends the walk's own facts (no person's data) to Anthropic's Claude
+   (`DESCRIPTION_MODEL`, default claude-sonnet-5-5) with instructions to use
+   only those facts, then checks the text (length, plain text, no number the
+   facts don't contain) and uploads it as **pending**.
+4. **The founder approves.** `/review.html` lists pending descriptions with
+   the walk's facts beside each; approve (optionally corrected) or reject.
+   Only approved text is shown, labelled "Written with AI from this walk's
+   map data, and checked by Driftway".
+
+Access: anyone can ask for a square (20 an hour per address); the job's
+`WALKS_JOB_TOKEN` can read the queue, upload walks and add pending
+descriptions; only `ADMIN_API_TOKEN` approves. A walk in `data/walks/`
+always wins over a stored one with the same id. Privacy policy 1.7.
+Tests: `tests/test_walk_areas.py`.
+
+OPEN: the first real run, and Katya's area as the first test outside
+Windsor. LATER: tell a parent when their area's walks are ready (it would
+need a contact, so not without asking them).
+

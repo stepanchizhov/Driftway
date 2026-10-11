@@ -34,6 +34,8 @@ RECIPIENTS = {
     "api.tomtom.com": "TomTom",
     "api.heigit.org": "openrouteservice",
     "tile.openstreetmap.org": "OpenStreetMap",
+    # A rough area (a ~10 km grid square), from our server: trails near you.
+    "overpass-api.de": "Overpass",
     "auth0.com": "Auth0",
     "onrender.com": "Render",
     # Opened by the parent's choice, with the route's points in the link.

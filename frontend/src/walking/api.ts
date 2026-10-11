@@ -56,6 +56,9 @@ export interface Walk {
   name: string;
   area: string;
   summary: string;
+  /** Written with AI from the walk's own data, shown only once the founder
+   *  has approved it. Absent or null otherwise. */
+  description?: string | null;
   shape: "loop" | "out_and_back" | "one_way";
   /** The shape on the ground, measured from the route, not declared. */
   path_shape: "loop" | "lollipop" | "there_and_back" | "one_way";
@@ -314,5 +317,25 @@ export async function traceWalks(body: {
     }
     throw new Error(detail);
   }
+  return res.json();
+}
+
+/** The trails mapped in the parent's rough area, and whether checked walks
+ *  are on their way (backend core/walking/areas.py). */
+export interface AreaAnswer {
+  status: "queued" | "ready" | "empty" | "failed";
+  /** Null when the map service didn't answer this time. */
+  trails: { name: string; km: number | null; operator: string | null; website: string | null; circular: boolean }[] | null;
+  attribution: string;
+}
+
+/** Ask for walks in this area. The server keeps only a ~10 km square. */
+export async function askForArea(here: { lat: number; lng: number }): Promise<AreaAnswer> {
+  const res = await authFetch(`${API_BASE}/api/walks/areas`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lat: here.lat, lng: here.lng }),
+  });
+  if (!res.ok) throw new Error(`area ${res.status}`);
   return res.json();
 }

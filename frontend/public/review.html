@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<title>Driftway: review walk descriptions</title>
+<style>
+  :root { --ground:#161c36; --surface:#1f2747; --line:#36406e; --ink:#edeffa; --dim:#9aa3cc; --accent:#f2b179; --bad:#e89090; color-scheme: dark; }
+  @media (prefers-color-scheme: light) {
+    :root { --ground:#f2f3f8; --surface:#ffffff; --line:#c9cee1; --ink:#191f38; --dim:#55608a; --accent:#b8681f; --bad:#a63d3d; color-scheme: light; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink);
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 24px 16px 64px; }
+  main { max-width: 760px; margin: 0 auto; display: grid; gap: 14px; }
+  h1 { font-size: 24px; margin: 0; }
+  .dim { color: var(--dim); font-size: 14px; margin: 0; }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+  label { display: grid; gap: 4px; font-size: 14px; color: var(--dim); }
+  input, textarea { font: inherit; color: var(--ink); background: var(--ground); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; }
+  textarea { min-height: 7em; resize: vertical; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font: inherit; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+  button.go { background: var(--accent); color: #161c36; border-color: var(--accent); font-weight: 600; }
+  .facts { font-size: 13px; color: var(--dim); overflow-wrap: anywhere; }
+  .err { color: var(--bad); }
+  h2 { font-size: 18px; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Walk descriptions awaiting approval</h1>
+  <p class="dim">Written with AI by the scheduled job, from each walk's own map data. Nothing here is
+  shown to anyone until you approve it. Correct the text before approving if it says anything the
+  facts don't support, or reject it.</p>
+
+  <div class="box">
+    <label>API <input id="api" value="https://driftway.onrender.com" autocomplete="off"></label>
+    <label>Admin token (kept in this tab only)
+      <input id="token" type="password" autocomplete="off"></label>
+    <div class="row"><button class="go" id="load">Show pending descriptions</button></div>
+    <p id="status" class="dim" role="status"></p>
+  </div>
+
+  <div id="list" style="display:grid;gap:14px"></div>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  try { $("token").value = sessionStorage.getItem("driftway.admin") || ""; } catch (e) {}
+
+  const say = (text, bad) => { $("status").textContent = text; $("status").className = bad ? "err" : "dim"; };
+  const api = () => $("api").value.replace(/\/$/, "");
+  const headers = () => ({ "Content-Type": "application/json", "X-Admin-Token": $("token").value.trim() });
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;   // text, never markup
+    return e;
+  }
+
+  function factsOf(route) {
+    const secs = route.sections || [];
+    const km = secs.length ? (secs[secs.length - 1].to_m / 1000).toFixed(1) : "?";
+    const surfaces = {};
+    for (const s of secs) surfaces[s.surface] = (surfaces[s.surface] || 0) + (s.to_m - s.from_m);
+    const barriers = secs.flatMap((s) => (s.barriers || []).map((b) => b.kind + (b.step_count ? ` (${b.step_count})` : "")));
+    return `${route.shape === "loop" ? "Circular" : "There and back"}, ${km} km one way round. ` +
+      `Surfaces: ${Object.entries(surfaces).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${(v / 1000).toFixed(1)} km`).join(", ")}. ` +
+      `Barriers: ${barriers.length ? barriers.join(", ") : "none mapped"}. Start: ${(route.start || {}).label || "?"}. ` +
+      `Summary: ${route.summary || ""}`;
+  }
+
+  async function review(id, decision, text, card) {
+    const body = { decision };
+    if (decision === "approve" && text) body.text = text;
+    const r = await fetch(`${api()}/api/admin/curated-walks/${encodeURIComponent(id)}/description/review`,
+      { method: "POST", headers: headers(), body: JSON.stringify(body) });
+    if (!r.ok) { say(`Couldn't save (${r.status}).`, true); return; }
+    card.remove();
+    say(decision === "approve" ? "Approved: it now shows on that walk." : "Rejected: it won't be shown.");
+  }
+
+  async function load() {
+    try { sessionStorage.setItem("driftway.admin", $("token").value.trim()); } catch (e) {}
+    say("Loading…");
+    const r = await fetch(`${api()}/api/admin/curated-walks?description_status=pending&limit=200`, { headers: headers() });
+    if (!r.ok) { say(r.status === 403 ? "That token isn't the admin token." : `Couldn't load (${r.status}).`, true); return; }
+    const walks = await r.json();
+    const list = $("list");
+    list.replaceChildren();
+    say(walks.length ? `${walks.length} awaiting approval.` : "Nothing awaiting approval.");
+    for (const w of walks) {
+      const card = el("section", "box");
+      card.append(el("h2", null, `${w.name}${w.area ? ", " + w.area : ""}`));
+      card.append(el("p", "facts", factsOf(w.route)));
+      const ta = el("textarea");
+      ta.value = w.description || "";
+      ta.setAttribute("aria-label", `Description of ${w.name}`);
+      card.append(ta);
+      card.append(el("p", "dim", `Model: ${w.description_model || "?"} · ${w.source || ""}`));
+      const row = el("div", "row");
+      const ok = el("button", "go", "Approve");
+      ok.onclick = () => review(w.id, "approve", ta.value.trim() === (w.description || "") ? null : ta.value.trim(), card);
+      const no = el("button", null, "Reject");
+      no.onclick = () => review(w.id, "reject", null, card);
+      row.append(ok, no);
+      card.append(row);
+      list.append(card);
+    }
+  }
+  $("load").onclick = () => load().catch(() => say("Couldn't reach the API.", true));
+})();
+</script>
+</body>
+</html>

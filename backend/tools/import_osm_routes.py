@@ -31,6 +31,7 @@ import json
 import os
 import re
 import sys
+from typing import List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -95,12 +96,14 @@ def faithful(built_km: float, mapped_km: float, stated_km, notes) -> str:
     return ""
 
 
-def spec_for(rel: dict) -> dict:
+def spec_for(rel: dict, circular: bool = True, id_with_relation: bool = False) -> dict:
     t = rel["tags"]
     name = t["name"].strip()
     # The id follows the name as mapped, so it stays put when the display
-    # name is tidied below or by hand in the spec.
-    walk_id = "osm-" + _slug(name)
+    # name is tidied below or by hand in the spec. Walks built for areas
+    # anywhere also carry the relation number: two places can each have a
+    # "Circular Route".
+    walk_id = ("osm-" + (f"{rel['id']}-" if id_with_relation else "") + _slug(name))[:80]
     operator = (t.get("operator") or "").split(";")[0].strip()
     km = _km(t.get("distance", ""))
     start_text, start_near = None, None
@@ -116,7 +119,8 @@ def spec_for(rel: dict) -> dict:
     # "Cliveden Blue Walking Trail, Cliveden": the place is shown as the area.
     name = name.split(",")[0].strip() if area else name
     who = f"{operator}'s" if operator else "A"
-    summary = f"{who} circular trail" + (f", about {km:g} km" if km else "")
+    kind = "circular trail" if circular else "trail, walked there and back"
+    summary = f"{who} {kind}" + (f", about {km:g} km" if km else "")
     summary += f", from {start_text}." if start_text else "."
     notes = [
         "Route line from OpenStreetMap, built on the date shown. Nobody from "
@@ -125,8 +129,7 @@ def spec_for(rel: dict) -> dict:
     if operator:
         notes.append(f"The trail is {operator}'s. Check their page on the day for "
                      "opening times, parking, livestock and conditions"
-                     + (f": {t['website']}" if t.get("website") else ".")
-                     + ("" if t.get("website") else ""))
+                     + (f": {t['website']}" if t.get("website") else "."))
     dur = _duration(t["duration"]) if t.get("duration") else None
     if dur:
         notes.append(f"{operator or 'Its operator'} suggests about {dur}.")
@@ -135,7 +138,7 @@ def spec_for(rel: dict) -> dict:
         "name": name,
         "area": area,
         "summary": summary,
-        "shape": "loop",
+        "shape": "loop" if circular else "out_and_back",
         "start_label": start_text or f"Start of the {name}",
         "osm_relation": rel["id"],
         "notes": notes,
@@ -145,51 +148,90 @@ def spec_for(rel: dict) -> dict:
     return spec
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[1])
-    for k in ("south", "west", "north", "east"):
-        ap.add_argument(k, type=float)
-    ap.add_argument("--specs-only", action="store_true")
-    ap.add_argument("--force", action="store_true", help="overwrite existing specs")
-    a = ap.parse_args()
-    box = f"{a.south},{a.west},{a.north},{a.east}"
+def _mapped_km(rel_full: dict) -> float:
+    return sum(haversine((a["lat"], a["lon"]), (b["lat"], b["lon"]))
+               for w in rel_full["ways"].values() if "highway" in w.get("tags", {})
+               for a, b in zip(w["geometry"], w["geometry"][1:])) / 1000
+
+
+def _ends_apart_m(rel_full: dict) -> float:
+    """How far apart the route's two loose ends are: 0 for a closed loop.
+    Every node used once by the member paths is a loose end."""
+    count: dict = {}
+    where: dict = {}
+    for w in rel_full["ways"].values():
+        if "highway" not in w.get("tags", {}):
+            continue
+        for end, g in ((w["nodes"][0], w["geometry"][0]), (w["nodes"][-1], w["geometry"][-1])):
+            count[end] = count.get(end, 0) + 1
+            where[end] = (g["lat"], g["lon"])
+    loose = [where[n] for n, c in count.items() if c == 1]
+    if len(loose) < 2:
+        return 0.0
+    return max(haversine(a, b) for a in loose for b in loose)
+
+
+def import_area(south: float, west: float, north: float, east: float, *,
+                specs_dir: str = SPECS, out_dir: Optional[str] = None,
+                force: bool = False, broad: bool = False, max_routes: int = 40,
+                say=print) -> List[dict]:
+    """Build the walking routes mapped in an area into curated walks.
+
+    The default is what was used around Windsor: local routes marked circular.
+    `broad` is for areas anywhere (the scheduled job): any walking route
+    whose own paths are short enough, circular if it says so or its ends
+    meet, otherwise walked there and back.
+
+    Returns one result per route considered: {"id", "status": built | held |
+    skip | keep | fail, "reason", "out", "relation"}."""
+    box = f"{south},{west},{north},{east}"
+    tags = "" if broad else "[network=lwn][roundtrip=yes]"
     data = _overpass(f'[out:json][timeout:120];relation[type=route]'
-                     f'[route~"^(hiking|foot|walking)$"][network=lwn][roundtrip=yes]({box});out tags;')
-    rels = sorted(data["elements"], key=lambda e: e["tags"].get("name", ""))
-    os.makedirs(SPECS, exist_ok=True)
-    for rel in rels:
-        name = rel["tags"].get("name")
+                     f'[route~"^(hiking|foot|walking)$"]{tags}({box});out tags;')
+    rels = [e for e in data["elements"] if e.get("tags", {}).get("name")]
+    # Stated length first, unknown last: short trails are the ones that fit.
+    rels.sort(key=lambda e: (_km(e["tags"].get("distance", "")) or 99, e["tags"]["name"]))
+    os.makedirs(specs_dir, exist_ok=True)
+    results: List[dict] = []
+    for rel in rels[:max_routes]:
+        name = rel["tags"]["name"]
         km = _km(rel["tags"].get("distance", ""))
-        if not name:
-            continue
         if km and km > MAX_KM:
-            print(f"skip  {name}: {km:g} km")
+            results.append({"id": None, "status": "skip", "reason": f"{name}: {km:g} km", "relation": rel["id"]})
+            say(f"skip  {name}: {km:g} km")
             continue
-        # Not every route says how long it is: measure its own paths.
-        r = fetch_relation(rel["id"])
-        mapped_km = sum(haversine((a_["lat"], a_["lon"]), (b_["lat"], b_["lon"]))
-                        for w in r["ways"].values() if "highway" in w.get("tags", {})
-                        for a_, b_ in zip(w["geometry"], w["geometry"][1:])) / 1000
-        if mapped_km > MAX_KM * 1.25:
-            print(f"skip  {name}: its paths add up to {mapped_km:.0f} km")
+        full = fetch_relation(rel["id"])
+        mapped_km = _mapped_km(full)
+        if mapped_km > MAX_KM * 1.25 or mapped_km < 0.3:
+            results.append({"id": None, "status": "skip", "relation": rel["id"],
+                            "reason": f"{name}: its paths add up to {mapped_km:.1f} km"})
+            say(f"skip  {name}: its paths add up to {mapped_km:.1f} km")
             continue
-        spec = spec_for(rel)
-        path = os.path.join(SPECS, spec["id"] + ".spec.json")
-        if os.path.exists(path) and not a.force:
-            print(f"keep  {spec['id']} (spec exists)")
+        circular = rel["tags"].get("roundtrip") == "yes" or (broad and _ends_apart_m(full) <= 300)
+        if not broad and not circular:
+            continue
+        spec = spec_for(rel, circular=circular, id_with_relation=broad)
+        path = os.path.join(specs_dir, spec["id"] + ".spec.json")
+        if os.path.exists(path) and not force:
+            with open(path, encoding="utf-8") as f:
+                spec = json.load(f)
+            say(f"keep  {spec['id']} (spec exists)")
         else:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(spec, f, indent=2, ensure_ascii=False)
                 f.write("\n")
-            print(f"spec  {spec['id']}")
-        if a.specs_only:
-            continue
         try:
-            out = build(path)
+            out = build(path, out_dir) if out_dir else build(path)
             with open(out, encoding="utf-8") as f:
                 built = json.load(f)
             length = built["sections"][-1]["to_m"] / 1000 if built["sections"] else 0
-            problem = faithful(length, mapped_km, km, built["notes"])
+            if not circular:
+                length *= 2          # walked there and back
+                mapped = mapped_km * 2
+            else:
+                mapped = mapped_km
+            problem = faithful(length, mapped, (km * (1 if circular else 2)) if km else None,
+                               built["notes"])
             if problem:
                 # Not the trail: held back, with the reason in its spec.
                 os.remove(out)
@@ -197,12 +239,30 @@ def main() -> None:
                 with open(path, "w", encoding="utf-8") as f:
                     json.dump(spec, f, indent=2, ensure_ascii=False)
                     f.write("\n")
-                print(f"held  {spec['id']}: {problem}")
+                results.append({"id": spec["id"], "status": "held", "reason": problem,
+                                "relation": rel["id"]})
+                say(f"held  {spec['id']}: {problem}")
             else:
-                print(f"built {spec['id']}: {length:.1f} km"
-                      + (f" (stated {km:g} km)" if km else ""))
+                spec.pop("review", None)
+                results.append({"id": spec["id"], "status": "built", "out": out,
+                                "relation": rel["id"], "reason": f"{length:.1f} km"})
+                say(f"built {spec['id']}: {length:.1f} km" + (f" (stated {km:g} km)" if km else ""))
         except Exception as e:  # noqa: BLE001
-            print(f"FAIL  {spec['id']}: {type(e).__name__}: {e}")
+            results.append({"id": spec["id"], "status": "fail", "relation": rel["id"],
+                            "reason": f"{type(e).__name__}: {e}"[:300]})
+            say(f"FAIL  {spec['id']}: {type(e).__name__}: {e}")
+    return results
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[1])
+    for k in ("south", "west", "north", "east"):
+        ap.add_argument(k, type=float)
+    ap.add_argument("--force", action="store_true", help="overwrite existing specs")
+    ap.add_argument("--broad", action="store_true",
+                    help="any short walking route, not only local circular ones")
+    a = ap.parse_args()
+    import_area(a.south, a.west, a.north, a.east, force=a.force, broad=a.broad)
 
 
 if __name__ == "__main__":

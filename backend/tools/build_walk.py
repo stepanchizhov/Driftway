@@ -65,6 +65,23 @@ OVERPASS = ["https://lz4.overpass-api.de/api/interpreter",
             "https://overpass-api.de/api/interpreter",
             "https://z.overpass-api.de/api/interpreter"]
 ELEVATION = "https://api.opentopodata.org/v1/eudem25m"
+#: Terrain models, tried in this order: EU-DEM covers Europe only (the
+#: service answers null outside it); SRTM covers the world between 60 N and
+#: 56 S. A walk names the one its slopes came from.
+ELEVATION_SOURCES = {
+    "eudem25m": {"id": "eudem25m", "label": "EU-DEM 25 m terrain model via Open Topo Data",
+                 "licence": "Copernicus",
+                 "attribution": "Produced using Copernicus data and information "
+                                "funded by the European Union - EU-DEM layers",
+                 "limitation": "25 m grid: sustained slopes only; short ramps and "
+                               "kerbs are not visible, and buildings or trees can "
+                               "distort values in town."},
+    "srtm30m": {"id": "srtm30m", "label": "SRTM 30 m terrain model via Open Topo Data",
+                "licence": "Public domain (NASA)",
+                "attribution": "SRTM data courtesy of NASA and the USGS",
+                "limitation": "30 m grid, from radar: sustained slopes only; tree "
+                              "cover and buildings can read as ground."},
+}
 
 #: Distance between elevation samples along the route.
 SAMPLE_M = 20.0
@@ -335,18 +352,21 @@ def _walk_from_relation(graph: Graph, rel: Dict, start_near=None):
     return pts, notes
 
 
-def fetch_elevations(points: List[Tuple[float, float]]) -> List[float]:
-    out: List[float] = []
+def fetch_elevations(points: List[Tuple[float, float]],
+                     dataset: str = "eudem25m") -> List[Optional[float]]:
+    out: List[Optional[float]] = []
+    base = ELEVATION.rsplit("/", 1)[0] + "/" + dataset
     for i in range(0, len(points), 100):
         batch = points[i:i + 100]
         locs = "|".join(f"{la:.6f},{lo:.6f}" for la, lo in batch)
 
         def fetch():
-            body = _http(f"{ELEVATION}?locations={urllib.parse.quote(locs, safe='|,.-')}")
+            body = _http(f"{base}?locations={urllib.parse.quote(locs, safe='|,.-')}")
             time.sleep(1.1)        # the public API allows one call per second
             return body
 
-        data = json.loads(_cached("elev:" + locs, fetch))
+        key = ("elev:" if dataset == "eudem25m" else f"elev:{dataset}:") + locs
+        data = json.loads(_cached(key, fetch))
         if data.get("status") != "OK":
             raise RuntimeError(f"elevation lookup failed: {data}")
         out.extend(r["elevation"] for r in data["results"])
@@ -686,11 +706,18 @@ def _resample(sections: List[Section]) -> List[Tuple[float, Tuple[float, float]]
     return samples
 
 
-def _attach_gradients(sections: List[Section]) -> None:
+def _attach_gradients(sections: List[Section]) -> Optional[str]:
+    """Slopes from the first terrain model that covers the walk. Returns its
+    id, or None when none does (the walk then has no slopes, said as unknown)."""
     samples = _resample(sections)
-    heights = smooth(fetch_elevations([p for _, p in samples]))
-    attach_gradients(sections, [d for d, _ in samples], heights,
-                     "eudem25m via Open Topo Data")
+    pts = [p for _, p in samples]
+    for dataset in ELEVATION_SOURCES:
+        heights = fetch_elevations(pts, dataset)
+        if heights and all(h is not None for h in heights):
+            attach_gradients(sections, [d for d, _ in samples], smooth(heights),
+                             f"{dataset} via Open Topo Data")
+            return dataset
+    return None
 
 
 # --------------------------------------------------------------- observations
@@ -728,7 +755,7 @@ def _apply_observations(sections: List[Section], path: str) -> List[str]:
 
 # ---------------------------------------------------------------------- main
 
-def build(spec_path: str) -> str:
+def build(spec_path: str, out_dir: str = OUT_DIR) -> str:
     with open(spec_path, encoding="utf-8") as f:
         spec = json.load(f)
 
@@ -790,7 +817,7 @@ def build(spec_path: str) -> str:
     if spec.get("start_after_m"):
         sections = _trim_start(sections, float(spec["start_after_m"]))
     sections = _split_long(sections)
-    _attach_gradients(sections)
+    terrain = _attach_gradients(sections)
     obs_path = spec_path.replace(".spec.json", ".observations.json")
     notes = list(spec.get("notes", [])) + extra_notes + _apply_observations(sections, obs_path)
 
@@ -815,19 +842,12 @@ def build(spec_path: str) -> str:
              "attribution": "© OpenStreetMap contributors",
              "limitation": "The trail as mapped by volunteers. The trail itself "
                            "belongs to its operator; check their page on the day."},
-        ] if rel is not None else []) + [
-            {"id": "eudem25m", "label": "EU-DEM 25 m terrain model via Open Topo Data",
-             "licence": "Copernicus",
-             "attribution": "Produced using Copernicus data and information "
-                            "funded by the European Union - EU-DEM layers",
-             "limitation": "25 m grid: sustained slopes only; short ramps and "
-                           "kerbs are not visible, and buildings or trees can "
-                           "distort values in town."},
-        ],
+        ] if rel is not None else []) + (
+            [ELEVATION_SOURCES[terrain]] if terrain else []),
         "sections": [_section_dict(s) for s in sections],
     }
-    os.makedirs(OUT_DIR, exist_ok=True)
-    out = os.path.join(OUT_DIR, f"{spec['id']}.json")
+    os.makedirs(out_dir, exist_ok=True)
+    out = os.path.join(out_dir, f"{spec['id']}.json")
     with open(out, "w", encoding="utf-8") as f:
         json.dump(route, f, indent=1, ensure_ascii=False)
     return out

@@ -117,6 +117,15 @@ def retention_trigger_token() -> str:
     return (os.getenv("RETENTION_TRIGGER_TOKEN") or "").strip()
 
 
+def walks_job_token() -> str:
+    """A secret for the scheduled walk-area job (tools/walk_area_job.py):
+    it can read the queue of requested areas, upload walks it built and add
+    descriptions as pending. It cannot approve a description, mint
+    invitations or touch accounts - approving is the founder's, with the
+    admin token. Unset: those endpoints refuse everything."""
+    return (os.getenv("WALKS_JOB_TOKEN") or "").strip()
+
+
 # How long a beta-access invite stays valid unless the founder overrides it.
 DEFAULT_INVITE_TTL_DAYS = 14
 

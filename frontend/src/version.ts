@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.9",
+    date: "11 Oct 2026",
+    changes: [
+      "Walks for anywhere: where Driftway has no curated walks yet, the Walk tab lists the trails mapped near you right away and asks for checked walks for your area, which usually follow within a day. Only a rough area, about 10 km across, is sent (privacy policy 1.7).",
+      "Some walks have a short description written with AI from the walk's own map data. Each is checked by us before it's shown, and says so.",
+    ],
+  },
+  {
     version: "0.8.8",
     date: "11 Oct 2026",
     changes: [
