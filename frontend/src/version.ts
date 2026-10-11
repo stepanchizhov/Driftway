@@ -12,6 +12,13 @@
  * afterwards from the project history: the commits themselves only carry
  * "v.0.2.2" and "v.0.3". Project Bible document versions (v0.4, v0.5,
  * v0.6.0) are a separate numbering and are not these.
+ *
+ * Founder request, 11 Oct 2026: smaller steps. What shipped after 0.7.0 as
+ * "0.8.0, in progress" was split by when it was built (0.7.1 to 0.9.1,
+ * numbered afterwards), and 0.4 and 0.6 were split the same way from their
+ * commit dates. From here: a new feature bumps the middle number, a fix
+ * alone the last one, and each release gets its own entry when it is
+ * pushed, not one growing list.
  */
 
 export interface Release {
@@ -26,31 +33,68 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: "0.8.0",
-    date: "in progress",
+    version: "0.10.0",
+    date: "11 Oct 2026",
     changes: [
       "My walks: draw a route you actually walk, import one from a GPX file, or save a walk Driftway made. It's checked for your pram or carrier, time and pace, and kept on your phone only (privacy policy 1.5).",
       "Your own walking pace, in Walk preferences: walk times, and how long walks made from your start are, follow it.",
       "Walks work for everyone, without signing in, and accounts no longer need an invitation (privacy policy 1.4).",
+    ],
+  },
+  {
+    version: "0.9.1",
+    date: "11 Oct 2026",
+    retroactive: true,
+    changes: [
       "Location never blocks the app: after 12 seconds Driftway says why, and you can search where you are instead, in Still asleep too. A position that arrives later still counts.",
+    ],
+  },
+  {
+    version: "0.9.0",
+    date: "11 Oct 2026",
+    retroactive: true,
+    changes: [
       "Walks can go through up to three checkpoints, in the order you add them, then home another way. Drop pins on the map or search for places.",
       "How close a walk must come now applies to every checkpoint, not only the last: a statue up a dead end is passed, not climbed.",
       "Walks made for you fit your time better: one that misses by more than 15% is asked for again, and walks within about 20% of your time always come first.",
       "Dead-end detours, out along a path and straight back, are cut out of walks made for you.",
       "The Walk tab makes walks as soon as it knows where you are starting, and says what's missing instead of greying out the button.",
-      "Pram walks always keep pram routing. Greener and Quieter are no longer offered with a pram: they used walking routes that dropped the pram's rules on surface, slope and kerbs.",
-      "A Feedback button at the top of every screen. It says which screen you were on and which version you have.",
+    ],
+  },
+  {
+    version: "0.8.1",
+    date: "11 Oct 2026",
+    retroactive: true,
+    changes: [
+      "A new app icon, chosen by the family: a road looping round the moon and back home, under the stars. It's easier to read and to find on a home screen.",
+    ],
+  },
+  {
+    version: "0.8.0",
+    date: "10 Oct 2026",
+    retroactive: true,
+    changes: [
+      "A Feedback button at the top of every screen. It says which screen you were on and which version you have, and can say what you were doing just before.",
       "A privacy policy, a guide for testers, and a page on deleting your account without the app, all linked from Settings.",
       "You can download or delete your account even if it has been disabled. No invitation is needed.",
       "Driftway's server logs no longer record what you search for, your position, or the private part of meetup links.",
-      "A new app icon, chosen by the family: a road looping round the moon and back home, under the stars. It's easier to read and to find on a home screen.",
+      "Pram walks always keep pram routing. Greener and Quieter are no longer offered with a pram: they used walking routes that dropped the pram's rules on surface, slope and kerbs.",
       "A site icon, and an iPhone home-screen icon without black corners. The app description now includes walks and meetups.",
-      "Feedback can say what you were doing just before. It sends only what you type, with the screen and version.",
-      "Ready for Driftway's new address: the old one will say so, and what does and doesn't come with you.",
+      "Ready for Driftway's new address: the old one says so, and what does and doesn't come with you.",
       "The app no longer keeps a growing copy of every map image you've seen.",
       "Driftway's typefaces now come with the app, so your phone no longer contacts Google Fonts.",
       "Feedback sent without an account is deleted after a year. Before, it had no time limit.",
       "Settings describes what Driftway does now, and what's planned, without promising dates.",
+    ],
+  },
+  {
+    version: "0.7.1",
+    date: "10 Oct 2026",
+    retroactive: true,
+    changes: [
+      "Walks can be made again: the route provider had moved to a new address.",
+      "When the route provider refuses to make walks, the Walk tab says so, instead of saying a place can't be reached.",
+      "If our usual route provider stops answering, drives, Meet Halfway and place search carry on with a stand-in, and say their times have no live traffic.",
     ],
   },
   {
@@ -61,25 +105,47 @@ export const RELEASES: Release[] = [
       "New walk preference: how close a walk must come to your checkpoint. Pass a statue on a hill at a distance instead of climbing up to it.",
       "If the nearest path is away from your checkpoint, both are shown and you're asked before it's used. You're told when a checkpoint can't be reached, or is too far for the time you chose.",
       "Greener and Quieter now reach the route provider in the form it accepts. A walk says when the provider has no data to make a difference, as around Windsor.",
-      "Walks can be made again: the route provider had moved to a new address.",
-      "When the route provider refuses to make walks, the Walk tab says so, instead of saying a place can't be reached.",
-      "If our usual route provider stops answering, drives, Meet Halfway and place search carry on with a stand-in, and say their times have no live traffic.",
       "Drives try not to use the same road twice: fewer turn-arounds in testing.",
       "This version history, and the version and build shown in Settings.",
     ],
   },
   {
-    version: "0.6",
-    date: "7–9 Oct 2026",
+    version: "0.6.2",
+    date: "9 Oct 2026",
     retroactive: true,
     changes: [
-      "Walk tab (closed beta): walks for a pram, a carrier or just you, with surfaces, steps, gates and slopes, and where each fact comes from.",
-      "Curated walks around Windsor and in Berlin, and walks made from wherever you are.",
-      "Walks fitted to the time you choose, from 10 minutes to 4 hours, with the turning point marked.",
+      "Walks made from wherever you are, as well as the curated ones.",
+      "Walks through a checkpoint, out one way and back another, up to three different ones.",
       "Walk preferences: how much you mind walking the same path twice, greener or quieter, walks that need travel.",
-      "Walks through a checkpoint, up to three different ones.",
-      "Each walk on a map, and in Google Maps through three points.",
+      "A third way to go: Just me, for walking without a pram or a carrier.",
+      "Each walk on a map, grouped by whether it starts at your door, and in Google Maps through three points.",
+    ],
+  },
+  {
+    version: "0.6.1",
+    date: "9 Oct 2026",
+    retroactive: true,
+    changes: [
+      "Walk becomes a tab, and you can sign in from where you are.",
+      "Walks fitted to the time you choose, from 10 minutes to 4 hours, with the turning point marked.",
+      "More curated walks: in Windsor, and in Berlin. Place search works outside the UK.",
+    ],
+  },
+  {
+    version: "0.6.0",
+    date: "8 Oct 2026",
+    retroactive: true,
+    changes: [
+      "Walks (closed beta): curated walks around Windsor for a pram or a carrier, with surfaces, steps, gates and slopes, and where each fact comes from.",
+    ],
+  },
+  {
+    version: "0.5.1",
+    date: "7–8 Oct 2026",
+    retroactive: true,
+    changes: [
       "Still Asleep says it opens Google Maps before it does.",
+      "Driftway notices when its database comes back, instead of needing a restart.",
     ],
   },
   {
@@ -94,14 +160,21 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: "0.4",
-    date: "10–11 Sep 2026",
+    version: "0.4.1",
+    date: "11 Sep 2026",
     retroactive: true,
     changes: [
       "Three jobs at the bottom of the screen: Still Asleep, Plan a drive, Meet up.",
+      "The hand-off to navigation apps says what each one can follow.",
+    ],
+  },
+  {
+    version: "0.4",
+    date: "10 Sep 2026",
+    retroactive: true,
+    changes: [
       "Drives that end somewhere else, arriving after the time you need.",
       "Meet Halfway: two parents, private starting points, one place you agree on.",
-      "The hand-off to navigation apps says what each one can follow.",
       "Keeps working when the database is briefly unreachable.",
     ],
   },

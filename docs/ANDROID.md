@@ -175,12 +175,12 @@ on a device yet:
 
 | Item | State |
 |---|---|
-| Privacy policy 1.1, deleting your account without the app, guide for testers, Feedback on every tab | IMPLEMENTED (0.8.0, in progress) |
+| Privacy policy 1.1, deleting your account without the app, guide for testers, Feedback on every tab | RELEASED in 0.8.0, 10 Oct |
 | Maskable app icon, site icon, iPhone icon, manifest describing walks and meetups | IMPLEMENTED |
 | No search text, positions or link tokens in server logs | IMPLEMENTED |
 | Data safety answers | IMPLEMENTED as `docs/DATA_SAFETY.md`; to be entered in Play Console by the founder |
 | `android/twa-manifest.json`, package `com.ibookbinding.driftway`, location delegation on | IMPLEMENTED, for `driftway.stepan.chizhov.com`. Rebuilt for it on 10 Oct |
-| Local test build (APK and AAB, local test key) | Built on the founder's machine in `C:\Users\stepa\driftway-android`. Checked with apksigner and aapt2: the signer's SHA-256 `28:E3:53:…:DD:6D` matches `assetlinks.json`; package `com.ibookbinding.driftway` 0.8.0 (code 1), target API 36; fine and coarse location only (no background location, no notifications). **Code 2, 11 Oct:** rebuilt with `enableNotifications` on, because the location prompt lives in the service that setting switches on; without it the app never asked for location (`android/README.md`). It now also declares the notification permission, unused; an `https` link filter with `autoVerify`; the location delegation service is present. **Not yet installed on a phone** |
+| Local test build (APK and AAB, local test key) | Built on the founder's machine in `C:\Users\stepa\driftway-android`. Checked with apksigner and aapt2: the signer's SHA-256 `28:E3:53:…:DD:6D` matches `assetlinks.json`; package `com.ibookbinding.driftway` 0.8.0 (code 1), target API 36; fine and coarse location only (no background location, no notifications). **Code 2, 11 Oct:** rebuilt with `enableNotifications` on, because the location prompt lives in the service that setting switches on; without it the app never asked for location (`android/README.md`). It now also declares the notification permission, unused; an `https` link filter with `autoVerify`; the location delegation service is present. Installed on the founder's phone (code 2, 11 Oct): links verified for the address, location works; the founder ran the on-phone checks |
 | `assetlinks.json` | Local test key only. The Play app signing key: OPEN, founder, section 2 |
 | Domain `driftway.stepan.chizhov.com` | DEPLOYED (founder, 10 Oct). Checked from outside: Google Trust Services certificate, http redirects to https, the pages and `assetlinks.json` answer, the API's CORS accepts the address, and the banner is on at the old address. Sign-in there confirmed by the founder, 10 Oct |
 | Upload key | OPEN: founder, `android/README.md` |
