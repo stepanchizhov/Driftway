@@ -14,11 +14,15 @@
  * v0.6.0) are a separate numbering and are not these.
  *
  * Founder request, 11 Oct 2026: smaller steps. What shipped after 0.7.0 as
- * "0.8.0, in progress" was split by when it was built (0.7.1 to 0.9.1,
+ * "0.8.0, in progress" was split by when it was built (0.7.1 to 0.8.3,
  * numbered afterwards), and 0.4 and 0.6 were split the same way from their
- * commit dates. From here: a new feature bumps the middle number, a fix
- * alone the last one, and each release gets its own entry when it is
- * pushed, not one growing list.
+ * commit dates. Each release gets its own entry when it is pushed, not one
+ * growing list.
+ *
+ * Numbering (founder, 11 Oct 2026): the middle number moves only for a
+ * conceptual shift in what Driftway is - 0.6 brought walks, 0.8 made it ready
+ * for outside testers - and so will 1.0. Everything else, new features that
+ * grow what exists as well as fixes, moves the last number.
  */
 
 export interface Release {
@@ -33,7 +37,7 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
-    version: "0.10.0",
+    version: "0.8.4",
     date: "11 Oct 2026",
     changes: [
       "My walks: draw a route you actually walk, import one from a GPX file, or save a walk Driftway made. It's checked for your pram or carrier, time and pace, and kept on your phone only (privacy policy 1.5).",
@@ -42,7 +46,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: "0.9.1",
+    version: "0.8.3",
     date: "11 Oct 2026",
     retroactive: true,
     changes: [
@@ -50,7 +54,7 @@ export const RELEASES: Release[] = [
     ],
   },
   {
-    version: "0.9.0",
+    version: "0.8.2",
     date: "11 Oct 2026",
     retroactive: true,
     changes: [
