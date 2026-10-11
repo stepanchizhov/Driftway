@@ -125,8 +125,10 @@ on a device yet:
   different site) and comes back signed in.
 - [ ] Location: allow, deny, then allow again from settings. The prompt
   is Android's own (location delegation). Each tab copes with refusal.
-- [ ] An invitation link and a meetup link, tapped in an email, open in
-  the app.
+  11 Oct: works in test build 2, checked over USB on the founder's phone
+  (a fix within a second once warm). Build 1 never asked; see
+  `android/README.md`.
+- [ ] A meetup link, tapped in an email, opens in the app.
 - [ ] Opening a drive in Google Maps, then coming back.
 - [ ] Back button: within the app, and at the first screen.
 - [ ] Settings links: privacy, deleting your account, the guide for testers.
@@ -136,8 +138,9 @@ on a device yet:
 ## 4. Store listing and Data safety (founder, with these answers)
 
 - **Privacy policy URL:** `https://driftway.stepan.chizhov.com/privacy.html`
-- **App access:** the beta needs an invitation. Give the reviewers a working
-  invitation link and sign-in method.
+- **App access:** everything works without signing in, and since 11 Oct
+  2026 an account needs no invitation (`REGISTRATION_MODE=open`). Tell the
+  reviewers so; no test login is needed.
 - **Target audience:** adults (parents). Not designed for children.
 - **Ads:** none.
 - **Data safety**, from `frontend/public/privacy.html` (version 1, 10 Oct
@@ -162,9 +165,11 @@ on a device yet:
 - **Internal testing** (up to 100 people, no review wait): the founder and
   family first. Check install, sign-in, location prompts, and opening Google
   Maps from a drive.
-- **Closed testing:** the beta proper, 12–20 families. Mint one invitation
-  per family with the admin tools (`docs/IDENTITY.md`) and send it with the
-  Play opt-in link and `https://driftway.stepan.chizhov.com/beta.html`.
+- **Closed testing:** the beta proper, 12–20 families. Send each the Play
+  opt-in link and `https://driftway.stepan.chizhov.com/beta.html`. No
+  invitation is needed since 11 Oct 2026; the admin tools can still mint
+  them (`docs/IDENTITY.md`) if `REGISTRATION_MODE` goes back to
+  `invite_only`.
 
 ## State, 10 Oct 2026
 
