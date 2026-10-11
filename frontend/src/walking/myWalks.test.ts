@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_POINTS, isLoop, lengthOf, metres, parseGpx, samplePoints } from "./myWalks";
+import { MAX_POINTS, closeLoop, gapToStart, isLoop, lengthOf, metres, parseGpx, samplePoints } from "./myWalks";
 
 // Synthetic points, nobody's address.
 const line = (n: number, step = 0.0005) =>
@@ -72,3 +72,26 @@ describe("reading a GPX file", () => {
     expect(parseGpx("hello").points).toEqual([]);
   });
 });
+
+describe("closing a route into a loop", () => {
+  it("adds the way back to the start, and is then a loop", () => {
+    const open = line(10);
+    expect(isLoop(open)).toBe(false);
+    expect(gapToStart(open)).toBeGreaterThan(400);
+    const closed = closeLoop(open);
+    expect(isLoop(closed)).toBe(true);
+    expect(closed[closed.length - 1]).toEqual(open[0]);
+  });
+
+  it("keeps within the most points the server takes", () => {
+    const closed = closeLoop(line(MAX_POINTS));
+    expect(closed.length).toBeLessThanOrEqual(MAX_POINTS);
+    expect(isLoop(closed)).toBe(true);
+  });
+
+  it("leaves a loop as it is", () => {
+    const loop = [...line(5), { lat: 52, lng: 13 }];
+    expect(closeLoop(loop)).toBe(loop);
+  });
+});
+

@@ -54,6 +54,18 @@ const TABS: Tab[] = ["stillasleep", "plan", "meetup", "walk"];
  * a return from signing in - land on the same tab. Opening the app fresh (from
  * the home screen, with no hash) still starts on Still asleep.
  */
+const START_TAB: Tab = "stillasleep";
+
+/** What a history entry is to this app: a tab above Still asleep, or a
+ *  screen (Saved, Settings, results) above a tab. None: the bottom. */
+type NavState = { driftway?: "tab" | "screen" } | null;
+function navKind(): "tab" | "screen" | undefined {
+  return (window.history.state as NavState)?.driftway;
+}
+function urlFor(tab: Tab): string {
+  return `${window.location.pathname}${window.location.search}#${tab}`;
+}
+
 function tabFromHash(): Tab | null {
   const raw = window.location.hash.replace("#", "") as Tab;
   return TABS.includes(raw) ? raw : null;
@@ -113,17 +125,64 @@ export default function App() {
   const [tab, setTabState] = useState<Tab>(() =>
     hasMeetupLink() ? "meetup" : tabFromHash() ?? "stillasleep",
   );
+  // Android's Back button (founder report, 11 Oct 2026: it closed the app
+  // from anywhere). It walks this app's history, so the history now has
+  // levels, the usual Android pattern:
+  //   - Still asleep, nothing open: the bottom. Back leaves the app.
+  //   - another tab: one entry above it. Back returns to Still asleep.
+  //   - Saved, Settings or drive results: one entry above the tab. Back
+  //     closes them and returns to the tab.
+  // Switching between other tabs replaces that one entry rather than adding
+  // one per tap. The query string is kept: it may carry a meetup capability.
   function setTab(next: Tab) {
+    const kind = navKind();
     setTabState(next);
-    // Keep the query string - it may carry a meetup capability - and only
-    // replace the hash, without adding a history entry per tab tap.
-    window.history.replaceState(
-      null,
-      "",
-      `${window.location.pathname}${window.location.search}#${next}`,
-    );
+    if (kind === "screen") {
+      // Tab bar used while drive results are open: Back still closes them.
+      window.history.replaceState({ driftway: "screen" }, "", urlFor(next));
+    } else if (next === START_TAB && kind === "tab") {
+      window.history.back(); // the popstate below shows Still asleep
+    } else if (next === START_TAB || kind === "tab") {
+      window.history.replaceState(kind ? { driftway: kind } : null, "", urlFor(next));
+    } else {
+      window.history.pushState({ driftway: "tab" }, "", urlFor(next));
+    }
   }
-  const [screen, setScreen] = useState<Screen>({ name: "plan" });
+  const [screen, setScreenState] = useState<Screen>({ name: "plan" });
+  /** Show Saved, Settings or results: one Back closes them again. */
+  function openScreen(next: Screen) {
+    setScreenState(next);
+    if (navKind() === "screen") window.history.replaceState({ driftway: "screen" }, "", urlFor(tab));
+    else window.history.pushState({ driftway: "screen" }, "", urlFor(tab));
+  }
+  /** Close them from the app's own controls, as Back would. */
+  function closeScreen() {
+    if (navKind() === "screen") window.history.back();
+    else setScreenState({ name: "plan" });
+  }
+  // Any other change of screen (loading, back to the form) is not a level.
+  const setScreen = setScreenState;
+  useEffect(() => {
+    function onPop(e: PopStateEvent) {
+      const kind = (e.state as NavState)?.driftway;
+      if (kind !== "screen") {
+        setScreenState((prev) =>
+          prev.name === "favourites" || prev.name === "settings" || prev.name === "results"
+            ? { name: "plan" }
+            : prev,
+        );
+      }
+      if (kind === undefined) {
+        // Back at the bottom: Still asleep, whatever the first entry was.
+        setTabState(START_TAB);
+        window.history.replaceState(null, "", urlFor(START_TAB));
+      } else {
+        setTabState(tabFromHash() ?? START_TAB);
+      }
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const features = useFeatures();
   const [mode, setMode] = useState<RouteMode>("loop");
   const [duration, setDuration] = useState<number>(settings.lastDuration);
@@ -254,7 +313,7 @@ export default function App() {
         mode,
         preferred_navigation: settings.preferredNavigation,
       });
-      setScreen({
+      openScreen({
         name: "results",
         data,
         start,
@@ -343,7 +402,7 @@ export default function App() {
           <span className="wordmark-way">way</span>
         </div>
         {isSecondary ? (
-          <button className="btn-back" onClick={() => setScreen({ name: "plan" })}>
+          <button className="btn-back" onClick={closeScreen}>
             ← Back
           </button>
         ) : (
@@ -353,13 +412,13 @@ export default function App() {
             </button>
             <button
               className="btn-back"
-              onClick={() => setScreen({ name: "favourites" })}
+              onClick={() => openScreen({ name: "favourites" })}
             >
               ★ Saved
             </button>
             <button
               className="btn-back"
-              onClick={() => setScreen({ name: "settings" })}
+              onClick={() => openScreen({ name: "settings" })}
               aria-label="Settings"
             >
               ⚙
@@ -377,7 +436,7 @@ export default function App() {
           savedPlaces={placeEndpoints}
           profile={settings.quickDriveProfile}
           tolerance={tolerance}
-          onOpenPreferences={() => setScreen({ name: "settings" })}
+          onOpenPreferences={() => openScreen({ name: "settings" })}
           onRetryLocation={locate}
         />
       )}
@@ -577,7 +636,7 @@ export default function App() {
         <Favourites
           owner={owner}
           units={settings.units}
-          onBack={() => setScreen({ name: "plan" })}
+          onBack={closeScreen}
         />
       )}
 
@@ -591,7 +650,7 @@ export default function App() {
           here={liveCoord}
           savedPlaces={placeEndpoints}
           canGenerate={features.walkGeneration}
-          onOpenSettings={() => setScreen({ name: "settings" })}
+          onOpenSettings={() => openScreen({ name: "settings" })}
         />
       )}
 

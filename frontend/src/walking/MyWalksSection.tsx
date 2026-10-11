@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react";
 import type { Coord } from "../types";
 import type { Units } from "../hooks/useSettings";
 import { NotAdmitted, traceWalks, type GeneratedWalks, type TraceFidelity, type Walk } from "./api";
-import { MAX_POINTS, isLoop, lengthOf, parseGpx, type MyWalk } from "./myWalks";
+import { MAX_POINTS, closeLoop, gapToStart, isLoop, lengthOf, parseGpx, type MyWalk } from "./myWalks";
 import { RouteDrawer } from "./RouteDrawer";
 import type { WalkSetup } from "./useWalkSetup";
 
@@ -16,6 +16,7 @@ export function MyWalksSection({
   walks,
   onAdd,
   onRemove,
+  onReplacePoints,
   centre,
   setup,
   units,
@@ -24,6 +25,8 @@ export function MyWalksSection({
   walks: MyWalk[];
   onAdd: (name: string, points: Coord[], source: MyWalk["source"]) => MyWalk;
   onRemove: (id: string) => void;
+  /** Same route, new points: closing it into a loop. */
+  onReplacePoints: (id: string, points: Coord[]) => void;
   centre: Coord | null;
   setup: WalkSetup;
   units: Units;
@@ -31,7 +34,13 @@ export function MyWalksSection({
   renderWalk: (walk: Walk, source?: Coord[]) => ReactNode;
 }) {
   const [drawing, setDrawing] = useState(false);
-  const [imported, setImported] = useState<{ name: string; points: Coord[]; count: number } | null>(null);
+  const [imported, setImported] = useState<{
+    name: string;
+    points: Coord[];
+    count: number;
+    /** Finish where it started: walked as a loop. */
+    close: boolean;
+  } | null>(null);
   const [shown, setShown] = useState<{
     id: string;
     key: string;
@@ -84,7 +93,15 @@ export function MyWalksSection({
         setError("No track found in that file. Driftway reads GPX files with a track or a route.");
         return;
       }
-      setImported({ name: name ?? f.name.replace(/\.gpx$/i, ""), points, count: points.length });
+      // A recorded circuit often stops short of where it began (the
+      // recording ended on the way in). Offered closed when the gap is small
+      // enough to be that; the parent decides.
+      setImported({
+        name: name ?? f.name.replace(/\.gpx$/i, ""),
+        points,
+        count: points.length,
+        close: !isLoop(points) && gapToStart(points) <= 2000,
+      });
     } catch {
       setError("Couldn't read that file.");
     }
@@ -143,6 +160,19 @@ export function MyWalksSection({
                   >
                     {busyId === w.id ? "Checking…" : "Show"}
                   </button>
+                  {!isLoop(w.points) && (
+                    <button
+                      type="button"
+                      className="btn-quiet cp-small"
+                      title={`It ends ${distanceText(gapToStart(w.points), units)} from its start`}
+                      onClick={() => {
+                        onReplacePoints(w.id, closeLoop(w.points));
+                        if (shown?.id === w.id) setShown(null);
+                      }}
+                    >
+                      Make it a loop
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn-quiet cp-small"
@@ -201,6 +231,17 @@ export function MyWalksSection({
               ? ` It's kept as ${MAX_POINTS} points spread along the way; between them Driftway follows the mapped paths.`
               : ""}
           </p>
+          {!isLoop(imported.points) && (
+            <label className="walks-check">
+              <input
+                type="checkbox"
+                checked={imported.close}
+                onChange={(e) => setImported({ ...imported, close: e.target.checked })}
+              />
+              Finish where I started (it ends {distanceText(gapToStart(imported.points), units)} from its
+              start). Otherwise it&rsquo;s walked there and back.
+            </label>
+          )}
           <label className="account-field">
             <span>Name</span>
             <input
@@ -215,7 +256,11 @@ export function MyWalksSection({
               type="button"
               className="btn-primary"
               onClick={() => {
-                const w = onAdd(imported.name, imported.points, "gpx");
+                const w = onAdd(
+                  imported.name,
+                  imported.close ? closeLoop(imported.points) : imported.points,
+                  "gpx",
+                );
                 setImported(null);
                 void show(w);
               }}
@@ -317,5 +362,10 @@ function Fidelity({
       </p>
     </div>
   );
+}
+
+function distanceText(m: number, units: Units): string {
+  if (units === "mi") return m < 1609 ? `${Math.round(m * 1.0936)} yd` : `${(m / 1609.344).toFixed(1)} mi`;
+  return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
 }
 

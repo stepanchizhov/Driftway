@@ -51,6 +51,23 @@ export function isLoop(points: Coord[]): boolean {
   return points.length > 2 && metres(points[0], points[points.length - 1]) <= LOOP_M;
 }
 
+/** How far the route's end is from its start, in metres. */
+export function gapToStart(points: Coord[]): number {
+  return points.length > 1 ? metres(points[0], points[points.length - 1]) : 0;
+}
+
+/**
+ * The route closed back to where it started, so it is walked as a loop
+ * rather than there and back. Founder test, 11 Oct 2026: his recorded Long
+ * Walk circuit ended about a kilometre short of its start, so it was turned
+ * into a there-and-back walk. Thinned again if the extra point goes over.
+ */
+export function closeLoop(points: Coord[]): Coord[] {
+  if (points.length < 2 || isLoop(points)) return points;
+  const closed = [...points, points[0]];
+  return closed.length <= MAX_POINTS ? closed : [...samplePoints(points, MAX_POINTS - 1), points[0]];
+}
+
 /**
  * At most `max` points, evenly spaced along the line by distance, always
  * keeping the first and the last. Invalid and repeated points are dropped.
@@ -174,5 +191,14 @@ export function useMyWalks() {
     });
   }
 
-  return { walks, add, remove };
+  /** Same route, new points (e.g. closed into a loop); the id stays. */
+  function replacePoints(id: string, points: Coord[]) {
+    setWalks((prev) => {
+      const next = prev.map((w) => (w.id === id ? { ...w, points: samplePoints(points) } : w));
+      store(next);
+      return next;
+    });
+  }
+
+  return { walks, add, remove, replacePoints };
 }

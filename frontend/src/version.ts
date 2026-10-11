@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.6",
+    date: "11 Oct 2026",
+    changes: [
+      "Android's Back button no longer closes the app from anywhere: it closes Saved, Settings and drive results, then returns to Still asleep, and only leaves the app from there.",
+      "A recorded walk that ends short of where it started can be walked as a loop: importing asks, and My walks has \"Make it a loop\".",
+    ],
+  },
+  {
     version: "0.8.5",
     date: "11 Oct 2026",
     changes: [

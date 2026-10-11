@@ -344,6 +344,7 @@ export function Walks({
               walks={mine.walks}
               onAdd={mine.add}
               onRemove={mine.remove}
+              onReplacePoints={mine.replacePoints}
               centre={here}
               setup={applied}
               units={units}
