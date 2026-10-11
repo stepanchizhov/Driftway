@@ -111,9 +111,10 @@ class RequestTests(_FreshBudget):
             asyncio.run(gen.generate((52.0, 13.0), "carrier", 30, "Your location", client))
         finally:
             os.environ.pop("ORS_API_KEY", None)
-        body = seen[0].content.decode()
-        self.assertNotIn("Your location", body)
-        self.assertEqual(len(seen), 3)
+        self.assertTrue(all("Your location" not in r.content.decode() for r in seen))
+        # Three asks, and at most one more each for a walk that misses the
+        # time (this fixture's 500 m line misses 30 minutes).
+        self.assertIn(len(seen), range(3, 7))
 
     def test_a_provider_failure_is_reported_not_papered_over(self):
         from core.walking import generate as gen
@@ -383,7 +384,7 @@ class WeightingFallbackTests(_FreshBudget):
 
         client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         asyncio.run(gen.generate((52.0, 13.0), "carrier", 30, "x", client, character="green"))
-        self.assertEqual(len(seen), 3)                       # one call per walk
+        self.assertIn(len(seen), range(3, 7))     # three asks, at most one retry each
         self.assertTrue(all(json.loads(t)["options"]["profile_params"]
                             == {"weightings": {"green": 1}} for t in seen))
         self.assertEqual(gen._WEIGHT_FORM, "int")
@@ -500,3 +501,99 @@ class ProviderHostTests(unittest.TestCase):
         with mock.patch.dict(os.environ, {"ORS_BASE_URL": "https://example.test/ors/"}):
             self.assertEqual(gen._ors_url(),
                              "https://example.test/ors/v2/directions/{profile}/geojson")
+
+
+def line_coords(points):
+    """[lng, lat, ele] from (east metres, north metres) offsets around 52N 13E."""
+    import math
+    k = 111320.0 * math.cos(math.radians(52.0))
+    return [[13.0 + e / k, 52.0 + n / 111320.0, 30] for e, n in points]
+
+
+class SpikeTests(unittest.TestCase):
+    """Founder feedback, 11 Oct: spikes - out along a path and straight back."""
+
+    def loop_with_spike(self):
+        # An 800 m square loop, with a 150 m dead-end side street, walked out
+        # and back, at its second corner.
+        square = [(0, 0), (100, 0), (200, 0)]
+        spike = [(250, 0), (300, 0), (350, 0), (300, 0), (250, 0), (200, 0)]
+        rest = [(200, 100), (200, 200), (100, 200), (0, 200), (0, 100), (0, 0)]
+        pts = square + spike + rest
+        coords = line_coords(pts)
+        n = len(coords) - 1
+        return {"type": "Feature", "geometry": {"type": "LineString", "coordinates": coords},
+                "properties": {"extras": {"surface": {"values": [[0, 5, 3], [5, n, 10]]},
+                                          "waytype": {"values": [[0, n, 4]]}}}}
+
+    def test_a_spike_is_cut_out_and_the_walk_stays_whole(self):
+        from core.walking.generate import despike, _haversine
+        feat = self.loop_with_spike()
+        out, removed = despike(feat)
+        self.assertAlmostEqual(removed, 300, delta=15)          # 150 out, 150 back
+        coords = out["geometry"]["coordinates"]
+        # The spike's 5 inner points go; where it left and where it rejoined stay.
+        self.assertEqual(len(coords), len(feat["geometry"]["coordinates"]) - 5)
+        steps = [_haversine((a[1], a[0]), (b[1], b[0])) for a, b in zip(coords, coords[1:])]
+        self.assertLess(max(steps), 105)                       # no jump across a gap
+        for block in out["properties"]["extras"].values():     # extras re-indexed
+            for a, b, _ in block["values"]:
+                self.assertLess(a, b)
+                self.assertLessEqual(b, len(coords) - 1)
+
+    def test_a_plain_loop_is_left_alone(self):
+        from core.walking.generate import despike
+        pts = [(0, 0), (100, 0), (200, 0), (200, 100), (200, 200), (100, 200), (0, 200), (0, 100), (0, 0)]
+        feat = {"type": "Feature", "geometry": {"type": "LineString", "coordinates": line_coords(pts)},
+                "properties": {"extras": {}}}
+        out, removed = despike(feat)
+        self.assertEqual(removed, 0.0)
+        self.assertEqual(out, feat)
+
+    def test_a_short_there_and_back_walk_is_never_cut_away_whole(self):
+        from core.walking.generate import despike
+        pts = [(0, 0), (0, 50), (0, 100), (0, 150), (0, 100), (0, 50), (0, 0)]
+        feat = {"type": "Feature", "geometry": {"type": "LineString", "coordinates": line_coords(pts)},
+                "properties": {"extras": {}}}
+        _, removed = despike(feat)
+        self.assertEqual(removed, 0.0)
+
+
+class TimeFitTests(unittest.TestCase):
+    """Founder feedback, 11 Oct: walks far longer than asked came first."""
+
+    def test_walks_within_20_percent_rank_above_closer_looking_others(self):
+        from core.walking.generate import fit_rank
+        asked = 60
+        ranks = sorted([(95, "long"), (50, "short but fits"), (66, "fits"), (40, "too short")],
+                       key=lambda m: fit_rank(m[0], asked))
+        self.assertEqual([r[1] for r in ranks], ["fits", "short but fits", "too short", "long"])
+
+    def test_a_loop_that_misses_the_time_is_asked_for_again_scaled(self):
+        """The first answer is far too long; the second, asked shorter, fits and wins."""
+        from core.walking import generate as gen
+        seen = []
+        k_long = line_coords([(0, 0), (1500, 0), (1500, 1500), (0, 1500), (0, 0)])    # 6 km
+        k_fit = line_coords([(0, 0), (500, 0), (500, 500), (0, 500), (0, 0)])         # 2 km
+
+        def handler(request):
+            body = json.loads(request.read())
+            seen.append(body["options"]["round_trip"]["length"])
+            coords = k_long if len(seen) <= 3 else k_fit
+            n = len(coords) - 1
+            return httpx.Response(200, json={"features": [{
+                "type": "Feature", "geometry": {"type": "LineString", "coordinates": coords},
+                "properties": {"extras": {"surface": {"values": [[0, n, 3]]},
+                                          "waytype": {"values": [[0, n, 4]]}}}}]})
+
+        os.environ["ORS_API_KEY"] = "test-key"
+        try:
+            client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+            routes = asyncio.run(gen.generate((52.0, 13.0), "walker", 30, "x", client))
+        finally:
+            os.environ.pop("ORS_API_KEY", None)
+        self.assertEqual(len(seen), 6)
+        self.assertTrue(all(length < seen[0] for length in seen[3:]))   # asked shorter
+        from core.walking.catalogue import _full_minutes
+        self.assertAlmostEqual(_full_minutes(routes[0]), 30, delta=6)
+

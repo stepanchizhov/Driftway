@@ -130,6 +130,31 @@ calls each, against the plan's 40 a minute and 2000 a day), and 4 a minute and
 by the founder, 9 Oct 2026 (founder-tested). "Just me" is implemented and
 deployed, not founder-tested.
 
+## Fitting the time, and spikes (0.8, 11 Oct 2026)
+
+Founder feedback after using it: generated walks came back much longer than
+asked and still came first, and some had spikes - out along a path and
+straight back the same way. openrouteservice treats a round trip's length as
+"a preferred value". Now, for loops made from a start (`generate.py`):
+
+- **Spikes are cut out first.** A spike is up to 700 m out and back along
+  the same path (at most 40% of the walk), after which the walk carries on
+  somewhere new. The far end of a there-and-back walk also comes back on
+  itself, but then the walk heads back the way it came, so it is not cut.
+- **Measured** in walking minutes, as the card measures them (pace plus
+  climb).
+- **Asked for again** when a loop misses the time by more than 15%, with its
+  length scaled by the miss. The closer of the two answers is kept. At most
+  one extra call per loop.
+- **Ordered**: walks within 20% of the time first, then by the smaller miss.
+  Greener and Quieter re-order only among equals.
+
+Live check, 11 Oct, from the Long Walk's Park Street end, best walk against
+the time asked: 40 min for 45 (Just me), 64 for 60 (Carrier), 29 for 30 (Just
+me), with 4 or 5 provider calls each. Loops that cross themselves are not yet
+handled, pending the founder's examples. LATER: several checkpoints, as asked
+for the same day.
+
 ## Checkpoints
 
 A checkpoint means **"visit this point"**, not "follow this avenue". Founder

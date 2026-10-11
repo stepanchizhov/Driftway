@@ -29,6 +29,9 @@ export const RELEASES: Release[] = [
     version: "0.8.0",
     date: "in progress",
     changes: [
+      "Walks made for you fit your time better: one that misses by more than 15% is asked for again, and walks within about 20% of your time always come first.",
+      "Dead-end detours, out along a path and straight back, are cut out of walks made for you.",
+      "The Walk tab makes walks as soon as it knows where you are starting, and says what's missing instead of greying out the button.",
       "Pram walks always keep pram routing. Greener and Quieter are no longer offered with a pram: they used walking routes that dropped the pram's rules on surface, slope and kerbs.",
       "A Feedback button at the top of every screen. It says which screen you were on and which version you have.",
       "A privacy policy, a guide for testers, and a page on deleting your account without the app, all linked from Settings.",

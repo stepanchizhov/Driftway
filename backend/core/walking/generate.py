@@ -242,7 +242,8 @@ def _ors_error(resp: httpx.Response) -> str:
 
 def request_body(start: Tuple[float, float], profile: str, minutes: int,
                  seed: int, character: str = "any",
-                 weight_form: Optional[str] = "int") -> Tuple[str, Dict]:
+                 weight_form: Optional[str] = "int",
+                 length_m: Optional[float] = None) -> Tuple[str, Dict]:
     """The ORS profile and request body for one candidate walk.
 
     A pram always gets wheelchair routing. Until 0.8, asking for a greener or
@@ -261,7 +262,7 @@ def request_body(start: Tuple[float, float], profile: str, minutes: int,
         # ORS takes [longitude, latitude].
         "coordinates": [[start[1], start[0]]],
         "options": {
-            "round_trip": {"length": round(target_length_m(minutes)),
+            "round_trip": {"length": round(length_m or target_length_m(minutes)),
                            # More points make rounder walks, per the
                            # docs; fewer retraced stretches.
                            "points": 5, "seed": seed},
@@ -367,6 +368,127 @@ def route_from_ors(feature: Dict, *, walk_id: str, name: str,
     )
 
 
+# ------------------------------------------------------------ spikes and fit
+#
+# Founder feedback, 11 Oct 2026: generated walks came back much longer than
+# asked and still ranked first, and some had spikes - a stretch out along a
+# path and straight back the same way, adding time and nothing else. So a
+# round trip is first cleaned of spikes, then measured in walking minutes;
+# one that misses the time by more than FIT_RETRY_SHARE is asked for once more
+# with its length scaled; and the results are ordered with walks within
+# FIT_RANK_SHARE of the time first.
+
+#: A spike is at most this long, out and back together.
+SPIKE_MAX_M = 700.0
+#: Shorter than this is GPS-scale wobble, not a spike.
+SPIKE_MIN_M = 40.0
+#: The two ends of a spike lie this close together.
+SPIKE_JOIN_M = 15.0
+#: The way back along a spike lies this close to the way out.
+SPIKE_TRACK_M = 20.0
+#: A spike is never more than this share of the whole walk.
+SPIKE_MAX_SHARE = 0.4
+
+#: Ask again when a loop misses the time by more than this share.
+FIT_RETRY_SHARE = 0.15
+#: Walks within this share of the time rank above every walk outside it.
+FIT_RANK_SHARE = 0.20
+
+
+#: How far either side of a spike to look, to see which way the walk goes on.
+SPIKE_CONTEXT_M = 30.0
+
+
+def _is_spike(pts: List[Tuple[float, float]], i: int, j: int,
+              cum: Optional[List[float]] = None) -> bool:
+    """Whether pts[i..j] goes out and comes back along itself, and the walk
+    then carries on somewhere new.
+
+    The second half matters: the far end of a there-and-back walk also goes
+    out and comes back, but then the walk heads back the way it came. That
+    is the walk's turning point, not a spike, and must not be cut.
+    """
+    if cum is not None:
+        before = next((k for k in range(i, -1, -1) if cum[i] - cum[k] >= SPIKE_CONTEXT_M), None)
+        after = next((k for k in range(j, len(pts)) if cum[k] - cum[j] >= SPIKE_CONTEXT_M), None)
+        if (before is not None and after is not None
+                and _haversine(pts[before], pts[after]) <= SPIKE_TRACK_M):
+            return False
+    seg = pts[i:j + 1]
+    far = max(range(len(seg)), key=lambda k: _haversine(seg[0], seg[k]))
+    if far == 0 or far == len(seg) - 1 or _haversine(seg[0], seg[far]) < SPIKE_TRACK_M:
+        return False
+    out, back = seg[:far + 1], seg[far:]
+    near = sum(1 for p in back if any(_haversine(p, q) <= SPIKE_TRACK_M for q in out))
+    return near / len(back) >= 0.85
+
+
+def despike(feature: Dict) -> Tuple[Dict, float]:
+    """The feature with its spikes cut out, and how many metres went.
+
+    Keeps point i and jumps straight to j where pts[i..j] is a spike: the two
+    ends are within SPIKE_JOIN_M on the same path, so the walk stays
+    continuous. Per-stretch extras are re-indexed to match.
+    """
+    import bisect
+    coords = feature["geometry"]["coordinates"]
+    pts = [(c[1], c[0]) for c in coords]
+    n = len(pts)
+    if n < 6:
+        return feature, 0.0
+    cum = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        cum.append(cum[-1] + _haversine(a, b))
+    total = cum[-1] or 1.0
+    keep: List[int] = []
+    i = 0
+    while i < n:
+        keep.append(i)
+        best = None
+        j = i + 2
+        while j < n and cum[j] - cum[i] <= min(SPIKE_MAX_M, SPIKE_MAX_SHARE * total):
+            if (cum[j] - cum[i] >= SPIKE_MIN_M
+                    and _haversine(pts[i], pts[j]) <= SPIKE_JOIN_M
+                    and not (i == 0 and j == n - 1)
+                    and _is_spike(pts, i, j, cum)):
+                best = j
+            j += 1
+        i = best if best is not None else i + 1
+    removed = sum(cum[b] - cum[a] for a, b in zip(keep, keep[1:]) if b > a + 1
+                  ) - sum(_haversine(pts[a], pts[b]) for a, b in zip(keep, keep[1:]) if b > a + 1)
+    if len(keep) == n:
+        return feature, 0.0
+
+    def new(p: int) -> int:
+        return min(bisect.bisect_left(keep, p), len(keep) - 1)
+
+    extras: Dict = {}
+    for name, block in feature.get("properties", {}).get("extras", {}).items():
+        vals = []
+        for a, b, v in block.get("values", []):
+            na, nb = new(a), new(b)
+            if nb > na:
+                vals.append([na, nb, v])
+        extras[name] = {**block, "values": vals}
+    out = {"type": "Feature",
+           "geometry": {"type": "LineString", "coordinates": [coords[k] for k in keep]},
+           "properties": {**feature.get("properties", {}), "extras": extras}}
+    return out, removed
+
+
+def walk_minutes(feature: Dict) -> float:
+    """The walk's time, measured the way its card measures it."""
+    from .catalogue import _full_minutes
+    return _full_minutes(route_from_ors(feature, walk_id="m", name="m", start_label="m"))
+
+
+def fit_rank(minutes_actual: float, minutes_asked: int) -> Tuple[int, float]:
+    """Sort key: walks within FIT_RANK_SHARE of the time first, then the
+    smaller miss."""
+    miss = abs(minutes_actual - minutes_asked) / max(1, minutes_asked)
+    return (0 if miss <= FIT_RANK_SHARE else 1, miss)
+
+
 async def generate(start: Tuple[float, float], profile: str, minutes: int,
                    start_label: str, client: Optional[httpx.AsyncClient] = None,
                    character: str = "any") -> List[Route]:
@@ -380,11 +502,11 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
     own = client is None
     client = client or httpx.AsyncClient(timeout=20.0)
     try:
-        async def one(seed: int):
+        async def one(seed: int, length_m: Optional[float] = None):
             global _WEIGHT_FORM
             for form in _weight_forms(character):
                 ors_profile, body = request_body(start, profile, minutes, seed,
-                                                 character, form)
+                                                 character, form, length_m=length_m)
                 _spend()
                 resp = await _post(client, ors_profile, body)
                 if resp.status_code == 200:
@@ -403,16 +525,50 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
                     return None, form
             return None, None
 
-        results = await asyncio.gather(*(one(s) for s in SEEDS), return_exceptions=True)
+        results = list(await asyncio.gather(*(one(s) for s in SEEDS),
+                                            return_exceptions=True))
+
+        def measured(outcome):
+            """(feature without spikes, form, minutes), or None."""
+            if isinstance(outcome, Exception) or not outcome or not outcome[0]:
+                return None
+            feat, form = outcome
+            feat, _ = despike(feat)
+            return feat, form, walk_minutes(feat)
+
+        found = [measured(o) for o in results]
+        # One more ask for each loop that misses the time by more than
+        # FIT_RETRY_SHARE, its length scaled by the miss; keep the closer.
+        asked_m = target_length_m(minutes)
+        retry = [(k, m) for k, m in enumerate(found)
+                 if m and abs(m[2] - minutes) / minutes > FIT_RETRY_SHARE]
+        if retry:
+            again = await asyncio.gather(
+                *(one(SEEDS[k], asked_m * max(0.5, min(1.6, minutes / m[2])))
+                  for k, m in retry),
+                return_exceptions=True)
+            for (k, old), outcome in zip(retry, again):
+                new = measured(outcome)
+                if new and abs(new[2] - minutes) < abs(old[2] - minutes):
+                    found[k] = new
+    except ProviderRefused:
+        raise
     finally:
         if own:
             await client.aclose()
 
+    # Walks that fit the time first (founder feedback, 11 Oct); then, for a
+    # greener or quieter request, the least road among equals.
+    def order(m):
+        feat = m[0]
+        way = [v for a, b, v in feat.get("properties", {}).get("extras", {})
+               .get("waytype", {}).get("values", [])]
+        roads = sum(1 for v in way if v in (1, 2, 3)) / max(1, len(way))
+        return fit_rank(m[2], minutes) + ((roads,) if character in ("green", "quiet") else ())
+
+    ordered = sorted((m for m in found if m), key=order)
     routes = []
-    for n, outcome in enumerate(results, start=1):
-        if isinstance(outcome, Exception) or not outcome[0]:
-            continue
-        feat, form = outcome
+    for n, (feat, form, _mins) in enumerate(ordered, start=1):
         weighted = character in ("green", "quiet")
         wanted = "greener" if character == "green" else "quieter"
         notes = []
@@ -431,9 +587,6 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
         routes.append(route_from_ors(
             feat, walk_id=f"generated-{n}", name=f"Walk {n} from {start_label}",
             start_label=start_label, routing_note=note))
-    if character in ("green", "quiet"):
-        # Asked for less road: put the walks with the least of it first.
-        routes.sort(key=lambda r: r.road_share if r.road_share is not None else 1.0)
     if not routes:
         no = next((o for o in results if isinstance(o, ProviderRefused)), None)
         if no:
