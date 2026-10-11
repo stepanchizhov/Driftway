@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import type { Coord } from "../types";
 import type { Units } from "../hooks/useSettings";
-import { NotAdmitted, traceWalks, type GeneratedWalks, type Walk } from "./api";
+import { NotAdmitted, traceWalks, type GeneratedWalks, type TraceFidelity, type Walk } from "./api";
 import { MAX_POINTS, isLoop, lengthOf, parseGpx, type MyWalk } from "./myWalks";
 import { RouteDrawer } from "./RouteDrawer";
 import type { WalkSetup } from "./useWalkSetup";
@@ -27,11 +27,16 @@ export function MyWalksSection({
   centre: Coord | null;
   setup: WalkSetup;
   units: Units;
-  renderWalk: (walk: Walk) => ReactNode;
+  /** Draws a walk card; `source` is the parent's own route, for the map. */
+  renderWalk: (walk: Walk, source?: Coord[]) => ReactNode;
 }) {
   const [drawing, setDrawing] = useState(false);
   const [imported, setImported] = useState<{ name: string; points: Coord[]; count: number } | null>(null);
-  const [shown, setShown] = useState<{ id: string; key: string; result: GeneratedWalks } | null>(null);
+  const [shown, setShown] = useState<{
+    id: string;
+    key: string;
+    result: GeneratedWalks & { trace?: TraceFidelity };
+  } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -243,7 +248,12 @@ export function MyWalksSection({
               </button>
             </p>
           )}
-          {shown.result.walks.map((w) => renderWalk(w))}
+          <Fidelity
+            trace={shown.result.trace}
+            source={walks.find((x) => x.id === shown.id)?.source}
+            units={units}
+          />
+          {shown.result.walks.map((w) => renderWalk(w, walks.find((x) => x.id === shown.id)?.points))}
           <p className="walks-hint">{shown.result.attribution}</p>
         </div>
       )}
@@ -256,3 +266,56 @@ export function MyWalksSection({
     </fieldset>
   );
 }
+
+/**
+ * What the screen says about how the walk shown relates to the parent's own
+ * route: always that it was recalculated, and where it differs when it does.
+ * The saved route itself is never changed to match.
+ */
+function Fidelity({
+  trace,
+  source,
+  units,
+}: {
+  trace?: TraceFidelity;
+  source?: MyWalk["source"];
+  units: Units;
+}) {
+  const what = source === "gpx" ? "your recorded track" : source === "made" ? "the walk you saved" : "your drawing";
+  const m = (x: number) =>
+    units === "mi" ? `${Math.round(x * 1.0936)} yd` : `${Math.round(x)} m`;
+  if (!trace || !trace.changed) {
+    return (
+      <p className="walks-hint">
+        Recalculated along mapped paths through your points, so it can differ a
+        little from {what}. On the map, your own line is the dotted purple one.
+      </p>
+    );
+  }
+  const parts: string[] = [];
+  if (trace.far_points.length) {
+    const list = trace.far_points.slice(0, 5).join(", ");
+    parts.push(
+      `it doesn't pass near point${trace.far_points.length > 1 ? "s" : ""} ${list}` +
+        `${trace.far_points.length > 5 ? " and others" : ""} (up to ${m(trace.max_offset_m)} away)`,
+    );
+  }
+  if (trace.longer_share > 0.3) {
+    parts.push(`it's about ${Math.round(trace.longer_share * 100)}% longer than the line through your points`);
+  }
+  return (
+    <div className="walks-gate" role="status">
+      <p>
+        <strong>This walk differs from {what}:</strong> {parts.join(", and ")}.
+        Mapped paths may not join up where you walk, or the way may not suit
+        your settings.
+      </p>
+      <p className="walks-hint">
+        Compare them on the map: your own line is the dotted purple one. Adding
+        a point where they part, or moving it onto the path you take, keeps the
+        walk closer. Your saved route is unchanged.
+      </p>
+    </div>
+  );
+}
+

@@ -264,6 +264,18 @@ export async function assessWalks(body: {
  * walk (11 Oct 2026). Its points go to the server and on to openrouteservice
  * for this one request; neither keeps them.
  */
+/** Where the walk shown strays from the parent's own points (server
+ *  generate.trace_fidelity). */
+export interface TraceFidelity {
+  source_m: number;
+  routed_m: number;
+  max_offset_m: number;
+  /** 1-based numbers of the parent's points the walk does not pass near. */
+  far_points: number[];
+  longer_share: number;
+  changed: boolean;
+}
+
 export async function traceWalks(body: {
   profile: "pram" | "carrier" | "walker";
   minutes: number;
@@ -274,7 +286,7 @@ export async function traceWalks(body: {
   start_label: string;
   pram?: PramSetup;
   carrier?: CarrierSetup;
-}): Promise<GeneratedWalks> {
+}): Promise<GeneratedWalks & { trace?: TraceFidelity }> {
   let res: Response;
   try {
     res = await authFetch(`${API_BASE}/api/walks/trace`, {

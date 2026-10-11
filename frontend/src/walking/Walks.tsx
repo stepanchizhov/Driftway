@@ -347,8 +347,14 @@ export function Walks({
               centre={here}
               setup={applied}
               units={units}
-              renderWalk={(w) => (
-                <WalkCard key={w.id} walk={w} units={units} handoff={result.handoff} />
+              renderWalk={(w, source) => (
+                <WalkCard
+                  key={w.id}
+                  walk={w}
+                  units={units}
+                  handoff={result.handoff}
+                  source={source?.map((p) => [p.lat, p.lng] as [number, number])}
+                />
               )}
             />
           )}
@@ -708,6 +714,7 @@ function WalkCard({
   fromKm,
   onSave,
   saved,
+  source,
 }: {
   walk: Walk;
   units: Units;
@@ -717,6 +724,8 @@ function WalkCard({
   /** Walks Driftway made can be kept in My walks. */
   onSave?: () => void;
   saved?: boolean;
+  /** A route of your own: its points as drawn or imported, for the map. */
+  source?: [number, number][];
 }) {
   const directions =
     `https://www.google.com/maps/dir/?api=1&destination=` +
@@ -826,7 +835,7 @@ function WalkCard({
         </ul>
       )}
 
-      <WalkMapLazy walk={walk} />
+      <WalkMapLazy walk={walk} source={source} />
 
       <div className="walk-links">
         <a className="btn-quiet walk-go" href={directions} target="_blank" rel="noopener noreferrer">
@@ -853,12 +862,12 @@ function WalkCard({
  * The map, only once its section is opened: a Leaflet map per card on load
  * would fetch map images for walks nobody looked at.
  */
-function WalkMapLazy({ walk }: { walk: Walk }) {
+function WalkMapLazy({ walk, source }: { walk: Walk; source?: [number, number][] }) {
   const [open, setOpen] = useState(false);
   return (
     <details className="walk-map-box" onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>Show on map</summary>
-      {open && <WalkMap walk={walk} />}
+      {open && <WalkMap walk={walk} source={source} />}
     </details>
   );
 }

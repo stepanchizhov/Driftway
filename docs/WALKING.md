@@ -78,7 +78,19 @@ Founder decisions, 9 Oct 2026, after using it:
   pram now always gets wheelchair routing. A request for a greener or quieter
   pram walk (an older app) is answered with an ordinary pram walk that says
   so, on loops and on both legs of a checkpoint walk; tested in
-  `tests/test_walk_generation.py`. Rivers, canals, seaside and
+  `tests/test_walk_generation.py`. **Closed, 11 Oct 2026** (IMPLEMENTED in
+  `be248b1`, rechecked): `generate.request_body` is the only place a routing
+  profile is chosen; it returns `wheelchair` for a pram whatever the
+  character asked for, and never adds a weighting for a pram
+  (`pram_character` turns a stale client's request into an ordinary pram walk
+  with a note). Loops, every checkpoint leg and routes of your own all build
+  their requests with it. Tests: `test_a_pram_is_never_moved_off_pram_routing`,
+  `test_an_older_app_asking_for_a_quieter_pram_walk_gets_pram_routing_and_a_note`,
+  `test_a_pram_walk_via_a_checkpoint_keeps_pram_routing_on_both_legs`
+  (`test_walk_generation.py`), `test_every_profile_keeps_its_access_rules_on_both_legs`
+  (`test_walk_checkpoints.py`) and `PramTests` (`test_walk_trace.py`).
+  Wheelchair routing's rules are the provider's; missing surface or slope
+  data stays "not recorded" on the card, never a guarantee. Rivers, canals, seaside and
   "town" are not offered by the provider and are not pretended; waterside
   would need our own check against mapped water. Each generated walk shows its
   share along streets and roads, from the provider's way types. **What they do
@@ -571,3 +583,34 @@ web app only while it is open with the screen on; reliable recording needs a
 native app, and a recorded track needs a privacy policy change), and walks
 that learn from the ones taken - preferring paths walked before, avoiding
 stretches always skipped.
+
+### Fidelity of routes of your own (11 Oct 2026, 0.8.5)
+
+IMPLEMENTED. A route of your own is recalculated along mapped paths, so the
+walk shown can differ from what was drawn or recorded. The screen always says
+it was recalculated, and the map draws the parent's own line, dotted purple,
+over the walk. The server compares the two (`generate.trace_fidelity`, from
+the final geometry the card is judged on) and the screen says where they
+differ: points the walk passes more than 60 m from (by number), and a walk
+more than 30% longer than the line through the points. The saved route is
+never changed to match the provider's result.
+
+- **Thinning.** A GPX track is kept as 40 points spread evenly by distance.
+  With synthetic fixtures (a loop with a 270 m connector; a parallel path
+  150 m away; a long way round) the connector keeps points and is followed,
+  and the parallel path and the detour are flagged
+  (`test_walk_trace.py`, `FidelityTests`). HYPOTHESIS: a route with several
+  short connectors under about 1/40 of its length could lose one; the
+  fidelity check would then flag it, and drawing points by hand at the turns
+  fixes it.
+- **Checkpoints are never cut.** Dead-end cleanup runs on round trips only
+  (`test_dead_end_cleanup_never_touches_a_checkpoint_walk`); time fitting
+  never turns a checkpoint walk back early (`catalogue._may_turn`,
+  `test_walks_longer_than_asked_are_flagged_not_trimmed`); every checkpoint,
+  its order and reach are checked in `test_walk_checkpoints.py`.
+- **Figures** (distance, climb, time at the chosen pace, warnings) come from
+  the final geometry shown
+  (`test_figures_come_from_the_geometry_shown_at_the_pace_chosen`).
+- OPEN: the founder's own Long Walk circuit, the real test. Not done by a
+  developer fixture.
+

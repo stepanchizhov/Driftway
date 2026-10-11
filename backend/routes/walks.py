@@ -394,4 +394,6 @@ async def trace_walks(
             raise HTTPException(status_code=503, detail=str(e))
         walk = assess_route(route, body.profile, setup, body.minutes,
                             body.allow_out_and_back)
-    return {"walks": [walk], "attribution": gen.ATTRIBUTION}
+    # Where the walk shown strays from the parent's own points.
+    fidelity = gen.trace_fidelity([(pt.lat, pt.lng) for pt in body.points], route)
+    return {"walks": [walk], "attribution": gen.ATTRIBUTION, "trace": fidelity}

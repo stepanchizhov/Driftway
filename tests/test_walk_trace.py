@@ -74,6 +74,90 @@ class RequestTests(_Base):
         self.assertFalse(any(n.startswith("Generated just now") for n in route.notes))
 
 
+class PramTests(_Base):
+    """The earlier pram + Greener/Quieter problem cannot come back this way:
+    a route of your own is always made with the profile's own routing."""
+
+    def urls_for(self, profile):
+        urls = []
+
+        def handler(request):
+            urls.append(str(request.url))
+            return ok()(request)
+        self.trace(handler, profile=profile)
+        return urls
+
+    def test_a_pram_route_uses_wheelchair_routing(self):
+        urls = self.urls_for("pram")
+        self.assertTrue(urls and all("/wheelchair/" in u for u in urls))
+
+    def test_walking_profiles_use_walking_routing(self):
+        for profile in ("carrier", "walker"):
+            urls = self.urls_for(profile)
+            self.assertTrue(urls and all("/foot-walking/" in u for u in urls), profile)
+
+
+class FidelityTests(unittest.TestCase):
+    """Founder brief, 11 Oct: say where the walk shown differs from the
+    parent's own route; never imply the track was kept exactly."""
+
+    # A synthetic loop with a narrow connector: north 450 m, east 270 m along
+    # a short connector, back south. Nobody's address.
+    LOOP = [(52.0, 13.0), (52.002, 13.0), (52.004, 13.0), (52.004, 13.002),
+            (52.004, 13.004), (52.002, 13.004), (52.0, 13.004), (52.0, 13.002),
+            (52.0, 13.0)]
+
+    def route(self, coords):
+        from core.walking import generate as gen
+        feat = {"type": "Feature",
+                "geometry": {"type": "LineString",
+                             "coordinates": [[lng, lat, 30] for lat, lng in coords]},
+                "properties": {"extras": {}}}
+        return gen.route_from_ors(feat, walk_id="m", name="m", start_label="m")
+
+    def test_a_route_that_follows_the_points_is_not_flagged(self):
+        from core.walking import generate as gen
+        f = gen.trace_fidelity(self.LOOP, self.route(self.LOOP))
+        self.assertFalse(f["changed"])
+        self.assertEqual(f["far_points"], [])
+        self.assertLess(f["max_offset_m"], 1)
+
+    def test_a_parallel_path_is_flagged_with_the_points_it_misses(self):
+        """Routed along a parallel path 150 m east of the parent's north leg."""
+        from core.walking import generate as gen
+        east = [(lat, lng + 0.0022) if lng == 13.0 and 0 < lat - 52.0 < 0.004 else (lat, lng)
+                for lat, lng in self.LOOP]
+        f = gen.trace_fidelity(self.LOOP, self.route(east))
+        self.assertTrue(f["changed"])
+        self.assertIn(2, f["far_points"])
+        self.assertGreater(f["max_offset_m"], gen.TRACE_FAR_M)
+
+    def test_a_long_way_round_is_flagged(self):
+        from core.walking import generate as gen
+        detour = (self.LOOP[:3] + [(52.004, 12.99), (52.012, 12.99), (52.012, 13.004)]
+                  + self.LOOP[4:])
+        f = gen.trace_fidelity(self.LOOP, self.route(detour))
+        self.assertTrue(f["changed"])
+        self.assertGreater(f["longer_share"], gen.TRACE_LONGER_SHARE)
+
+    def test_thinning_keeps_a_narrow_connector(self):
+        """A dense GPX-like track (1,600 points) thinned evenly to 40, as the
+        app does, still has points on the 270 m connector, and the full line
+        through them is not flagged."""
+        from core.walking import generate as gen
+        dense = []
+        for a, b in zip(self.LOOP, self.LOOP[1:]):
+            for k in range(200):
+                dense.append((a[0] + (b[0] - a[0]) * k / 200, a[1] + (b[1] - a[1]) * k / 200))
+        dense.append(self.LOOP[-1])
+        step = (len(dense) - 1) / 39
+        thinned = [dense[round(i * step)] for i in range(40)]
+        connector = [p for p in thinned if abs(p[0] - 52.004) < 1e-9 and 13.0 < p[1] < 13.004]
+        self.assertGreaterEqual(len(connector), 2)
+        f = gen.trace_fidelity(thinned, self.route(dense))
+        self.assertFalse(f["changed"])
+
+
 class FailureTests(_Base):
     def test_a_point_far_from_any_path_is_named(self):
         from core.walking import generate as gen
@@ -141,6 +225,24 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(self.post(points=[{"lat": 52, "lng": 13}]).status_code, 422)
         many = [{"lat": 52 + i * 1e-4, "lng": 13} for i in range(gen.MAX_TRACE_POINTS + 1)]
         self.assertEqual(self.post(points=many).status_code, 422)
+
+    def test_the_response_says_how_far_the_walk_strays(self):
+        trace = self.post().json()["trace"]
+        self.assertEqual(set(trace), {"source_m", "routed_m", "max_offset_m",
+                                      "far_points", "longer_share", "changed"})
+
+    def test_figures_come_from_the_geometry_shown_at_the_pace_chosen(self):
+        from core.walking.generate import _haversine
+        walk = self.post(pace_kmh=5).json()["walks"][0]
+        out = [s for s in walk["sections"]
+               if walk["shape"] != "out_and_back" or s["to_m"] <= walk["distance_m"] / 2 + 1]
+        drawn = sum(_haversine(a, b) for s in out
+                    for a, b in zip(s["geometry"], s["geometry"][1:]))
+        whole = drawn * (2 if walk["shape"] == "out_and_back" else 1)
+        self.assertAlmostEqual(walk["distance_m"], whole, delta=max(5, whole * 0.01))
+        climb = walk["ascent_m"] or 0
+        expected = walk["distance_m"] / 1000 / 5 * 60 + climb / 10
+        self.assertAlmostEqual(walk["fit"]["full_minutes"], expected, delta=1)
 
     def test_nothing_is_stored(self):
         from core.db import Base, SessionLocal

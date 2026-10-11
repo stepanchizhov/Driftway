@@ -394,6 +394,15 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(detail["code"], "too_far")
         self.assertEqual(detail["minimum_minutes"], 30)
 
+    def test_dead_end_cleanup_never_touches_a_checkpoint_walk(self):
+        """A visit up a dead end to a checkpoint looks exactly like a spur.
+        Cleanup runs on round trips only; this pins that (brief, 11 Oct)."""
+        from unittest import mock as _mock
+        with _mock.patch("core.walking.generate.despike",
+                         side_effect=AssertionError("despike on a checkpoint walk")):
+            r = self.post(self.body(), lambda req: httpx.Response(200, json=fc(line())))
+        self.assertEqual(r.status_code, 200, r.text)
+
     def test_walks_longer_than_asked_are_flagged_not_trimmed(self):
         # 1 km away as the crow flies (fits 30 min), but the only paths bow
         # far out, so every walk through it is longer than asked.

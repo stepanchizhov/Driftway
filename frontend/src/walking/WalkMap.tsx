@@ -42,7 +42,15 @@ const MARKER_LABEL: Record<string, string> = {
   via_requested: "Your checkpoint",
 };
 
-export function WalkMap({ walk }: { walk: Walk }) {
+export function WalkMap({
+  walk,
+  source,
+}: {
+  walk: Walk;
+  /** The parent's own route as drawn or imported, [lat, lng]: drawn thin
+   *  and dotted on top, so where the walk differs from it is visible. */
+  source?: [number, number][];
+}) {
   const box = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -82,6 +90,14 @@ export function WalkMap({ walk }: { walk: Walk }) {
         .bindTooltip(`${s.label}: ${s.surface}`)
         .addTo(map);
       line.forEach((p) => bounds.extend(p));
+    }
+
+    if (source && source.length > 1) {
+      const own = source.map(([a, b]) => L.latLng(a, b));
+      L.polyline(own, { color: "#7c3aed", weight: 3, opacity: 0.9, dashArray: "2 7" })
+        .bindTooltip("Your route, as drawn or imported")
+        .addTo(map);
+      own.forEach((p) => bounds.extend(p));
     }
 
     // Start, turning point and checkpoint each look different: founder
@@ -146,7 +162,7 @@ export function WalkMap({ walk }: { walk: Walk }) {
       if (watch !== null) navigator.geolocation.clearWatch(watch);
       map.remove();
     };
-  }, [walk]);
+  }, [walk, source]);
 
   return <div ref={box} className="walk-map" role="region" aria-label={`Map of ${walk.name}`} />;
 }

@@ -1307,3 +1307,37 @@ async def trace_walk(points: List[Tuple[float, float]], profile: str, name: str,
         route.notes.append("Where your way isn't suitable for a pram, this goes "
                            "another way. Check it on the map.")
     return route
+
+
+#: A point of the parent's own route further than this from the routed line
+#: is reported: the walk shown does not pass where they put it.
+TRACE_FAR_M = 60.0
+#: Routed this much longer than the line through the parent's points is
+#: reported too: the provider took a way round. Real paths bend, so some
+#: extra length is normal, and GPX points are joined by straight lines here.
+TRACE_LONGER_SHARE = 0.3
+
+
+def trace_fidelity(points: List[Tuple[float, float]], route: Route) -> Dict:
+    """How far the walk shown strays from the parent's own points.
+
+    The route is recalculated along mapped paths, so it can differ from what
+    they drew or recorded; this says where and by how much, so the screen
+    never implies the track was kept exactly. Computed from the final
+    geometry, the same line the card is judged on."""
+    line = [[lng, lat] for s in route.sections for lat, lng in s.geometry]
+    pts = [tuple(p) for p in points][:MAX_TRACE_POINTS]
+    offsets = [closest_m(line, p) for p in pts] if line else [0.0] * len(pts)
+    far = [i + 1 for i, o in enumerate(offsets) if o > TRACE_FAR_M]
+    source_m = sum(_haversine(a, b) for a, b in zip(pts, pts[1:]))
+    routed_m = route.sections[-1].to_m if route.sections else 0.0
+    longer = (routed_m / source_m - 1.0) if source_m > 0 else 0.0
+    return {
+        "source_m": round(source_m),
+        "routed_m": round(routed_m),
+        "max_offset_m": round(max(offsets)) if offsets else 0,
+        "far_points": far,
+        "longer_share": round(longer, 2),
+        "changed": bool(far) or longer > TRACE_LONGER_SHARE,
+    }
+
