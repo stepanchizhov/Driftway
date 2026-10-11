@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { RoadProfile } from "../types";
-import { APP_VERSION, BUILD, RELEASES } from "../version";
+import { APP_NAME, APP_VERSION, BUILD, RELEASES } from "../version";
 import type { Settings, Units } from "../hooks/useSettings";
 import { ChipGroup } from "./ChipGroup";
 import { AccountSection } from "../auth/AccountSection";
@@ -40,7 +40,7 @@ export function SettingsScreen({ settings, update, server }: Props) {
     <main className="settings">
       <h2 className="settings-title">Settings</h2>
       <p className="settings-version">
-        Driftway {APP_VERSION} · build <span className="mono">{BUILD}</span> ·{" "}
+        {APP_NAME} {APP_VERSION} · build <span className="mono">{BUILD}</span> ·{" "}
         <a
           href="#whats-new"
           onClick={(e) => {

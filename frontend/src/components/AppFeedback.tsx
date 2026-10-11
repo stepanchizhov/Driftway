@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { sendAppFeedback, type FeedbackContext } from "../api";
-import { APP_VERSION, BUILD } from "../version";
+import { APP_NAME, APP_VERSION, BUILD, REPORTED_VERSION } from "../version";
 
 /**
  * Feedback about the app, from any tab - 0.8, for the beta.
@@ -52,7 +52,7 @@ export function AppFeedback({
         message: steps.trim()
           ? `${message.trim()}\n\nWhat I was doing: ${steps.trim()}`
           : message.trim(),
-        app_version: APP_VERSION,
+        app_version: REPORTED_VERSION,
         build: BUILD,
         owner,
       });
@@ -85,7 +85,7 @@ export function AppFeedback({
         ) : (
           <>
             <p className="appfb-sub">
-              About: {CONTEXT_LABEL[context]} · Driftway {APP_VERSION} (build {BUILD})
+              About: {CONTEXT_LABEL[context]} · {APP_NAME} {APP_VERSION} (build {BUILD})
             </p>
             <label className="account-field">
               <span>What worked, what didn&rsquo;t, what you expected</span>

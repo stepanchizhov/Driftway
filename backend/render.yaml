@@ -113,3 +113,38 @@ services:
       # address". Leave unset until then.
       - key: VITE_CANONICAL_ORIGIN
         sync: false            # e.g. https://driftway.stepan.chizhov.com
+
+  # ------------------------------------------------- Next (docs/CHANNELS.md)
+  # The latest build, for closed testing, from the `next` branch. Shares the
+  # database. Every variable the stable server has is copied, except those
+  # below, and ADMIN_API_TOKEN / RETENTION_TRIGGER_TOKEN stay unset.
+  - type: web
+    name: Driftway-Next
+    runtime: python
+    region: oregon
+    branch: next
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: https://next.driftway.stepan.chizhov.com,http://localhost:5173
+      # A tenth of the shared openrouteservice plan; stable keeps the rest.
+      - key: ORS_BUDGET_SHARE
+        value: "0.1"
+
+  - type: web
+    name: Driftway-Front-Next
+    runtime: static
+    region: oregon
+    branch: next
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_BASE
+        sync: false            # the Driftway-Next address, no trailing slash
+      - key: VITE_CHANNEL
+        value: next
+      # Never VITE_CANONICAL_ORIGIN here: it would say Driftway has moved.

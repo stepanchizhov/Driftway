@@ -11,7 +11,7 @@
   "navigationDividerColor": "#161C36",
   "navigationDividerColorDark": "#161C36",
   "backgroundColor": "#161C36",
-  "enableNotifications": false,
+  "enableNotifications": true,
   "startUrl": "/",
   "iconUrl": "https://driftway.stepan.chizhov.com/icon-512.png",
   "maskableIconUrl": "https://driftway.stepan.chizhov.com/icon-maskable-512.png",
@@ -21,7 +21,7 @@
     "alias": "driftway-localtest"
   },
   "appVersionName": "0.8.0",
-  "appVersionCode": 1,
+  "appVersionCode": 2,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://driftway.stepan.chizhov.com/manifest.webmanifest",

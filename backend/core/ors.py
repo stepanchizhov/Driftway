@@ -14,6 +14,11 @@ so the budget is counted here, per endpoint, across every caller - a busy
 afternoon of driving fallbacks must not leave nothing for walks, and the
 reverse.
 
+The count is per server process. Since 11 Oct 2026 a second server (Next,
+docs/CHANNELS.md) uses the same key, so each server takes a share of the
+budget: ORS_BUDGET_SHARE, a fraction from 0 to 1, default 1. The two shares
+must add up to at most 1 (stable 1 and Next 0.1 leave room under the plan).
+
 The host moved once without Driftway noticing (api.openrouteservice.org to
 api.heigit.org, see docs/DEPLOY.md). The addresses are settings:
 
@@ -52,6 +57,28 @@ WINDOWS: Dict[str, Tuple[Tuple[int, int], ...]] = {
 _budgets: Dict[str, object] = {}
 
 
+def budget_share() -> float:
+    """This server's share of the plan, from ORS_BUDGET_SHARE (default 1).
+    Unreadable or out of range: 1, the behaviour before the setting existed."""
+    raw = (os.getenv("ORS_BUDGET_SHARE") or "").strip()
+    try:
+        share = float(raw) if raw else 1.0
+    except ValueError:
+        log.error("ORS_BUDGET_SHARE=%r is not a number; using 1", raw)
+        return 1.0
+    if not 0 < share <= 1:
+        log.error("ORS_BUDGET_SHARE=%r is not between 0 and 1; using 1", raw)
+        return 1.0
+    return share
+
+
+def windows(endpoint: str) -> List[Tuple[int, int]]:
+    """The windows for `endpoint`, scaled to this server's share; at least
+    one call per window, so a small share slows walks rather than ending them."""
+    share = budget_share()
+    return [(seconds, max(1, int(most * share))) for seconds, most in WINDOWS[endpoint]]
+
+
 class OrsBudgetSpent(RuntimeError):
     """Driftway's own ceiling for this endpoint is reached."""
 
@@ -87,7 +114,7 @@ def spend(endpoint: str) -> None:
     if limiter is None:
         limiter = _budgets[endpoint] = SlidingWindowLimiter()
     try:
-        limiter.check("*", [_Window(a, b) for a, b in WINDOWS[endpoint]], scope="service")
+        limiter.check("*", [_Window(a, b) for a, b in windows(endpoint)], scope="service")
     except RateLimited:
         raise OrsBudgetSpent(endpoint)
 

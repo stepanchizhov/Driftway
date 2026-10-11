@@ -439,6 +439,12 @@ I would consider them for this alpha:
 3. **Move to a paid instance** before any closed beta. The Bible already flags
    this as the pre-beta migration.
 
+## Two channels: stable and Next
+
+Since 11 Oct 2026 there are two websites, two servers and two Android apps:
+stable from `main`, Next from `next`, sharing one database. Setup and the
+everyday flow: [CHANNELS.md](CHANNELS.md).
+
 ## Versions and builds
 
 Founder request, 10 Oct 2026: testers must be able to tell which Driftway they

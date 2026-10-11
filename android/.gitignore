@@ -6,3 +6,5 @@
 !.gitignore
 !twa-manifest.json
 !README.md
+# Driftway Next (docs/CHANNELS.md): its own twa-manifest.json, nothing else.
+!next/

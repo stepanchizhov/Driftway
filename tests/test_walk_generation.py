@@ -504,6 +504,32 @@ class ViaAlternativesTests(_FreshBudget):
         self.assertEqual(len(routes), 1)         # what was found is kept
 
 
+class BudgetShareTests(unittest.TestCase):
+    """Two servers, one openrouteservice key (docs/CHANNELS.md)."""
+
+    def windows(self, value):
+        from core import ors
+        with mock.patch.dict(os.environ, {"ORS_BUDGET_SHARE": value}):
+            return ors.windows("directions")
+
+    def test_the_whole_budget_by_default(self):
+        from core import ors
+        self.assertEqual(self.windows(""), list(ors.WINDOWS["directions"]))
+
+    def test_a_share_scales_every_window(self):
+        self.assertEqual(self.windows("0.1"), [(60, 3), (86400, 180)])
+
+    def test_stable_and_next_together_stay_under_the_plan(self):
+        full, small = self.windows("1"), self.windows("0.1")
+        self.assertLessEqual(full[1][1] + small[1][1], 2000)   # a day
+        self.assertLessEqual(full[0][1] + small[0][1], 40)     # a minute
+
+    def test_nonsense_means_the_whole_budget(self):
+        from core import ors
+        for bad in ("lots", "0", "-1", "2"):
+            self.assertEqual(self.windows(bad), list(ors.WINDOWS["directions"]), bad)
+
+
 class ProviderHostTests(unittest.TestCase):
     """openrouteservice moved to api.heigit.org; the old host refused every
     request from 10 Oct 2026 with "Quota exceeded"."""

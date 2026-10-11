@@ -133,3 +133,15 @@ export const APP_VERSION = RELEASES[0].version;
 
 /** The commit this app was built from, set at build time; "dev" locally. */
 export const BUILD: string = typeof __BUILD_COMMIT__ === "string" ? __BUILD_COMMIT__ : "dev";
+
+/**
+ * Which channel this build is (11 Oct 2026, docs/CHANNELS.md): "next" is the
+ * latest build, for closed testing at next.driftway.stepan.chizhov.com, set
+ * with VITE_CHANNEL=next on that site. Everything else is the stable app.
+ */
+export const CHANNEL: "stable" | "next" =
+  (import.meta.env.VITE_CHANNEL ?? "").trim().toLowerCase() === "next" ? "next" : "stable";
+export const APP_NAME = CHANNEL === "next" ? "Driftway Next" : "Driftway";
+/** The version sent with feedback, so a report says which channel it came
+ *  from: "0.8.0", or "0.8.0-next". */
+export const REPORTED_VERSION = CHANNEL === "next" ? `${APP_VERSION}-next` : APP_VERSION;

@@ -11,7 +11,8 @@ Play Console and domain steps, is in `docs/ANDROID.md`.
 | `packageId` | `com.ibookbinding.driftway` | Founder decision, 10 Oct. Permanent once uploaded to Play |
 | `host` | `driftway.stepan.chizhov.com` | The final address. It went live on 10 Oct 2026: HTTPS, asset links and the API's CORS were checked from outside |
 | `features.locationDelegation` | on | Every tab uses location. Android then asks for it as it would for a native app. Foreground only: no background location |
-| `enableNotifications` | off | Not used in the beta. Not impossible, just not needed |
+| `enableNotifications` | **on** (11 Oct) | Needed for location, not for notifications. Bubblewrap switches its background service on only with notifications, and the location permission prompt lives in that service. With it off, the app never asked for location: with permission not yet granted, the page waited forever (founder's phone, 11 Oct). Driftway never asks to send notifications, so none appear; the app does declare Android's notification permission |
+| `appVersionCode` | 2 | 1 was the first local build, without the location prompt |
 | `signingKey` | `C:\Users\stepa\.driftway\driftway-localtest.jks`, alias `driftway-localtest` | A **local test key** for builds you install by hand. Never use it as the Play upload key; see below |
 
 Tooling used on 10 Oct 2026:
@@ -42,6 +43,20 @@ bubblewrap build --skipPwaValidation
 
 This produces `app-release-signed.apk`, which you can install by hand, and
 `app-release-bundle.aab`, which Play takes.
+
+## Driftway Next
+
+The latest-build app for closed testing (`docs/CHANNELS.md`) is built the
+same way from `android/next/twa-manifest.json`, in its own folder:
+
+```powershell
+mkdir $HOME\driftway-android-next -Force
+Copy-Item .\android\next\twa-manifest.json $HOME\driftway-android-next\
+cd $HOME\driftway-android-next
+```
+
+then `bubblewrap update` and `bubblewrap build` as above. Same local test
+key; `assetlinks.json` lists both packages with it.
 
 ## Keys: three different things
 
