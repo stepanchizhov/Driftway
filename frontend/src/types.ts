@@ -96,6 +96,9 @@ export interface RouteOption {
   caveat?: string | null;
   /** Apps that could drive this, best first. Empty when simulated. */
   navigation: NavigationOption[];
+  /** Speed bumps mapped on OpenStreetMap along the drive: a lower bound.
+   *  Null outside the prepared data; absent from servers before 0.8.7. */
+  speed_bumps?: number | null;
 }
 
 export interface GenerateResponse {

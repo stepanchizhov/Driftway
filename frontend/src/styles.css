@@ -2170,3 +2170,7 @@ body {
 .place-confirm p { margin: 0 0 8px; font-size: 14px; }
 .place-form { display: grid; gap: 10px; }
 .places-add { justify-self: start; }
+
+/* Mapped speed bumps on a drive card (11 Oct). */
+.card-bumps { margin: 4px 0 0; font-size: 14px; color: var(--ink); }
+.card-bumps-note { color: var(--ink-dim); font-size: 13px; }

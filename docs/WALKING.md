@@ -614,3 +614,31 @@ never changed to match the provider's result.
 - OPEN: the founder's own Long Walk circuit, the real test. Not done by a
   developer fixture.
 
+### Free sources for curated walks (founder question, 11 Oct 2026)
+
+Curation by one person does not scale. Checked what exists, free and
+reusable, around Windsor (51.40 to 51.55 N, 0.75 to 0.50 W):
+
+- **OpenStreetMap walking route relations** (ODbL, the same terms as the
+  map): 25 within that area, read 11 Oct 2026. 19 local, 3 regional, 1
+  national (the Thames Path, a National Trail), 1 European (E2). Several are
+  made for exactly Driftway's families: the National Trust's "Accessible
+  Route, Runnymede" (1.5 km), Cliveden's Blue, Green, Gold and Woodland
+  trails (2.6 to 5 km), Ankerwycke (1 km), Runnymede's Summer, Views and
+  Memorial routes, plus the Jubilee River Path and Maidenhead's Millennium
+  and Boundary walks. Each could be built into a curated walk with
+  `tools/build_walk.py` and judged by the same rules, labelled "a mapped
+  route, checked by the map, not on foot".
+- **National Trails** open data (Natural England, Open Government Licence):
+  the Thames Path line; the same route as the OSM relation, from its owner.
+- **Not usable:** route sites (AllTrails, Komoot, OS Maps, Wikiloc, walking
+  blogs). Their routes are their users' or their own copyright; link to
+  them, never copy them.
+- **Later, with consent:** parents' own My walks, shared deliberately.
+  Needs a sharing step, a review step and a privacy change (a route often
+  starts at a door), so it is not automatic.
+
+LATER (proposed next walking slice): import OSM walking route relations for
+the founder's area with `tools/build_walk.py`, starting with the National
+Trust accessible and family trails.
+

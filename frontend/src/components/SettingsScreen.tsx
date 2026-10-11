@@ -176,7 +176,6 @@ export function SettingsScreen({ settings, update, server }: Props) {
         </p>
         <ul className="settings-roadmap">
           <li>Driftway as an app from Google Play, for beta testers first</li>
-          <li>Calmer drives that steer away from mapped speed bumps</li>
           <li>Drives that turn around less often</li>
           <li>Walks by rivers and canals</li>
           <li>Recording a walk as you go, to keep in My walks</li>

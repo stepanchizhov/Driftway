@@ -37,6 +37,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.7",
+    date: "11 Oct 2026",
+    changes: [
+      "Drives count the speed bumps mapped along them, around Windsor for now, and say \"About N speed bumps mapped\". A drive with fewer is offered first when it's as good otherwise: no extra turn-arounds, and within 3 minutes of the time.",
+    ],
+  },
+  {
     version: "0.8.6",
     date: "11 Oct 2026",
     changes: [

@@ -102,6 +102,18 @@ export function RouteCard({
 
       <p className="card-character">{route.character}</p>
 
+      {route.speed_bumps != null && (
+        // "Mapped", never "none": a hump nobody mapped isn't counted.
+        <p className="card-bumps">
+          {route.speed_bumps === 0
+            ? "No speed bumps mapped along this drive"
+            : `About ${route.speed_bumps} speed bump${route.speed_bumps === 1 ? "" : "s"} mapped along this drive`}
+          <span className="card-bumps-note">
+            {" "}
+            · there may be others nobody has mapped. Map data © OpenStreetMap contributors
+          </span>
+        </p>
+      )}
       {route.caveat && <p className="card-caveat">Note: {route.caveat}</p>}
 
       {swapNotice && <p className="card-nav-notice">{swapNotice}</p>}

@@ -46,6 +46,10 @@ class EvaluatedRoute:
     #: False when the time comes from a provider without live traffic; the
     #: route then says so rather than presenting a guess as a live estimate.
     live_traffic: bool = True
+    #: Mapped speed bumps along the route (core.calming), worked out once
+    #: when first needed: see scorer.bumps_of.
+    bumps: Optional[object] = None
+    bumps_checked: bool = False
 
 
 class Router(Protocol):

@@ -13,6 +13,7 @@ from typing import List, Optional
 from .geometry import haversine_km, initial_bearing
 from .models import Coord, RoadMix
 from .router import EvaluatedRoute
+from . import calming
 
 
 # ---------------------------------------------------------------- validation
@@ -176,12 +177,43 @@ W_PROFILE = 0.10
 TURNAROUND_COST = 0.5
 
 
+# Mapped speed bumps (docs/CALMER_DRIVES.md, 11 Oct 2026). HYPOTHESIS
+# weights, tuned offline on 160 real candidates around Windsor: a drive with
+# a mapped bump every kilometre or more loses a quarter of a point. Bumps
+# never buy a worse drive on what already counted - see calmer_lead below -
+# so this only decides between drives that are otherwise as good.
+W_BUMPS = 0.25
+BUMPS_PER_KM_FULL = 1.0
+# A drive with no count (outside the prepared data) scores like a typical
+# drive (about 0.7 per km in the measurement): missing data is neither
+# rewarded nor punished.
+UNKNOWN_BUMP_SCORE = 1.0 - 0.7 / BUMPS_PER_KM_FULL
+
+
+def bumps_of(route: EvaluatedRoute):
+    """The route's mapped speed bumps (calming.BumpCount), or None outside
+    the prepared data. Counted once per route."""
+    if not route.bumps_checked:
+        route.bumps = calming.count_along(route.geometry)
+        route.bumps_checked = True
+    return route.bumps
+
+
+def _bump_score(route: EvaluatedRoute) -> float:
+    """1.0 = no mapped bumps, 0.0 = BUMPS_PER_KM_FULL or more per km."""
+    b = bumps_of(route)
+    if b is None:
+        return UNKNOWN_BUMP_SCORE
+    return 1.0 - min(1.0, b.per_km / BUMPS_PER_KM_FULL)
+
+
 def _smoothness(route: EvaluatedRoute) -> float:
     """1.0 = never asks the driver to double back."""
     return max(0.0, 1.0 - TURNAROUND_COST * turnaround_count(route))
 
 
-def score_route(route: EvaluatedRoute, target_minutes: int, profile: str) -> float:
+def score_route(route: EvaluatedRoute, target_minutes: int, profile: str,
+                with_bumps: bool = True) -> float:
     duration_score = max(0.0, 1.0 - abs(route.minutes - target_minutes) / target_minutes)
     loop_score = 1.0 - min(1.0, _self_overlap_ratio(route.geometry))
     profile_score = _road_mix_match(route.road_mix, profile)
@@ -189,9 +221,41 @@ def score_route(route: EvaluatedRoute, target_minutes: int, profile: str) -> flo
         W_DURATION * duration_score
         + W_SMOOTH * _smoothness(route)
         + W_LOOP * loop_score
-        + W_PROFILE * profile_score,
+        + W_PROFILE * profile_score
+        + (W_BUMPS * _bump_score(route) if with_bumps else 0.0),
         4,
     )
+
+
+#: A calmer drive may land this many minutes further from the time asked
+#: for than the drive it replaces, and no more.
+CALM_SLACK_MIN = 3.0
+
+
+def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
+                profile: str) -> List[EvaluatedRoute]:
+    """Put a calmer drive first, if one is as good on what already counted.
+
+    `ranked` is in the order the score without bumps gives. Measured on 20
+    drives (11 Oct 2026), a plain bump penalty bought fewer bumps with an
+    extra turn-around, or with ten minutes over the time, which is a worse
+    drive for a sleeping baby. So a candidate may replace the first drive
+    only with no more turn-arounds and at most CALM_SLACK_MIN minutes further
+    from the time; among those, and the first drive itself, the full score
+    (with bumps) decides. Only the first place changes.
+    """
+    if not ranked or W_BUMPS <= 0:
+        return ranked
+    lead = ranked[0]
+    lead_turns = turnaround_count(lead)
+    lead_miss = abs(lead.minutes - target_minutes)
+    eligible = [ev for ev in ranked
+                if turnaround_count(ev) <= lead_turns
+                and abs(ev.minutes - target_minutes) <= lead_miss + CALM_SLACK_MIN]
+    best = max(eligible, key=lambda ev: score_route(ev, target_minutes, profile))
+    if best is lead:
+        return ranked
+    return [best] + [ev for ev in ranked if ev is not best]
 
 
 def describe_character(mix: RoadMix) -> str:

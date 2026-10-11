@@ -1,6 +1,6 @@
 # Calmer drives: what the map data holds about speed bumps
 
-Research only, 11 Oct 2026. No change to drives. Question from the roadmap:
+Research 11 Oct 2026; built the same evening (0.8.7, see the end). Question from the roadmap:
 can Driftway steer drives away from speed bumps around Windsor, and on what
 evidence?
 
@@ -195,3 +195,40 @@ Calming points were matched to roads by shared vertex (rounded to about
 1 km by 1 km. The downloads were not committed. The measurement used the generator's own
 functions with the routing provider configured in `backend/.env`, ran from
 a developer machine, and printed counts only, never routes or keys.
+
+## Built (0.8.7, 11 Oct 2026)
+
+IMPLEMENTED.
+
+- **Data, ahead of time:** `backend/tools/build_calming.py` writes
+  `backend/data/calming/<region>.json` from OpenStreetMap (vertical calming
+  only; ODbL, attributed). `windsor.json`: 3,437 points, 51.33 to 51.62 N,
+  0.88 to 0.40 W, data as of 2026-10-11T21:14Z. Refresh monthly; another
+  area is one more run. Nothing is fetched while serving a drive.
+- **Count:** `core/calming.py` counts mapped bumps within 12 m of a drive,
+  each once, or gives no count when under 80% of the drive is inside
+  prepared data. A simulated drive gets no count.
+- **Ranking:** drives are ordered as before (time, smoothness, loop, road
+  mix). Then `scorer.calmer_lead` may put a calmer drive first, but only
+  one with **no more turn-arounds** than the drive it replaces and **at most
+  3 minutes further** from the time asked for; among those the score with
+  bumps decides (`W_BUMPS` 0.25, full at one mapped bump per km).
+  Why the guard: a plain penalty, tried first, bought fewer bumps with an
+  extra turn-around (Datchet, 1 to 3) or ten minutes over the time
+  (Englefield Green), which is a worse drive for a sleeping baby.
+- **Card:** "About N speed bumps mapped along this drive · there may be
+  others nobody has mapped. Map data © OpenStreetMap contributors", or "No
+  speed bumps mapped along this drive" with the same caveat; nothing outside
+  the prepared area.
+
+**After (same 160 candidates ranked both ways, no extra calls):** the drive
+offered first changes in 2 of 20 (Datchet: Quieter 15 to 9 bumps, Mixed 37
+to 14), 11% fewer mapped bumps across all 20, no added turn-arounds, median
+time unchanged within half a minute. Modest by design: the larger savings
+seen in the first measurement (Bray 8 to 0, Englefield Green 7 to 2) came
+with a turn-around or a worse time, and the guard refuses those.
+
+OPEN: does it feel calmer? Founder, on real drives from Datchet and
+elsewhere. LATER, only if it helps: let calmer candidates into second and
+third place too, and shape candidates away from dense clusters (option 2).
+

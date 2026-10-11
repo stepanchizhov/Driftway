@@ -52,6 +52,8 @@ from .models import (
 )
 from .router import EvaluatedRoute, MockRouter, Router
 from .scorer import (
+    bumps_of,
+    calmer_lead,
     dedupe,
     describe_character,
     passes_validation,
@@ -273,9 +275,12 @@ def _pick_top_three(evaluated: List[EvaluatedRoute], finish: Coord,
 
     scored = sorted(
         preferred,
-        key=lambda ev: score_route(ev, req.target_minutes, profile),
+        key=lambda ev: score_route(ev, req.target_minutes, profile, with_bumps=False),
         reverse=True,
     )
+    # Fewer mapped speed bumps, but never at the cost of a turn-around or the
+    # time (scorer.calmer_lead).
+    scored = calmer_lead(scored, req.target_minutes, profile)
     # Scale "meaningfully different" to the size of the drive: 1.5 km apart is
     # a different route for a 10-minute loop and a rounding error for a 90.
     min_diff = max(0.3, 0.10 * scored[0].distance_km) if scored else 1.5
@@ -319,6 +324,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
     extra = None
     if direct is not None:
         extra = round(ev.minutes - direct.minutes, 1)
+    bumps = None if simulated else bumps_of(ev)
 
     return RouteOption(
         id=str(uuid.uuid4())[:8],
@@ -344,6 +350,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         is_direct=is_direct,
         simulated=simulated,
         caveat=_with_traffic_note(ev, _caveat(ev, finish, req) if not is_direct else None),
+        speed_bumps=bumps.count if bumps is not None else None,
     )
 
 

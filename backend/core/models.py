@@ -104,6 +104,10 @@ class RouteOption(BaseModel):
     # Set when the route was returned despite missing a quality preference,
     # e.g. "outside your tolerance" or "doubles back once".
     caveat: Optional[str] = None
+    # Speed bumps mapped on OpenStreetMap along the drive (11 Oct 2026). A
+    # lower bound: unmapped ones are not counted. None outside the prepared
+    # data, and for a simulated route, whose geometry is invented.
+    speed_bumps: Optional[int] = None
 
     # Every app that could drive this, best first. Empty for a simulated
     # route, which has nothing real to navigate. `maps_url` above remains the
