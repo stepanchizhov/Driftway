@@ -1211,3 +1211,99 @@ async def via_walk(start: Tuple[float, float], via,
         r.via = r.vias[-1]
         routes.append(r)
     return routes
+
+
+# ------------------------------------------------------------ your own route
+#
+# Founder request, 11 Oct 2026: walks Driftway makes are not always the ones
+# a parent actually walks - his own Long Walk loop never came up. A route of
+# their own (drawn on the map, imported from a GPX file, or a made walk they
+# saved) arrives as points in the order walked. It is routed through them
+# along mapped ways with the profile's own rules, then judged like any other
+# walk. The points are kept on the parent's device, not here.
+
+#: Most points one route may pass. openrouteservice takes up to 50 waypoints
+#: per request on the standard plan; a margin is kept.
+MAX_TRACE_POINTS = 40
+#: How far a tapped or imported point may be from a usable way.
+TRACE_SNAP_M = 100
+#: A route whose end is this close to its start is a loop.
+TRACE_LOOP_M = 150.0
+
+
+class TraceProblem(GenerationUnavailable):
+    """One of the parent's points is the problem; `point` is its number
+    (1-based), when known."""
+
+    def __init__(self, message: str, point: Optional[int] = None):
+        super().__init__(message)
+        self.point = point
+
+
+async def trace_walk(points: List[Tuple[float, float]], profile: str, name: str,
+                     start_label: str,
+                     client: Optional[httpx.AsyncClient] = None) -> Route:
+    """The parent's own route through `points`, in order, along mapped ways
+    suitable for `profile`. One provider call. Raises TraceProblem when a
+    point is the problem, GenerationUnavailable otherwise."""
+    if not api_key():
+        raise GenerationUnavailable("Walk generation is not configured on this deployment.")
+    pts = [tuple(p) for p in points][:MAX_TRACE_POINTS]
+    if len(pts) < 2:
+        raise TraceProblem("A route needs at least two points.")
+    # The profile's own options, steps avoided for a pram: a route of your
+    # own is held to the same access rules as any other walk.
+    ors_profile, req = request_body(pts[0], profile, 30, 1, "any", None)
+    req["options"].pop("round_trip", None)
+    req["coordinates"] = [[p[1], p[0]] for p in pts]
+    req["radiuses"] = [TRACE_SNAP_M] * len(pts)
+
+    own = client is None
+    client = client or httpx.AsyncClient(timeout=20.0)
+    try:
+        _spend()
+        resp = await _post(client, ors_profile, req)
+    finally:
+        if own:
+            await client.aclose()
+
+    no = refused(resp)
+    if no:
+        log.warning("openrouteservice %s for a route of your own - %s",
+                    resp.status_code, _ors_error(resp))
+        raise no
+    features = resp.json().get("features") if resp.status_code == 200 else None
+    if not features:
+        log.warning("openrouteservice %s for a route of your own - %s",
+                    resp.status_code, _ors_error(resp))
+        code, point = _ors_failure(resp)
+        what = {"pram": "a pram", "carrier": "walking with a carrier",
+                "walker": "walking"}.get(profile, "walking")
+        if code == 2010 and point is not None and 0 <= point < len(pts):
+            raise TraceProblem(
+                f"Point {point + 1} of your route isn't within {TRACE_SNAP_M} m of a "
+                f"mapped way suitable for {what}. Move it onto or near a path.",
+                point + 1)
+        if code == 2009:
+            raise TraceProblem(
+                f"There's no mapped way suitable for {what} between some of your "
+                "points. Part of the route may be private, across water, or only "
+                "reachable by steps.")
+        raise GenerationUnavailable("Couldn't follow your route just now.")
+
+    route = route_from_ors(features[0], walk_id="mine", name=name or "Your route",
+                           start_label=start_label)
+    closed = _haversine(pts[0], pts[-1]) <= TRACE_LOOP_M
+    route.shape = "loop" if closed else "out_and_back"
+    route.summary = ("Your own route, along mapped paths." if closed else
+                     "Your own route, along mapped paths. It ends away from its "
+                     "start, so it is walked there and back.")
+    route.notes = [
+        "Follows mapped paths through your points. Between two points it takes "
+        "the shortest suitable way, which may not be the one you walk: more "
+        "points keep it closer.",
+    ] + [n for n in route.notes if not n.startswith("Generated just now")]
+    if profile == "pram":
+        route.notes.append("Where your way isn't suitable for a pram, this goes "
+                           "another way. Check it on the map.")
+    return route

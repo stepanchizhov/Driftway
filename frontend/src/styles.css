@@ -2141,3 +2141,9 @@ body {
 }
 /* Still asleep without the phone's location (11 Oct): the reason, and a search. */
 .sa-where { display: grid; gap: 8px; margin-top: 4px; }
+
+/* My walks (11 Oct): routes of your own, kept on the device. */
+.my-walks { margin-top: 18px; }
+.my-walk-row .cp-name { white-space: normal; }
+.my-walk-meta { color: var(--ink-dim); font-size: 13px; }
+.route-drawer .walks-check { margin: 0; }

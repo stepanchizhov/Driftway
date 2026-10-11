@@ -545,3 +545,29 @@ long a walk made from the start is asked to be, and the shortest possible
 time through checkpoints. The climb allowance stays a minute per 10 m. The
 card says which pace it used. On the server the pace is set once per request
 (`catalogue.walking_pace`) and read wherever a time is worked out.
+
+## My walks: routes of your own (11 Oct 2026)
+
+Founder request: the walks Driftway makes are not always the ones a parent
+walks; his own Long Walk loop never came up. Now:
+
+- **Draw** a route by tapping the map in order (`RouteDrawer.tsx`), with
+  "Finish where I started"; **import** a GPX file (track points, else route
+  points; read as text, never as markup); or **save** a walk Driftway made
+  (its way out, for a there-and-back walk).
+- Kept on the device only (`myWalks.ts`, `driftway.mywalks.v1`), as at most
+  40 points evenly spaced along the way. Privacy policy 1.5.
+- **Show** sends the points to `POST /api/walks/trace`, which routes through
+  them in order with the profile's own rules (one openrouteservice call,
+  100 m snap radius, steps avoided for a pram) and judges the result like
+  any other walk, at the parent's time and pace. A route whose end is within
+  150 m of its start is a loop; otherwise it is walked there and back. Not
+  logged or stored; same access and rate limits as making walks.
+- Between two points the provider takes the shortest suitable way, which may
+  not be the parent's; more points keep it closer, and the card says so.
+
+**Later, not built** (founder, 11 Oct): recording a walk as you go (in the
+web app only while it is open with the screen on; reliable recording needs a
+native app, and a recorded track needs a privacy policy change), and walks
+that learn from the ones taken - preferring paths walked before, avoiding
+stretches always skipped.

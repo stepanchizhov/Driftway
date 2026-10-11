@@ -333,3 +333,65 @@ async def _generate(body: GenerateIn, setup, minutes: int, pins, labels):
             "shortest_minutes": min(fulls) if fulls else None,
         }
     return out
+
+
+# ------------------------------------------------------------ your own route
+
+
+class TraceIn(AssessIn):
+    """A route of the parent's own: points in the order walked (drawn, from a
+    GPX file, or a made walk they saved), kept on their device. Sent to
+    openrouteservice to follow mapped ways; not logged or stored."""
+    points: List[Point] = Field(..., min_length=2, max_length=gen.MAX_TRACE_POINTS)
+    name: str = Field("Your route", max_length=80)
+    start_label: str = Field("Your route's start", max_length=80)
+
+
+@router.post("/walks/trace")
+async def trace_walks(
+    body: TraceIn,
+    request: Request,
+    driftway_staging_session: Optional[str] = Cookie(None),
+    session: Session = Depends(get_session),
+):
+    """Your own route, judged like every other walk. One provider call,
+    counted against the same limits as making walks."""
+    if not walking_enabled():
+        raise HTTPException(status_code=404, detail="Not found.")
+    account = _caller(request, session, driftway_staging_session)
+    if not gen.is_configured():
+        raise HTTPException(status_code=503,
+                            detail="Following your own routes isn't switched on yet.")
+    try:
+        _generate_global.check("*", GLOBAL_WINDOWS, scope="service")
+        caller = f"account:{account.id}" if account else f"ip:{client_address(request)}"
+        _generate_caller.check(caller, CALLER_WINDOWS, scope="caller")
+    except RateLimited as limited:
+        raise HTTPException(
+            status_code=429,
+            detail="That's a lot of walks in a short time. Please wait a moment.",
+            headers={"Retry-After": str(limited.retry_after)},
+        )
+
+    if body.profile == "pram":
+        p = body.pram or PramIn()
+        setup = PramSetup(wheels=p.wheels, width_cm=p.width_cm, double=p.double)
+    elif body.profile == "walker":
+        setup = None
+    else:
+        c = body.carrier or CarrierIn()
+        setup = CarrierSetup(kind=c.kind, child_kg=c.child_kg, carrier_kg=c.carrier_kg,
+                             luggage_kg=c.luggage_kg, luggage_with=c.luggage_with)
+
+    with walking_pace(body.pace_kmh):
+        try:
+            route = await gen.trace_walk([(pt.lat, pt.lng) for pt in body.points],
+                                         body.profile, body.name, body.start_label)
+        except gen.TraceProblem as e:
+            raise HTTPException(status_code=422, detail={
+                "code": "trace", "message": str(e), "point": e.point})
+        except gen.GenerationUnavailable as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        walk = assess_route(route, body.profile, setup, body.minutes,
+                            body.allow_out_and_back)
+    return {"walks": [walk], "attribution": gen.ATTRIBUTION}

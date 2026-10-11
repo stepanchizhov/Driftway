@@ -180,6 +180,8 @@ export function SettingsScreen({ settings, update, server }: Props) {
           <li>Drives that turn around less often</li>
           <li>More saved places, not just Home</li>
           <li>Walks by rivers and canals</li>
+          <li>Recording a walk as you go, to keep in My walks</li>
+          <li>Walks that learn from the ones you take: paths you like, stretches you skip</li>
           <li>Later: in the car (Android Auto), and iPhone</li>
         </ul>
 

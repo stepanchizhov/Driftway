@@ -29,6 +29,7 @@ export const RELEASES: Release[] = [
     version: "0.8.0",
     date: "in progress",
     changes: [
+      "My walks: draw a route you actually walk, import one from a GPX file, or save a walk Driftway made. It's checked for your pram or carrier, time and pace, and kept on your phone only (privacy policy 1.5).",
       "Your own walking pace, in Walk preferences: walk times, and how long walks made from your start are, follow it.",
       "Walks work for everyone, without signing in, and accounts no longer need an invitation (privacy policy 1.4).",
       "Location never blocks the app: after 12 seconds Driftway says why, and you can search where you are instead, in Still asleep too. A position that arrives later still counts.",

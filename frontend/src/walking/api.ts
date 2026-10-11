@@ -258,3 +258,49 @@ export async function assessWalks(body: {
   if (!res.ok) throw new Error("Walks are unavailable right now.");
   return res.json();
 }
+
+/**
+ * A route of your own, followed along mapped ways and judged like any other
+ * walk (11 Oct 2026). Its points go to the server and on to openrouteservice
+ * for this one request; neither keeps them.
+ */
+export async function traceWalks(body: {
+  profile: "pram" | "carrier" | "walker";
+  minutes: number;
+  pace_kmh?: number;
+  allow_out_and_back?: boolean;
+  points: { lat: number; lng: number }[];
+  name: string;
+  start_label: string;
+  pram?: PramSetup;
+  carrier?: CarrierSetup;
+}): Promise<GeneratedWalks> {
+  let res: Response;
+  try {
+    res = await authFetch(`${API_BASE}/api/walks/trace`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Can't reach Driftway. Check your connection.");
+  }
+  if (res.status === 401 || res.status === 403) {
+    throw new NotAdmitted("Walks are part of the closed beta.");
+  }
+  if (res.status === 404) {
+    throw new Error("This server can't follow your own routes yet.");
+  }
+  if (!res.ok) {
+    let detail = "Couldn't follow your route just now.";
+    try {
+      const d = (await res.json())?.detail;
+      if (typeof d === "string") detail = d;
+      else if (d && typeof d === "object" && typeof d.message === "string") detail = d.message;
+    } catch {
+      /* keep default */
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}

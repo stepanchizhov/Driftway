@@ -20,6 +20,8 @@ import type { Coord } from "../types";
 import { PlaceSearch, type Endpoint } from "../components/PlaceSearch";
 import { useDriftwayAuth } from "../auth/AuthProvider";
 import { CheckpointPicker } from "./CheckpointPicker";
+import { MyWalksSection } from "./MyWalksSection";
+import { lineOfWalk, useMyWalks } from "./myWalks";
 import {
   type Checkpoint,
   type CheckpointAction,
@@ -222,6 +224,8 @@ export function Walks({
   // searched place. Founder feedback, 11 Oct: after a refresh the tab showed
   // no walks at all unless no curated walk happened to fit.
   const autoMake = canGenerate && result !== null;
+  // Routes of your own, kept on this device (11 Oct 2026).
+  const mine = useMyWalks();
 
   return (
     <main className="walks">
@@ -327,6 +331,21 @@ export function Walks({
               dirty={dirty}
               onApply={applyChanges}
               onSetMinutes={setMinutes}
+              onSaveWalk={(w) => mine.add(w.name, lineOfWalk(w), "made")}
+            />
+          )}
+
+          {canGenerate && (
+            <MyWalksSection
+              walks={mine.walks}
+              onAdd={mine.add}
+              onRemove={mine.remove}
+              centre={here}
+              setup={applied}
+              units={units}
+              renderWalk={(w) => (
+                <WalkCard key={w.id} walk={w} units={units} handoff={result.handoff} />
+              )}
             />
           )}
 
@@ -683,12 +702,17 @@ function WalkCard({
   units,
   handoff,
   fromKm,
+  onSave,
+  saved,
 }: {
   walk: Walk;
   units: Units;
   handoff: string;
   /** Set when the walk needs travel to its start: how far away that is. */
   fromKm?: number;
+  /** Walks Driftway made can be kept in My walks. */
+  onSave?: () => void;
+  saved?: boolean;
 }) {
   const directions =
     `https://www.google.com/maps/dir/?api=1&destination=` +
@@ -807,6 +831,11 @@ function WalkCard({
         <a className="btn-quiet walk-go" href={checkpointsUrl(walk)} target="_blank" rel="noopener noreferrer">
           Walk it in Google Maps, via 3 checkpoints
         </a>
+        {onSave && (
+          <button type="button" className="btn-quiet walk-go" disabled={saved} onClick={onSave}>
+            {saved ? "Saved to My walks" : "Save to My walks"}
+          </button>
+        )}
       </div>
       <p className="walk-handoff">
         {handoff} With checkpoints it keeps closer to this walk, but between them
@@ -984,6 +1013,7 @@ function MakeWalks({
   dirty,
   onApply,
   onSetMinutes,
+  onSaveWalk,
 }: {
   setup: WalkSetup;
   here: Coord | null;
@@ -998,6 +1028,8 @@ function MakeWalks({
   /** Settings or checkpoint edited since the walks were made. */
   dirty: boolean;
   onApply: () => void;
+  /** Keep a made walk in My walks. */
+  onSaveWalk: (w: Walk) => void;
   onSetMinutes: (n: number) => void;
 }) {
   // The checkpoints in use, in order (11 Oct: up to three).
@@ -1007,6 +1039,10 @@ function MakeWalks({
     here ? { coord: here, label: "Your location", source: "current" } : null,
   );
   const [made, setMade] = useState<GeneratedWalks | null>(null);
+  // Made walks reuse their ids, so what was saved is forgotten when new
+  // walks arrive.
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  useEffect(() => setSavedIds([]), [made]);
   const [madeKey, setMadeKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1375,7 +1411,17 @@ function MakeWalks({
               )}
               <div className="walks-list">
                 {shown.map((w) => (
-                  <WalkCard key={w.id} walk={w} units={units} handoff={handoff} />
+                  <WalkCard
+                    key={w.id}
+                    walk={w}
+                    units={units}
+                    handoff={handoff}
+                    saved={savedIds.includes(w.id)}
+                    onSave={() => {
+                      onSaveWalk(w);
+                      setSavedIds((ids) => [...ids, w.id]);
+                    }}
+                  />
                 ))}
               </div>
               {overLimit.length > 0 && !showAll && (
