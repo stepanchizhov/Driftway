@@ -71,7 +71,10 @@ class Route:
     #: way types (generated walks); None when it is not known.
     road_share: Optional[float] = None
     #: A place the walk goes through, chosen by the walker: {lat, lng, label}.
+    #: With several checkpoints, the last of them (where the walk turns).
     via: Optional[Dict] = None
+    #: Every checkpoint, in order (11 Oct 2026: up to three).
+    vias: Optional[List[Dict]] = None
 
     @property
     def outbound_m(self) -> float:
@@ -216,18 +219,22 @@ def _markers(route: Route) -> List[Dict]:
         end = route.sections[-1].geometry[-1]
         out.append({"kind": "turn_back", "lat": end[0], "lng": end[1],
                     "at_m": round(route.outbound_m), "basis": "modelled"})
-    if route.via:
+    pins = route.vias or ([route.via] if route.via else [])
+    for n, pin in enumerate(pins, start=1):
         # The point the walk really visits: where the route provider took it.
-        out.append({"kind": "via", "lat": route.via["lat"], "lng": route.via["lng"],
-                    "at_m": None, "basis": "reported", "label": route.via.get("label")})
-        asked = route.via.get("requested")
-        if asked and (route.via.get("offset_m") or 0) > 0:
-            # (A walk allowed to pass at a distance turns this far away too.)
+        label = pin.get("label")
+        if len(pins) > 1:
+            label = f"{n}. {label}" if label else str(n)
+        out.append({"kind": "via", "lat": pin["lat"], "lng": pin["lng"],
+                    "at_m": None, "basis": "reported", "label": label})
+        asked = pin.get("requested")
+        if asked and (pin.get("offset_m") or 0) > 0:
             # And the parent's own marker, when the two are apart, so a moved
             # checkpoint is visible on the map rather than silently replaced.
+            # (A walk allowed to pass at a distance turns this far away too.)
             out.append({"kind": "via_requested", "lat": asked["lat"], "lng": asked["lng"],
                         "at_m": None, "basis": "reported",
-                        "label": f"{route.via['offset_m']} m from the walk"})
+                        "label": f"{pin['offset_m']} m from the walk"})
     return out
 
 

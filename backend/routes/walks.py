@@ -18,7 +18,7 @@ details device-local, and a server that never writes them cannot leak them.
 from __future__ import annotations
 
 import logging
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -189,6 +189,10 @@ class GenerateIn(AssessIn):
     #: different way; without it, round trips from the start.
     via: Optional[Point] = None
     via_label: str = Field("your checkpoint", max_length=80)
+    #: Up to three checkpoints, visited in this order (11 Oct 2026). When set,
+    #: it is used instead of `via`, which older versions of the app send.
+    vias: Optional[List[Point]] = Field(None, max_length=3)
+    via_labels: Optional[List[str]] = Field(None, max_length=3)
     #: How close the walk must come to the checkpoint, in metres. 25 means
     #: "to it"; more lets it pass at a distance - a statue on a hill seen from
     #: the path below. Founder decision, 10 Oct 2026.
@@ -246,11 +250,14 @@ async def generate_walks(
         setup = CarrierSetup(kind=c.kind, child_kg=c.child_kg, carrier_kg=c.carrier_kg,
                              luggage_kg=c.luggage_kg, luggage_with=c.luggage_with)
 
+    pins = ([(p.lat, p.lng) for p in body.vias] if body.vias
+            else [(body.via.lat, body.via.lng)] if body.via is not None else [])
+    labels = ([(lab or "")[:80] for lab in (body.via_labels or [])] if body.vias
+              else [body.via_label])
     try:
-        if body.via is not None:
+        if pins:
             routes = await gen.via_walk((body.start.lat, body.start.lng),
-                                        (body.via.lat, body.via.lng), body.profile,
-                                        body.start_label, body.via_label,
+                                        pins, body.profile, body.start_label, labels,
                                         character=body.character, minutes=minutes,
                                         reach_m=body.via_reach_m)
         else:
@@ -268,18 +275,26 @@ async def generate_walks(
     walks = [assess_route(r, body.profile, setup, minutes, body.allow_out_and_back)
              for r in routes]
     out = {"walks": walks, "attribution": gen.ATTRIBUTION}
-    if body.via is not None and routes:
-        via = routes[0].via
+    if pins and routes:
+        each = routes[0].vias or [routes[0].via]
+        via = each[-1]
         fulls = [w["fit"]["full_minutes"] for w in walks if w.get("fit")]
         over = bool(fulls) and all(w["fit"]["kind"] == "longer" for w in walks if w.get("fit"))
+        moved = [v["offset_m"] > v["reach_m"] + 1 for v in each]
         out["checkpoint"] = {
+            # The last checkpoint, for versions of the app that know only one.
             "requested": via["requested"],
             "routed": {"lat": via["lat"], "lng": via["lng"]},
             "offset_m": via["offset_m"],
             "reach_m": via["reach_m"],
+            # Every checkpoint, in order.
+            "pins": [{"label": v.get("label"), "requested": v["requested"],
+                      "routed": {"lat": v["lat"], "lng": v["lng"]},
+                      "offset_m": v["offset_m"], "moved": m}
+                     for v, m in zip(each, moved)],
             # Further than the parent allowed: they see both points and accept
             # the moved one before the walks are shown.
-            "needs_confirmation": via["offset_m"] > via["reach_m"] + 1,
+            "needs_confirmation": any(moved),
             # Every walk through it takes longer than asked: said, not hidden,
             # and the time is not changed for them.
             "over_time": over,

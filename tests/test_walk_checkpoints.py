@@ -409,3 +409,146 @@ class EndpointTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# --- several checkpoints (11 Oct 2026) ------------------------------------
+
+def _interp(a, b, step_m=40.0):
+    """[lng, lat, ele] points from (lat, lng) a to b, about step_m apart."""
+    from core.walking.generate import _haversine
+    n = max(1, int(_haversine(a, b) // step_m))
+    return [[a[1] + (b[1] - a[1]) * t / n, a[0] + (b[0] - a[0]) * t / n, 30] for t in range(n + 1)]
+
+
+def _polyline(points):
+    out = []
+    for a, b in zip(points, points[1:]):
+        seg = _interp(a, b)
+        out += seg if not out else seg[1:]
+    return out
+
+
+def _fc_line(coords):
+    from core.walking.generate import _haversine
+    n = len(coords) - 1
+    dist = sum(_haversine((p[1], p[0]), (q[1], q[0])) for p, q in zip(coords, coords[1:]))
+    return {"features": [{"type": "Feature",
+                          "geometry": {"type": "LineString", "coordinates": coords},
+                          "properties": {"summary": {"distance": dist},
+                                         "extras": {"surface": {"values": [[0, n, 3]]},
+                                                    "waytype": {"values": [[0, n, 7]]}}}}]}
+
+
+EAST_200 = 200 / M_PER_DEG_LNG
+P1 = (52.005, 13.0 + EAST_200)     # 200 m east of the street, at the end of a dead end
+JUNCTION = (52.005, 13.0)
+P2 = (52.010, 13.0)
+
+
+def chain_router(seen_bodies):
+    """Answers the way out as start -> junction -> P1 (a dead end) -> junction
+    -> P2; a two-point request straight between its points; the way back
+    bowed west."""
+    def handler(request, n):
+        body = json.loads(request.read())
+        seen_bodies.append(body)
+        pts = [(c[1], c[0]) for c in body["coordinates"]]
+        if len(pts) == 3:
+            return httpx.Response(200, json=_fc_line(_polyline([pts[0], JUNCTION, pts[1], JUNCTION, pts[2]])))
+        if body.get("radiuses") == [40, 40]:          # a shortcut past a checkpoint
+            return httpx.Response(200, json=_fc_line(_polyline(pts)))
+        west = (52.005, 13.0 - 300 / M_PER_DEG_LNG)
+        return httpx.Response(200, json=_fc_line(_polyline([pts[0], west, pts[1]])))
+    return handler
+
+
+class SeveralCheckpointTests(_Base):
+    def run_chain(self, reach_m=25, pins=(P1, P2), minutes=None, labels=("the oak", "the gate")):
+        from core.walking import generate as gen
+        seen, bodies = [], []
+        handler = chain_router(bodies)
+
+        def record(request):
+            seen.append(request)
+            return handler(request, len(seen))
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(record))
+        routes = asyncio.run(gen.via_walk(START, list(pins), "walker", "Start", list(labels),
+                                          client=client, minutes=minutes, reach_m=reach_m))
+        return routes, bodies
+
+    def test_the_way_out_visits_every_checkpoint_in_order(self):
+        routes, bodies = self.run_chain()
+        first = bodies[0]
+        self.assertEqual(first["coordinates"], [[13.0, 52.0], [P1[1], P1[0]], [P2[1], P2[0]]])
+        self.assertEqual(first["radiuses"], [400, 150, 150])
+        self.assertEqual(routes[0].name, "Via the oak and the gate")
+        self.assertEqual([v["label"] for v in routes[0].vias], ["the oak", "the gate"])
+        kinds = [m for m in __import__("core.walking.catalogue", fromlist=["x"])._markers(routes[0])
+                 if m["kind"] == "via"]
+        self.assertEqual([m["label"] for m in kinds], ["1. the oak", "2. the gate"])
+
+    def test_with_reach_a_checkpoint_in_between_is_passed_not_visited(self):
+        from core.walking.generate import closest_m
+        routes, bodies = self.run_chain(reach_m=250)
+        self.assertTrue(any(b.get("radiuses") == [40, 40] for b in bodies))   # the shortcut
+        line = [[p[1], p[0]] for s in routes[0].sections for p in s.geometry]
+        self.assertLessEqual(closest_m(line, P1), 251)       # comes that close...
+        self.assertGreater(closest_m(line, P1), 150)         # ...without walking up the dead end
+
+    def test_without_reach_every_checkpoint_is_visited(self):
+        from core.walking.generate import closest_m
+        routes, bodies = self.run_chain(reach_m=25)
+        self.assertFalse(any(b.get("radiuses") == [40, 40] for b in bodies))
+        line = [[p[1], p[0]] for s in routes[0].sections for p in s.geometry]
+        self.assertLessEqual(closest_m(line, P1), 25)
+        self.assertLessEqual(closest_m(line, P2), 25)
+
+    def test_two_checkpoints_in_the_same_place_are_refused(self):
+        from core.walking.generate import CheckpointProblem
+        with self.assertRaises(CheckpointProblem) as e:
+            self.run_chain(pins=(P2, (P2[0] + 0.0002, P2[1])))
+        self.assertEqual(e.exception.code, "too_close")
+        self.assertIn("the oak and the gate", str(e.exception))
+
+    def test_the_time_floor_covers_the_whole_chain(self):
+        from core.walking.generate import CheckpointProblem
+        with self.assertRaises(CheckpointProblem) as e:
+            self.run_chain(minutes=10)
+        self.assertEqual(e.exception.code, "too_far")
+        self.assertIn("all 2 checkpoints", str(e.exception))
+
+    def test_an_unreachable_second_checkpoint_is_named(self):
+        from core.walking import generate as gen
+        client = httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda r: httpx.Response(404, json=ors_error(2010, 2))))
+        with self.assertRaises(gen.CheckpointProblem) as e:
+            asyncio.run(gen.via_walk(START, [P1, P2], "walker", "Start", ["the oak", "the gate"],
+                                     client=client))
+        self.assertIn("the gate", str(e.exception))
+
+    def test_later_walks_avoid_old_paths_but_not_round_checkpoints(self):
+        from core.walking.generate import corridor, CORRIDOR_OPEN_M, _haversine
+        coords = _polyline([START, JUNCTION, P2])
+        poly = corridor(coords, open_near=[JUNCTION])
+        for piece in poly["coordinates"]:
+            for lng, lat in piece[0]:
+                self.assertGreater(_haversine((lat, lng), JUNCTION), CORRIDOR_OPEN_M - 40)
+
+
+class SeveralCheckpointEndpointTests(unittest.TestCase):
+    setUp, tearDown = EndpointTests.setUp, EndpointTests.tearDown
+    post, body = EndpointTests.post, EndpointTests.body
+
+    def test_up_to_three_checkpoints_and_each_one_reported(self):
+        body = self.body(vias=[{"lat": P1[0], "lng": P1[1]}, {"lat": P2[0], "lng": P2[1]}],
+                         via_labels=["the oak", "the gate"])
+        body.pop("via")
+        bodies = []
+        handler = chain_router(bodies)
+        r = self.post(body, lambda req: handler(req, 0))
+        self.assertEqual(r.status_code, 200, r.text)
+        pins = r.json()["checkpoint"]["pins"]
+        self.assertEqual([p["label"] for p in pins], ["the oak", "the gate"])
+        four = self.body(vias=[{"lat": P2[0], "lng": P2[1]}] * 4)
+        self.assertEqual(self.post(four).status_code, 422)

@@ -607,12 +607,15 @@ CORRIDOR_OPEN_M = 150.0
 CORRIDOR_PIECES = 40
 
 
-def corridor(coords: List[List[float]]) -> Optional[Dict]:
+def corridor(coords: List[List[float]],
+             open_near: Optional[List[Tuple[float, float]]] = None) -> Optional[Dict]:
     """A GeoJSON MultiPolygon hugging an outward route, for the way back to avoid.
 
     Each piece is a thin rectangle around one stretch of the line. The first
     and last CORRIDOR_OPEN_M are left out: the way back has to leave the
     checkpoint and reach the start, both of which lie on the outward route.
+    Stretches within CORRIDOR_OPEN_M of any (lat, lng) in `open_near` are left
+    out too - every checkpoint, so a later walk can still reach them all.
     `coords` are ORS [lng, lat, ...] points.
     """
     import math
@@ -622,7 +625,8 @@ def corridor(coords: List[List[float]]) -> Optional[Dict]:
         dist.append(dist[-1] + _haversine(a, b))
     total = dist[-1]
     keep = [p for p, d in zip(pts, dist)
-            if CORRIDOR_OPEN_M <= d <= total - CORRIDOR_OPEN_M]
+            if CORRIDOR_OPEN_M <= d <= total - CORRIDOR_OPEN_M
+            and not any(_haversine(p, q) < CORRIDOR_OPEN_M for q in (open_near or []))]
     if len(keep) < 2:
         return None
     step = max(1, math.ceil((len(keep) - 1) / CORRIDOR_PIECES))
@@ -726,6 +730,48 @@ def minimum_via_minutes(start: Tuple[float, float], via: Tuple[float, float],
     longer."""
     beyond = max(0.0, _haversine(start, via) - max(reach_m, CHECKPOINT_ON_ROUTE_M))
     return 2 * beyond / 1000.0 / PACE_KMH * 60.0
+
+
+#: Most checkpoints in one walk (founder request, 11 Oct 2026).
+MAX_CHECKPOINTS = 3
+
+
+def minimum_chain_minutes(start: Tuple[float, float], pins: List[Tuple[float, float]],
+                          reach_m: float = CHECKPOINT_ON_ROUTE_M) -> float:
+    """A floor for a walk from the start through every checkpoint, in order,
+    and home. Passing within r of a point P on the way from A to B costs at
+    least |AP| + |PB| - 2r, so each checkpoint takes 2r off the straight-line
+    chain. A floor, not an estimate."""
+    chain = [start, *pins, start]
+    straight = sum(_haversine(a, b) for a, b in zip(chain, chain[1:]))
+    beyond = max(0.0, straight - 2 * max(reach_m, CHECKPOINT_ON_ROUTE_M) * len(pins))
+    return beyond / 1000.0 / PACE_KMH * 60.0
+
+
+def check_checkpoints(start: Tuple[float, float], pins: List[Tuple[float, float]],
+                      minutes: Optional[int], labels: List[str],
+                      reach_m: float = CHECKPOINT_ON_ROUTE_M) -> None:
+    """Refuse, before any provider call, checkpoints that cannot work: the
+    first one at the start, two in the same place, or a chain too long for
+    the time."""
+    if len(pins) > 1:
+        check_checkpoint(start, pins[0], None, labels[0], reach_m)
+        for (a, la), (b, lb) in zip(zip(pins, labels), zip(pins[1:], labels[1:])):
+            if _haversine(a, b) < CHECKPOINT_MIN_M:
+                raise CheckpointProblem(
+                    "too_close", f"{la} and {lb} are almost the same place. Move one "
+                    "of them, or remove it.")
+        if minutes:
+            floor = minimum_chain_minutes(start, pins, reach_m)
+            if floor > minutes + fit_tolerance(minutes):
+                need = int(-(-floor // 1))
+                raise CheckpointProblem(
+                    "too_far", f"Going through all {len(pins)} checkpoints and back "
+                    f"takes at least {need} minutes in a straight line, longer than "
+                    f"the {minutes} you asked for. Choose a longer time, or nearer or "
+                    "fewer checkpoints.", minimum_minutes=need)
+        return
+    check_checkpoint(start, pins[0], minutes, labels[0], reach_m)
 
 
 def check_checkpoint(start: Tuple[float, float], via: Tuple[float, float],
@@ -833,6 +879,49 @@ def cut_feature(feat: Dict, index: int, entry: List[float]) -> Dict:
             "properties": {**feat.get("properties", {}), "extras": extras}}
 
 
+def splice(feat: Dict, a: int, b: int, mid: Dict) -> Dict:
+    """`feat` with its points a..b replaced by `mid`'s line, extras re-indexed."""
+    cs = feat["geometry"]["coordinates"]
+    ms = mid["geometry"]["coordinates"]
+    coords = cs[:a] + ms + cs[b + 1:]
+    shift = a + len(ms) - 1 - b              # how far points after b move
+    extras: Dict = {}
+    for name in ("surface", "waytype"):
+        vals = []
+        for x, y, v in feat.get("properties", {}).get("extras", {}).get(name, {}).get("values", []):
+            if x < a:
+                vals.append([x, min(y, a), v])
+        for x, y, v in mid.get("properties", {}).get("extras", {}).get(name, {}).get("values", []):
+            vals.append([x + a, y + a, v])
+        for x, y, v in feat.get("properties", {}).get("extras", {}).get(name, {}).get("values", []):
+            if y > b:
+                vals.append([max(x, b) + shift, y + shift, v])
+        extras[name] = {"values": [v for v in vals if v[1] > v[0]]}
+    return {"type": "Feature", "geometry": {"type": "LineString", "coordinates": coords},
+            "properties": {**feat.get("properties", {}), "extras": extras}}
+
+
+def pin_indices(feat: Dict, pins: List[Tuple[float, float]]) -> List[int]:
+    """Where on the line each checkpoint was routed to: the provider's own
+    `way_points` when it sends them, else the nearest point after the last."""
+    cs = feat["geometry"]["coordinates"]
+    wp = feat.get("properties", {}).get("way_points")
+    if isinstance(wp, list) and len(wp) == len(pins) + 1:
+        return [min(int(i), len(cs) - 1) for i in wp[1:]]
+    out, after = [], 0
+    for p in pins:
+        k = min(range(after, len(cs)), key=lambda i: _haversine((cs[i][1], cs[i][0]), p))
+        out.append(k)
+        after = k
+    return out
+
+
+def chain_name(labels: List[str]) -> str:
+    if len(labels) == 1:
+        return labels[0]
+    return ", ".join(labels[:-1]) + " and " + labels[-1]
+
+
 #: Different loops through one checkpoint to look for.
 VIA_VARIANTS = 3
 #: A candidate sharing more than this much of its line with one already found
@@ -857,44 +946,60 @@ def _merge(*polys: Optional[Dict]) -> Optional[Dict]:
     return {"type": "MultiPolygon", "coordinates": pieces} if pieces else None
 
 
-async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
-                   profile: str, start_label: str, via_label: str,
+async def via_walk(start: Tuple[float, float], via,
+                   profile: str, start_label: str, via_label,
                    character: str = "any",
                    client: Optional[httpx.AsyncClient] = None,
                    minutes: Optional[int] = None,
                    reach_m: float = CHECKPOINT_ON_ROUTE_M) -> List[Route]:
-    """Up to three different walks out to a chosen place and back.
+    """Up to three different walks through one to three chosen places, in
+    order, and back home another way.
 
     Founder requests, 9 Oct: a checkpoint to build walks around, and more than
     one way to do it - a known route along a treeline never came up, because
     only the shortest way out and the shortest different way back were asked
     for. Each further variant is told to avoid the paths the earlier ones used
     (openrouteservice's documented avoid_polygons, as narrow corridors left
-    open near the start and the checkpoint), so it comes back genuinely
+    open near the start and every checkpoint), so it comes back genuinely
     different; a candidate that repeats an earlier one anyway is dropped.
+    11 Oct: up to MAX_CHECKPOINTS checkpoints, visited in the order given.
+
+    `via` is one (lat, lng) or a list of them; `via_label` one label or a list.
 
     The first variant may go over some of the same ground if no wholly
     different way back exists - a single bridge or gate can force that - and
     says so; the parent's retracing preference then decides, in the open,
     whether it is shown. Later variants are only kept if they are real
-    alternatives. Every variant kept passes within CHECKPOINT_ON_ROUTE_M of
-    the point the provider routed to, and each Route's `via` records that
-    point, the parent's own marker and the distance between them.
+    alternatives. Every variant kept passes within reach of every checkpoint
+    (or, where the provider moved one further than that, within
+    CHECKPOINT_ON_ROUTE_M of where it moved it to). Each Route's `vias`
+    records, per checkpoint, that point, the parent's own marker and the
+    distance between them; `via` is the last of them.
 
     With `reach_m` above CHECKPOINT_ON_ROUTE_M the walk need only come that
-    close: each way out is cut where it first does, and the way back starts
-    there.
+    close. At the last checkpoint the way out is cut where it first does, and
+    the way back starts there. At a checkpoint in between, the walk is routed
+    through it, then the stretch inside that distance is replaced by the
+    direct path between where the walk enters and leaves it, when that is
+    shorter - one extra call per checkpoint.
 
-    Raises CheckpointProblem when the checkpoint is the problem (too close,
-    too far for the time, no usable way near it, no route to it).
+    Raises CheckpointProblem when a checkpoint is the problem (too close, too
+    far for the time, no usable way near it, no route to it).
     """
     key = api_key()
     if not key:
         raise GenerationUnavailable("Walk generation is not configured on this deployment.")
+    pins = [tuple(via)] if isinstance(via[0], (int, float)) else [tuple(p) for p in via]
+    pins = pins[:MAX_CHECKPOINTS]
+    labels = [via_label] if isinstance(via_label, str) else list(via_label)
+    labels = [(labels[i] if i < len(labels) and labels[i] else f"checkpoint {i + 1}")
+              for i in range(len(pins))]
+    many = len(pins) > 1
+    via, via_label = pins[-1], labels[-1]            # the turning point
     reach_m = min(max(float(reach_m), CHECKPOINT_ON_ROUTE_M), CHECKPOINT_REACH_MAX_M)
     passing = reach_m > CHECKPOINT_ON_ROUTE_M
     search_m = max(CHECKPOINT_SEARCH_M, int(reach_m))
-    check_checkpoint(start, via, minutes, via_label, reach_m)
+    check_checkpoints(start, pins, minutes, labels, reach_m)
     character, pram_note = pram_character(profile, character)
     forms = _weight_forms(character)
 
@@ -903,20 +1008,24 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         b["options"].pop("round_trip", None)
         return p, b
 
-    def body(base, a, b, avoid=None):
-        # Both legs keep the profile's own options - steps avoided for a pram -
-        # so the way back is held to the same access rules as the way out.
-        req = {**base, "coordinates": [[a[1], a[0]], [b[1], b[0]]],
-               "radiuses": ([START_SEARCH_M, search_m] if a == start
-                            else [search_m, START_SEARCH_M]),
+    def body(base, points, radii, avoid=None):
+        # Every leg keeps the profile's own options - steps avoided for a pram -
+        # so each is held to the same access rules.
+        req = {**base, "coordinates": [[p[1], p[0]] for p in points], "radiuses": radii,
                "options": dict(base["options"])}
         if avoid:
             req["options"]["avoid_polygons"] = avoid
         return req
 
+    def out_body(base, avoid=None):
+        return body(base, [start, *pins], [START_SEARCH_M] + [search_m] * len(pins), avoid)
+
+    def back_body(base, at, avoid=None):
+        return body(base, [at, start], [search_m, START_SEARCH_M], avoid)
+
     own = client is None
     client = client or httpx.AsyncClient(timeout=20.0)
-    found: List[Tuple[Dict, Optional[str]]] = []
+    found: List[Tuple[Dict, Optional[str], Tuple[float, float], List[Tuple[float, float]]]] = []
     used: List[Dict] = []        # corridors of every line found so far
     dropped = 0
 
@@ -934,7 +1043,7 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         for form in forms:
             ors_profile, base = make_base(form)
             url = ors_profile
-            r1 = await post(url, body(base, start, via))
+            r1 = await post(url, out_body(base))
             if r1.status_code != 400 or form is None:
                 break
             log.warning("openrouteservice 400 for the way to a checkpoint "
@@ -951,52 +1060,95 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
             code, point = _ors_failure(r1)
             what = {"pram": "a pram", "carrier": "walking with a carrier",
                     "walker": "walking"}.get(profile, "walking")
-            if code == 2010 and point == 1:
+            if code == 2010 and point is not None and 1 <= point <= len(pins):
                 raise CheckpointProblem(
                     "unreachable", f"There's no mapped way suitable for {what} "
-                    f"within {search_m} m of {via_label}. Move the "
+                    f"within {search_m} m of {labels[point - 1]}. Move the "
                     "checkpoint onto or near a path.")
             if code == 2010 and point == 0:
                 raise GenerationUnavailable(
                     "There's no mapped path near your start. Choose a start on "
                     "or near a path.")
             if code == 2009:
+                where = (f"one of your checkpoints ({chain_name(labels)})" if many
+                         else via_label)
                 raise CheckpointProblem(
-                    "no_route", f"No route suitable for {what} reaches {via_label} "
+                    "no_route", f"No route suitable for {what} reaches {where} "
                     "from your start. It may be on private land, across water, "
                     "or reachable only by steps. Try a different point.")
-            raise GenerationUnavailable(f"Couldn't find a walking route to {via_label}.")
+            raise GenerationUnavailable(
+                f"Couldn't find a walking route to {chain_name(labels)}.")
 
-        def turn(out):
-            """The way out, cut where it first comes within reach when the
-            parent allows passing at a distance, and the point to turn at."""
+        async def shape(out):
+            """The way out, shaped for reach, and the point to turn at.
+
+            The last checkpoint: cut where the way out first comes within
+            reach. Each one in between (last first, so earlier indices hold):
+            replace the stretch within reach by the direct path between where
+            the walk enters and leaves it, when that is shorter."""
+            idx = pin_indices(out, pins)
             cs = out["geometry"]["coordinates"]
-            hit = approach(cs, via, reach_m) if passing else None
-            if hit and hit[0] + 1 < len(cs):
-                out = cut_feature(out, *hit)
+            if passing:
+                from_i = idx[-2] if many else 0
+                hit = approach(cs[from_i:], via, reach_m)
+                if hit and from_i + hit[0] + 1 < len(cs):
+                    out = cut_feature(out, from_i + hit[0], hit[1])
+            if passing and many:
+                for k in range(len(pins) - 2, -1, -1):
+                    cs = out["geometry"]["coordinates"]
+                    idx = pin_indices(out, pins[:k + 1]) + idx[k + 1:]
+                    lo = idx[k - 1] if k else 0
+                    hi = idx[k + 1] if k + 1 < len(idx) else len(cs) - 1
+                    near = [i for i in range(lo, min(hi, len(cs) - 1) + 1)
+                            if _haversine((cs[i][1], cs[i][0]), pins[k]) <= reach_m]
+                    if len(near) < 2:
+                        continue
+                    a, b = near[0], near[-1]
+                    pa, pb = (cs[a][1], cs[a][0]), (cs[b][1], cs[b][0])
+                    along = sum(_haversine((cs[i][1], cs[i][0]), (cs[i + 1][1], cs[i + 1][0]))
+                                for i in range(a, b))
+                    if b - a < 2 or along <= _haversine(pa, pb) + 30:
+                        continue
+                    short = feature(await post(url, body(base, [pa, pb], [40, 40])))
+                    if short and short.get("properties", {}).get("summary", {}).get(
+                            "distance", along) < along - 10:
+                        out = splice(out, a, b, short)
             end = out["geometry"]["coordinates"][-1]
             return out, (end[1], end[0])
 
+        def routed_points(line_feat, at):
+            """Per checkpoint, the point of the walk that serves it: where it
+            turns, for the last; the walk's closest point, for the others."""
+            cs = line_feat["geometry"]["coordinates"]
+            pts = []
+            for p in pins[:-1]:
+                i = min(range(len(cs)), key=lambda j: _haversine((cs[j][1], cs[j][0]), p))
+                pts.append((cs[i][1], cs[i][0]))
+            return pts + [at]
+
         # Where the walk really turns: where the provider took the way out,
         # or where it first came close enough.
-        first_out, routed = turn(first_out)
-        close_enough = _haversine(via, routed) <= reach_m + 1.0
+        first_out, routed = await shape(first_out)
+        first_points = routed_points(first_out, routed)
+        close = [_haversine(p, q) <= reach_m + 1.0 for p, q in zip(pins, first_points)]
+        close_enough = all(close)
+        holes = list(pins) + first_points
 
         for k in range(VIA_VARIANTS):
             if k == 0:
                 out, at = first_out, routed
             else:
-                out = feature(await post(url, body(base, start, via, _merge(*used))))
+                out = feature(await post(url, out_body(base, _merge(*used))))
                 if out is None:
                     break
-                out, at = turn(out)
+                out, at = await shape(out)
             out_line = corridor(out["geometry"]["coordinates"])
-            back = feature(await post(url, body(base, at, start, _merge(out_line, *used))))
+            back = feature(await post(url, back_body(base, at, _merge(out_line, *used))))
             if back is None and used:
-                back = feature(await post(url, body(base, at, start, out_line)))
+                back = feature(await post(url, back_body(base, at, out_line)))
             note = None
             if back is None and k == 0:
-                back = feature(await post(url, body(base, at, start)))
+                back = feature(await post(url, back_body(base, at)))
                 if back is None:
                     raise GenerationUnavailable(f"Couldn't find a way back from {via_label}.")
                 note = (f"No way back from {via_label} that avoids the way out was "
@@ -1007,19 +1159,25 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
                 break
             joined = join_features(out, back)
             line = joined["geometry"]["coordinates"]
-            # Kept only if it really comes close enough: within the parent's
-            # reach of their marker, or - when even the first walk could not,
-            # and the parent must accept a moved point - within 25 m of that.
-            missed = (closest_m(line, via) > reach_m + 1.0 if close_enough
-                      else closest_m(line, routed) > CHECKPOINT_ON_ROUTE_M)
+            # Kept only if it really comes close enough to every checkpoint:
+            # within the parent's reach of their marker, or - where even the
+            # first walk could not, and the parent must accept a moved point -
+            # within 25 m of where the provider moved it.
+            missed = any(
+                closest_m(line, p) > reach_m + 1.0 if ok
+                else closest_m(line, q) > CHECKPOINT_ON_ROUTE_M
+                for p, q, ok in zip(pins, first_points, close))
             if missed:
                 dropped += 1
                 continue
             if any(_overlap(line, j["geometry"]["coordinates"]) > DUPLICATE_SHARE
-                   for j, _, _ in found):
+                   for j, _, _, _ in found):
                 break
-            found.append((joined, note, at))
-            used += [c for c in (out_line, corridor(back["geometry"]["coordinates"])) if c]
+            found.append((joined, note, at, routed_points(out, at)))
+            # Later walks avoid these paths, except round every checkpoint,
+            # which they must still reach.
+            used += [c for c in (corridor(out["geometry"]["coordinates"], holes),
+                                 corridor(back["geometry"]["coordinates"], holes)) if c]
     except CheckpointProblem:
         raise
     except GenerationUnavailable:
@@ -1033,18 +1191,23 @@ async def via_walk(start: Tuple[float, float], via: Tuple[float, float],
         log.info("checkpoint walks: %d variant(s) dropped for missing the checkpoint",
                  dropped)
     routes = []
-    for n, (joined, note, at) in enumerate(found, start=1):
+    for n, (joined, note, at, points) in enumerate(found, start=1):
         if pram_note:
             note = f"{note} {pram_note}" if note else pram_note
         if passing and close_enough:
             pass_note = (f"Turns back about {round(_haversine(via, at))} m from "
                          f"{via_label}, as close as you asked it to come.")
+            if many:
+                pass_note += (" It passes the other checkpoints within "
+                              f"{round(reach_m)} m too.")
             note = f"{note} {pass_note}" if note else pass_note
         r = route_from_ors(joined, walk_id=f"via-{n}",
-                           name=f"Via {via_label}" + (f", option {n}" if n > 1 else ""),
+                           name=f"Via {chain_name(labels)}" + (f", option {n}" if n > 1 else ""),
                            start_label=start_label, routing_note=note)
-        r.via = {"lat": at[0], "lng": at[1], "label": via_label,
-                 "requested": {"lat": via[0], "lng": via[1]},
-                 "offset_m": round(_haversine(via, at)), "reach_m": round(reach_m)}
+        r.vias = [{"lat": q[0], "lng": q[1], "label": lab,
+                   "requested": {"lat": p[0], "lng": p[1]},
+                   "offset_m": round(_haversine(p, q)), "reach_m": round(reach_m)}
+                  for p, q, lab in zip(pins, points, labels)]
+        r.via = r.vias[-1]
         routes.append(r)
     return routes
