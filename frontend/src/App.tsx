@@ -345,6 +345,8 @@ export default function App() {
       {tab === "stillasleep" && !isSecondary && (
         <StillAsleep
           current={liveCoord}
+          locating={geo.status === "locating" || geo.status === "idle"}
+          locationMessage={geo.status === "error" ? geo.message : null}
           targets={stillAsleepTargets}
           profile={settings.quickDriveProfile}
           tolerance={tolerance}

@@ -10,7 +10,12 @@ import {
 } from "../lib/stillAsleepConfig";
 
 interface Props {
+  /** Where the phone says it is, when it has said. */
   current: Coord | null;
+  /** Still asking the phone. */
+  locating?: boolean;
+  /** Why the phone's location isn't available, once that is known. */
+  locationMessage?: string | null;
   targets: StillAsleepTarget[];
   /** Remembered planner defaults, reused rather than re-asked. */
   profile: RoadProfile;
@@ -33,13 +38,19 @@ interface Props {
  * has nothing remembered.
  */
 export function StillAsleep({
-  current,
+  current: located,
+  locating = false,
+  locationMessage = null,
   targets,
   profile,
   tolerance,
   onOpenPreferences,
   onRetryLocation,
 }: Props) {
+  // Where the parent says they are, when the phone can't (founder report,
+  // 11 Oct: the app sat on "Waiting for your location" with nothing to do).
+  const [typed, setTyped] = useState<Endpoint | null>(null);
+  const current: Coord | null = located ?? typed?.coord ?? null;
   const [targetId, setTargetId] = useState<string | null>(null);
   const [searched, setSearched] = useState<Endpoint | null>(null);
   const [picking, setPicking] = useState(false);
@@ -209,13 +220,23 @@ export function StillAsleep({
         {!busy && <span className="sa-go-dest">Opens Google Maps</span>}
       </button>
 
-      {!current && (
-        <p className="sa-hint">
-          Waiting for your location.{" "}
-          <button className="btn-quiet" onClick={onRetryLocation}>
-            Retry
-          </button>
-        </p>
+      {!located && (
+        <div className="sa-where">
+          <p className="sa-hint">
+            {locating && !typed
+              ? "Waiting for your location…"
+              : locationMessage ?? (typed ? "Starting from the place you chose." : "Location not set.")}{" "}
+            <button className="btn-quiet" onClick={onRetryLocation}>
+              {locating ? "Ask again" : "Try again"}
+            </button>
+          </p>
+          <PlaceSearch
+            legend="Where are you now?"
+            value={typed}
+            onChange={setTyped}
+            placeholder="Search where you're parked"
+          />
+        </div>
       )}
       {note && <p className="sa-note">{note}</p>}
       {held && (

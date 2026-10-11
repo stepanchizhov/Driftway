@@ -2139,3 +2139,5 @@ body {
   border-radius: 50%; background: #7c3aed; color: #ffffff; font: 700 12px/1 system-ui, sans-serif;
   border: 2px solid #ffffff; box-shadow: 0 0 0 1px #10162e; opacity: 0.85;
 }
+/* Still asleep without the phone's location (11 Oct): the reason, and a search. */
+.sa-where { display: grid; gap: 8px; margin-top: 4px; }

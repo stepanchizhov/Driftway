@@ -29,6 +29,7 @@ export const RELEASES: Release[] = [
     version: "0.8.0",
     date: "in progress",
     changes: [
+      "Location never blocks the app: Driftway gives up after 12 seconds, says why, and you can search where you are instead, in Still asleep too.",
       "Walks can go through up to three checkpoints, in the order you add them, then home another way. Drop pins on the map or search for places.",
       "How close a walk must come now applies to every checkpoint, not only the last: a statue up a dead end is passed, not climbed.",
       "Walks made for you fit your time better: one that misses by more than 15% is asked for again, and walks within about 20% of your time always come first.",
