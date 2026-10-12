@@ -28,7 +28,7 @@ ADMIN = "phase-a-admin-token"
 def _reset_modules() -> None:
     for name in [
         m for m in sys.modules
-        if m == "main" or m.startswith("core.") or m.startswith("routes.")
+        if m in ("main", "core", "routes") or m.startswith("core.") or m.startswith("routes.")
     ]:
         sys.modules.pop(name, None)
 

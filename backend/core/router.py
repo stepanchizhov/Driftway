@@ -54,6 +54,9 @@ class EvaluatedRoute:
     #: see scorer.lights_of.
     lights: Optional[object] = None
     lights_checked: bool = False
+    #: Street Manager roadworks on the route now (core.roadworks): see
+    #: scorer.works_of.
+    works: Optional[list] = None
 
 
 class Router(Protocol):

@@ -12,6 +12,9 @@ sqlalchemy>=2.0.0
 # public keys.
 pyjwt[crypto]>=2.10
 
+# Checking Amazon SNS signatures on Street Manager roadworks (core/roadworks.py).
+cryptography>=42
+
 # Postgres driver — only needed when DATABASE_URL points at Postgres (Render).
 # The platform marker means it is NOT installed on local Windows/macOS, so it
 # can't reintroduce the wheel-build problem; local dev uses SQLite (stdlib).

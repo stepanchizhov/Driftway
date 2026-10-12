@@ -102,6 +102,21 @@ export function RouteCard({
 
       <p className="card-character">{route.character}</p>
 
+      {route.roadworks && route.roadworks.length > 0 && (
+        // Today's works, from Street Manager: what to expect on the way.
+        <div className="card-works" role="note">
+          <p className="card-works-title">Roadworks on this drive today</p>
+          <ul>
+            {route.roadworks.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+          <p className="card-bumps-note">
+            From Street Manager. Contains public sector information licensed under the Open
+            Government Licence v3.0.
+          </p>
+        </div>
+      )}
       {route.lights_junctions != null && (
         <p className="card-bumps">
           {lightsLine(route.lights_junctions, route.lights_pedestrian ?? 0)}

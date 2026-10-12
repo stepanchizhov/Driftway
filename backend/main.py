@@ -37,6 +37,7 @@ from routes.api import router as api_router
 from routes.meetups import router as meetup_router
 from routes.walks import router as walks_router
 from routes.walk_areas import router as walk_areas_router
+from routes.roadworks import router as roadworks_router
 from core.db import init_db
 from core.version import APP_VERSION, build
 
@@ -128,6 +129,7 @@ app.include_router(meetup_router, prefix="/api")
 # Walking: gated per-endpoint by WALKING_ENABLED, like Meet Halfway.
 app.include_router(walks_router, prefix="/api")
 app.include_router(walk_areas_router, prefix="/api")
+app.include_router(roadworks_router, prefix="/api")
 
 
 @app.get("/")

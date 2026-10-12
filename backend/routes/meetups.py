@@ -225,6 +225,9 @@ def run_retention_now(
     meetups = purge_expired_meetups(session)
     accounts = purge_inactive_accounts(session)
     feedback = purge_anonymous_feedback(session)
+    # Roadworks ended more than a week ago (Street Manager; core/roadworks.py).
+    from core import roadworks
+    works = roadworks.purge(session)
     capped = (len(meetups) >= MAX_PER_RUN or len(accounts) >= MAX_PER_RUN
               or feedback >= MAX_PER_RUN)
     record_run(
@@ -237,6 +240,7 @@ def run_retention_now(
         "meetups_purged": len(meetups),
         "accounts_purged": len(accounts),
         "feedback_purged": feedback,
+        "roadworks_purged": works,
         "backlog": capped,
     }
 

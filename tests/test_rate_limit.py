@@ -58,7 +58,7 @@ def _fresh(**env):
     _clear_tunables()
     os.environ.update(env)
     for name in [m for m in sys.modules
-                 if m == "main" or m.startswith(("core.", "routes."))]:
+                 if m in ("main", "core", "routes") or m.startswith(("core.", "routes."))]:
         sys.modules.pop(name, None)
     main = importlib.import_module("main")
     from fastapi.testclient import TestClient

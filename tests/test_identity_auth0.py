@@ -61,7 +61,7 @@ class _StubJWKClient:
 
 def _reset_modules():
     for name in [m for m in sys.modules
-                 if m == "main" or m.startswith(("core.", "routes."))]:
+                 if m in ("main", "core", "routes") or m.startswith(("core.", "routes."))]:
         sys.modules.pop(name, None)
 
 

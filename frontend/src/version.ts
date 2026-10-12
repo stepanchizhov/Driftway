@@ -37,6 +37,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.12",
+    date: "12 Oct 2026",
+    changes: [
+      "Ready for live roadworks in England: once Street Manager's feed is switched on, drive cards list temporary traffic lights, stop/go boards and closures on the way today, and a drive without them is preferred when it's as good otherwise.",
+    ],
+  },
+  {
     version: "0.8.11",
     date: "12 Oct 2026",
     changes: [

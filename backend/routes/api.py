@@ -136,7 +136,10 @@ async def generate(
         )
 
     routing = get_router()
-    result = await generate_routes(req, routing)
+    # Roadworks that stop traffic, from Street Manager, if the database is up.
+    from core import roadworks
+    with roadworks.lookup_for_request(session if storage_available() else None):
+        result = await generate_routes(req, routing)
     if not result.routes:
         # Not an error exactly, but the client should know nothing usable came back.
         raise HTTPException(

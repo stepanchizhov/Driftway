@@ -53,6 +53,9 @@ NOT_RECIPIENTS = {
     "developer.apple.com": "Apple Maps URL documentation in comments",
     "github.com": "repository link in a User-Agent string",
     "www.lullabytrust.org.uk": "safety guidance link the parent may open",
+    # Roadworks (core/roadworks.py) are received from Street Manager, never
+    # sent anything about a user; the registration page is named in comments.
+    "www.gov.uk": "Street Manager registration page, in comments",
 }
 
 _HOST = re.compile(r"https?://([a-zA-Z0-9.-]+\.[a-z]{2,})")

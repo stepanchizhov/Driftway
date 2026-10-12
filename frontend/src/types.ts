@@ -104,6 +104,9 @@ export interface RouteOption {
    *  prepared data. */
   lights_junctions?: number | null;
   lights_pedestrian?: number | null;
+  /** Roadworks on the drive now that stop or close traffic (Street
+   *  Manager, England): "Victoria Street: temporary traffic lights". */
+  roadworks?: string[];
 }
 
 export interface GenerateResponse {

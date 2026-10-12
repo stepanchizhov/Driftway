@@ -14,6 +14,7 @@ from .geometry import haversine_km, initial_bearing
 from .models import Coord, RoadMix
 from .router import EvaluatedRoute
 from . import calming
+from . import roadworks
 
 
 # ---------------------------------------------------------------- validation
@@ -226,6 +227,23 @@ def _light_score(route: EvaluatedRoute) -> float:
     return 1.0 - min(1.0, lights.per_km / LIGHTS_PER_KM_FULL)
 
 
+# Roadworks that stop traffic (Street Manager; founder, 12 Oct 2026: a
+# stop-go may be the worst thing for a sleeping baby). HYPOTHESIS: one such
+# work costs as much as a drive full of lights. Still under the guard.
+W_WORKS = 0.5
+
+
+def works_of(route: EvaluatedRoute) -> list:
+    if route.works is None:
+        route.works = roadworks.works_for(route.geometry)
+    return route.works
+
+
+def _works_score(route: EvaluatedRoute) -> float:
+    stopping = sum(1 for w in works_of(route) if w.control in roadworks.STOPPING)
+    return 1.0 - min(1.0, float(stopping))
+
+
 def _bump_score(route: EvaluatedRoute) -> float:
     """1.0 = no mapped bumps, 0.0 = BUMPS_PER_KM_FULL or more per km."""
     b = bumps_of(route)
@@ -249,7 +267,8 @@ def score_route(route: EvaluatedRoute, target_minutes: int, profile: str,
         + W_SMOOTH * _smoothness(route)
         + W_LOOP * loop_score
         + W_PROFILE * profile_score
-        + (W_BUMPS * _bump_score(route) + W_LIGHTS * _light_score(route) if with_bumps else 0.0),
+        + (W_BUMPS * _bump_score(route) + W_LIGHTS * _light_score(route)
+           + W_WORKS * _works_score(route) if with_bumps else 0.0),
         4,
     )
 

@@ -28,7 +28,7 @@ TRIGGER = "retention-only-trigger"
 
 def _reset_modules():
     for name in [m for m in sys.modules
-                 if m == "main" or m.startswith(("core.", "routes.", "jobs."))]:
+                 if m in ("main", "core", "routes", "jobs") or m.startswith(("core.", "routes.", "jobs."))]:
         sys.modules.pop(name, None)
 
 

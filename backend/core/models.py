@@ -113,6 +113,9 @@ class RouteOption(BaseModel):
     # bounds, like the speed bumps; None outside the prepared data.
     lights_junctions: Optional[int] = None
     lights_pedestrian: Optional[int] = None
+    # Roadworks on the drive now that stop or close traffic (Street Manager,
+    # England): "Victoria Street: temporary traffic lights".
+    roadworks: List[str] = []
 
     # Every app that could drive this, best first. Empty for a simulated
     # route, which has nothing real to navigate. `maps_url` above remains the

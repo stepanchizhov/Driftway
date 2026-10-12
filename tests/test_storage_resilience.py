@@ -109,7 +109,7 @@ class StorageRecoveryTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{path}"
         os.environ["ROUTING_PROVIDER"] = "mock"
         for name in [m for m in sys.modules
-                     if m == "main" or m.startswith(("core.", "routes."))]:
+                     if m in ("main", "core", "routes") or m.startswith(("core.", "routes."))]:
             sys.modules.pop(name, None)
         backend = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
         if backend not in sys.path:
