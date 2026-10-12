@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Coord, RoadProfile } from "../types";
+import { defaultUnits } from "../lib/defaultUnits";
 
 // Remembers the parent's last choices and saved Home between visits, using
 // localStorage. No account, no server. (This is a real deployed PWA running
@@ -15,6 +16,9 @@ export interface Settings {
   lastProfile: RoadProfile;
   lastTolerance: number;
   units: Units;
+  /** True once the parent picks units in Settings. Until then units follow
+   *  the device: miles in the UK (founder, 12 Oct 2026), km elsewhere. */
+  unitsChosen?: boolean;
   quickDriveProfile: RoadProfile;  // road style for the one-tap quick drive
 }
 
@@ -36,10 +40,13 @@ const KEY = "driftway.settings.v1";
 function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...JSON.parse(raw) };
+    const saved = raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
+    // Units the parent never chose were only ever the default (every visit
+    // saved it): follow the device instead.
+    if (!saved.unitsChosen) saved.units = defaultUnits();
+    return saved;
   } catch {
-    return DEFAULTS;
+    return { ...DEFAULTS, units: defaultUnits() };
   }
 }
 
@@ -55,7 +62,7 @@ export function useSettings() {
   }, [settings]);
 
   const update = useCallback((patch: Partial<Settings>) => {
-    setSettings((s) => ({ ...s, ...patch }));
+    setSettings((s) => ({ ...s, ...patch, ...(patch.units ? { unitsChosen: true } : {}) }));
   }, []);
 
   return { settings, update };
