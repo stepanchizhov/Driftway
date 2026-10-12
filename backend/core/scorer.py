@@ -199,6 +199,33 @@ def bumps_of(route: EvaluatedRoute):
     return route.bumps
 
 
+# Traffic lights (founder, 12 Oct 2026: a stop at lights may wake a baby
+# more than a bump). HYPOTHESIS weights: a drive meeting lights once a
+# kilometre or more (a junction or a pedestrian crossing) loses W_LIGHTS.
+# Measured on 160 real candidates around Windsor: a median drive meets about
+# 11, and one start's candidates ranged from 3 to 29 junctions.
+W_LIGHTS = 0.3
+LIGHTS_PER_KM_FULL = 1.0
+UNKNOWN_LIGHT_SCORE = 1.0 - 0.55 / LIGHTS_PER_KM_FULL
+
+
+def lights_of(route: EvaluatedRoute):
+    """The route's traffic lights (calming.LightCount), or None outside the
+    prepared data. Counted once per route."""
+    if not route.lights_checked:
+        route.lights = calming.lights_along(route.geometry)
+        route.lights_checked = True
+    return route.lights
+
+
+def _light_score(route: EvaluatedRoute) -> float:
+    """1.0 = no lights mapped, 0.0 = LIGHTS_PER_KM_FULL or more per km."""
+    lights = lights_of(route)
+    if lights is None:
+        return UNKNOWN_LIGHT_SCORE
+    return 1.0 - min(1.0, lights.per_km / LIGHTS_PER_KM_FULL)
+
+
 def _bump_score(route: EvaluatedRoute) -> float:
     """1.0 = no mapped bumps, 0.0 = BUMPS_PER_KM_FULL or more per km."""
     b = bumps_of(route)
@@ -222,7 +249,7 @@ def score_route(route: EvaluatedRoute, target_minutes: int, profile: str,
         + W_SMOOTH * _smoothness(route)
         + W_LOOP * loop_score
         + W_PROFILE * profile_score
-        + (W_BUMPS * _bump_score(route) if with_bumps else 0.0),
+        + (W_BUMPS * _bump_score(route) + W_LIGHTS * _light_score(route) if with_bumps else 0.0),
         4,
     )
 
@@ -244,7 +271,7 @@ def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
     from the time; among those, and the first drive itself, the full score
     (with bumps) decides. Only the first place changes.
     """
-    if not ranked or W_BUMPS <= 0:
+    if not ranked or (W_BUMPS <= 0 and W_LIGHTS <= 0):
         return ranked
     lead = ranked[0]
     lead_turns = turnaround_count(lead)

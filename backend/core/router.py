@@ -50,6 +50,10 @@ class EvaluatedRoute:
     #: when first needed: see scorer.bumps_of.
     bumps: Optional[object] = None
     bumps_checked: bool = False
+    #: Junctions with lights and pedestrian-operated lights (core.calming):
+    #: see scorer.lights_of.
+    lights: Optional[object] = None
+    lights_checked: bool = False
 
 
 class Router(Protocol):

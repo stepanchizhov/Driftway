@@ -175,3 +175,60 @@ class ApiTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LightTests(unittest.TestCase):
+    """Traffic lights (founder, 12 Oct 2026), synthetic data only."""
+
+    def raw(self):
+        def n(i, lat, lng, **tags):
+            return {"type": "node", "id": i, "lat": lat, "lon": lng, "tags": tags}
+        return {"elements": [
+            # One junction: lights on three approaches, 20 to 30 m apart,
+            # and a signalled crossing beside it.
+            n(1, 52.0050, 13.0000, highway="traffic_signals", traffic_signals="signal"),
+            n(2, 52.0052, 13.0002, highway="traffic_signals"),
+            n(3, 52.0048, 13.0003, highway="traffic_signals"),
+            n(4, 52.0051, 13.0001, highway="crossing", crossing="traffic_signals"),
+            # A puffin crossing on its own, both sides mapped.
+            n(5, 52.0120, 13.0000, highway="traffic_signals", crossing_ref="puffin"),
+            n(6, 52.0121, 13.0000, highway="crossing", crossing="traffic_signals"),
+            # Lights on a side street, 300 m away.
+            n(7, 52.0100, 13.0045, highway="traffic_signals"),
+        ]}
+
+    def test_lights_are_grouped_into_junctions_and_crossings(self):
+        from tools.build_calming import extract_signals
+        sig = extract_signals(self.raw())
+        groups = {}
+        for _lat, _lng, kind, g in sig:
+            groups.setdefault(g, set()).add(kind)
+        kinds = sorted(next(iter(k)) for k in groups.values())
+        self.assertEqual(kinds, ["junction", "junction", "pedestrian"])
+
+    def test_a_drive_counts_each_junction_and_crossing_once(self):
+        from tools.build_calming import extract_signals
+        d = tempfile.mkdtemp()
+        with open(os.path.join(d, "t.json"), "w", encoding="utf-8") as f:
+            json.dump({"region": "t", "bbox": BBOX, "points": [],
+                       "signals": extract_signals(self.raw())}, f)
+        lights = calming.lights_along(ROAD, calming.load(d))
+        self.assertEqual((lights.junctions, lights.pedestrian), (1, 1))
+
+    def test_no_light_data_is_no_count(self):
+        idx = region([[52.005, 13.0, "hump"]])          # bumps only, no lights
+        self.assertIsNone(calming.lights_along(ROAD, idx))
+        self.assertIsNotNone(calming.count_along(ROAD, idx))
+
+    def test_fewer_lights_ranks_higher(self):
+        calm, busy = route(30, 0.2), route(30, 0.2)
+        calm.lights_checked = busy.lights_checked = True
+        calm.lights = calming.LightCount(junctions=1, pedestrian=0, covered_km=20)
+        busy.lights = calming.LightCount(junctions=15, pedestrian=6, covered_km=20)
+        self.assertGreater(scorer.score_route(calm, 30, "mixed"), scorer.score_route(busy, 30, "mixed"))
+
+    def test_the_windsor_data_has_lights(self):
+        with open(os.path.join(calming.DATA_DIR, "windsor.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        self.assertGreater(len(d["signals"]), 1000)
+        self.assertEqual(set(x[2] for x in d["signals"]), {"junction", "pedestrian"})

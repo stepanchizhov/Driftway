@@ -102,6 +102,11 @@ export function RouteCard({
 
       <p className="card-character">{route.character}</p>
 
+      {route.lights_junctions != null && (
+        <p className="card-bumps">
+          {lightsLine(route.lights_junctions, route.lights_pedestrian ?? 0)}
+        </p>
+      )}
       {route.speed_bumps != null && (
         // "Mapped", never "none": a hump nobody mapped isn't counted.
         <p className="card-bumps">
@@ -133,3 +138,15 @@ export function RouteCard({
     </article>
   );
 }
+
+/** "Traffic lights at about 5 junctions and 2 crossings mapped". Mapped,
+ *  never "none": lights nobody mapped aren't counted. */
+function lightsLine(junctions: number, pedestrian: number): string {
+  if (junctions === 0 && pedestrian === 0) return "No traffic lights mapped along this drive";
+  const parts = [
+    junctions ? `${junctions} junction${junctions === 1 ? "" : "s"}` : null,
+    pedestrian ? `${pedestrian} pedestrian crossing${pedestrian === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
+  return `Traffic lights at about ${parts.join(" and ")} mapped along this drive`;
+}
+

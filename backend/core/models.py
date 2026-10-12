@@ -108,6 +108,11 @@ class RouteOption(BaseModel):
     # lower bound: unmapped ones are not counted. None outside the prepared
     # data, and for a simulated route, whose geometry is invented.
     speed_bumps: Optional[int] = None
+    # Traffic lights mapped along the drive (12 Oct 2026): junctions with
+    # lights, and pedestrian-operated lights apart from junctions. Lower
+    # bounds, like the speed bumps; None outside the prepared data.
+    lights_junctions: Optional[int] = None
+    lights_pedestrian: Optional[int] = None
 
     # Every app that could drive this, best first. Empty for a simulated
     # route, which has nothing real to navigate. `maps_url` above remains the

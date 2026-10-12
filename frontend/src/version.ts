@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.11",
+    date: "12 Oct 2026",
+    changes: [
+      "Drives count the traffic lights mapped along them, around Windsor for now: junctions and pedestrian-operated crossings apart. A drive with fewer lights and bumps is offered first when it's as good otherwise.",
+      "Miles by default in the UK. Kilometres elsewhere, and your own choice in Settings always wins.",
+    ],
+  },
+  {
     version: "0.8.10",
     date: "12 Oct 2026",
     changes: [

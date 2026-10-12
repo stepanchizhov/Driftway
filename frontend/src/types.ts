@@ -99,6 +99,11 @@ export interface RouteOption {
   /** Speed bumps mapped on OpenStreetMap along the drive: a lower bound.
    *  Null outside the prepared data; absent from servers before 0.8.7. */
   speed_bumps?: number | null;
+  /** Junctions with traffic lights, and pedestrian-operated lights apart
+   *  from junctions, mapped along the drive. Lower bounds; null outside the
+   *  prepared data. */
+  lights_junctions?: number | null;
+  lights_pedestrian?: number | null;
 }
 
 export interface GenerateResponse {

@@ -13,6 +13,17 @@ Only the traffic calming that lifts or drops the road is kept: hump, bump,
 table, cushion, choked table, dip, and plain `traffic_calming=yes`. Islands,
 chokers and chicanes narrow the road and are left out.
 
+Traffic lights too (founder, 12 Oct 2026: a stop at lights may wake a baby
+more than a bump). Two kinds, counted apart:
+  junction    lights at a junction. Every light within JOIN_M of another
+              is the same junction: one per approach is usual.
+  pedestrian  lights for people crossing, often pressed on demand: a
+              signal-controlled crossing, or lights tagged as a pelican,
+              puffin, toucan or pegasus crossing. One beside junction
+              lights belongs to the junction and isn't counted again.
+Each point carries its group, so a drive passing a junction's lights counts
+the junction once.
+
 Source and terms, checked 11 Oct 2026: OpenStreetMap via the Overpass API,
 ODbL 1.0, attribution "© OpenStreetMap contributors". The written file is a
 derived database under the same licence. Overpass asks for modest use and a
@@ -24,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import urllib.parse
@@ -42,8 +54,11 @@ OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 def download(south: float, west: float, north: float, east: float) -> dict:
     box = f"{south},{west},{north},{east}"
-    query = (f"[out:json][timeout:150];(node[traffic_calming]({box});"
-             f"way[traffic_calming]({box}););out tags center;")
+    return download_query(f"[out:json][timeout:150];(node[traffic_calming]({box});"
+                          f"way[traffic_calming]({box}););out tags center;")
+
+
+def download_query(query: str) -> dict:
     data = urllib.parse.urlencode({"data": query}).encode()
     last = None
     for url in OVERPASS:
@@ -58,6 +73,81 @@ def download(south: float, west: float, north: float, east: float) -> dict:
             last = f"{url}: {type(e).__name__}"
         print("  " + last, file=sys.stderr)
     raise SystemExit(f"No Overpass server answered. Last: {last}")
+
+
+#: Lights this close to each other are one junction or one crossing.
+JOIN_M = 40.0
+PEDESTRIAN_REFS = {"pelican", "puffin", "toucan", "pegasus"}
+
+
+def signals_query(south, west, north, east) -> str:
+    box = f"{south},{west},{north},{east}"
+    return (f"[out:json][timeout:150];(node[highway=traffic_signals]({box});"
+            f"node[highway=crossing][crossing=traffic_signals]({box});"
+            f'node[crossing_ref~"^(pelican|puffin|toucan|pegasus)$"]({box}););out body;')
+
+
+def _kind(tags: dict) -> str:
+    if tags.get("crossing_ref") in PEDESTRIAN_REFS:
+        return "pedestrian"
+    if tags.get("highway") == "crossing":
+        return "pedestrian"
+    if tags.get("traffic_signals") in ("pedestrian_crossing", "crossing"):
+        return "pedestrian"
+    if tags.get("crossing") not in (None, "no"):
+        return "pedestrian"
+    return "junction"
+
+
+def _metres(a, b) -> float:
+    k = math.cos(math.radians(a[0]))
+    return math.hypot((a[0] - b[0]) * 111320.0, (a[1] - b[1]) * 111320.0 * k)
+
+
+def extract_signals(raw: dict) -> list:
+    """[[lat, lng, kind, group]]: every light, with the junction or crossing
+    it belongs to. Pedestrian lights near junction lights join the junction."""
+    pts = []
+    for e in raw.get("elements", []):
+        if e.get("type") == "node":
+            pts.append((round(e["lat"], 6), round(e["lon"], 6), _kind(e.get("tags", {}))))
+    pts.sort()
+    cell = JOIN_M / 111320.0
+    grid: dict = {}
+    for i, (la, lo, _) in enumerate(pts):
+        grid.setdefault((int(la / cell), int(lo / cell)), []).append(i)
+    parent = list(range(len(pts)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def near(i):
+        la, lo, _ = pts[i]
+        ci, cj = int(la / cell), int(lo / cell)
+        for di in (-1, 0, 1):
+            for dj in (-1, 0, 1):
+                for j in grid.get((ci + di, cj + dj), ()):
+                    if j != i and _metres(pts[i], pts[j]) <= JOIN_M:
+                        yield j
+
+    for i in range(len(pts)):
+        for j in near(i):
+            parent[find(i)] = find(j)
+    # A group with any junction light is a junction; otherwise a crossing.
+    group_kind: dict = {}
+    for i, p in enumerate(pts):
+        g = find(i)
+        if p[2] == "junction" or g not in group_kind:
+            group_kind[g] = "junction" if p[2] == "junction" else group_kind.get(g, p[2])
+    ids: dict = {}
+    out = []
+    for i, (la, lo, _) in enumerate(pts):
+        g = ids.setdefault(find(i), len(ids))
+        out.append([la, lo, group_kind[find(i)], g])
+    return out
 
 
 def extract(raw: dict) -> list:
@@ -85,6 +175,8 @@ def main() -> None:
     ap.add_argument("north", type=float)
     ap.add_argument("east", type=float)
     ap.add_argument("--from", dest="source", help="an Overpass JSON response saved earlier")
+    ap.add_argument("--signals-from", dest="signals_source",
+                    help="an Overpass JSON response for traffic lights saved earlier")
     a = ap.parse_args()
     if a.source:
         with open(a.source, encoding="utf-8") as f:
@@ -92,6 +184,12 @@ def main() -> None:
     else:
         raw = download(a.south, a.west, a.north, a.east)
     points = extract(raw)
+    if a.signals_source:
+        with open(a.signals_source, encoding="utf-8") as f:
+            sig_raw = json.load(f)
+    else:
+        sig_raw = download_query(signals_query(a.south, a.west, a.north, a.east))
+    signals = extract_signals(sig_raw)
     as_of = raw.get("osm3s", {}).get("timestamp_osm_base") or datetime.now(timezone.utc).isoformat()
     out = {
         "region": a.region,
@@ -102,13 +200,21 @@ def main() -> None:
         "attribution": "© OpenStreetMap contributors",
         "kinds": list(VERTICAL),
         "points": points,
+        "signals_as_of": sig_raw.get("osm3s", {}).get("timestamp_osm_base") or as_of,
+        "signal_kinds": ["junction", "pedestrian"],
+        "signals": signals,
     }
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{a.region}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(out, f, separators=(",", ":"), ensure_ascii=False)
         f.write("\n")
-    print(f"data/calming/{a.region}.json: {len(points)} points, data as of {as_of}")
+    groups = {}
+    for _, _, kind, g in signals:
+        groups[g] = kind
+    print(f"data/calming/{a.region}.json: {len(points)} points, data as of {as_of}; "
+          f"{len(signals)} lights in {sum(1 for k in groups.values() if k == 'junction')} junctions "
+          f"and {sum(1 for k in groups.values() if k == 'pedestrian')} crossings")
 
 
 if __name__ == "__main__":

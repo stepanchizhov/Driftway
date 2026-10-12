@@ -54,6 +54,7 @@ from .router import EvaluatedRoute, MockRouter, Router
 from .scorer import (
     bumps_of,
     calmer_lead,
+    lights_of,
     dedupe,
     describe_character,
     passes_validation,
@@ -325,6 +326,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
     if direct is not None:
         extra = round(ev.minutes - direct.minutes, 1)
     bumps = None if simulated else bumps_of(ev)
+    lights = None if simulated else lights_of(ev)
 
     return RouteOption(
         id=str(uuid.uuid4())[:8],
@@ -351,6 +353,8 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         simulated=simulated,
         caveat=_with_traffic_note(ev, _caveat(ev, finish, req) if not is_direct else None),
         speed_bumps=bumps.count if bumps is not None else None,
+        lights_junctions=lights.junctions if lights is not None else None,
+        lights_pedestrian=lights.pedestrian if lights is not None else None,
     )
 
 

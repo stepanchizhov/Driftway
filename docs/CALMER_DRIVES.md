@@ -232,3 +232,36 @@ OPEN: does it feel calmer? Founder, on real drives from Datchet and
 elsewhere. LATER, only if it helps: let calmer candidates into second and
 third place too, and shape candidates away from dense clusters (option 2).
 
+## Traffic lights (0.8.11, 12 Oct 2026)
+
+IMPLEMENTED. Founder, after a real drive: one stop-go, three or four sets
+of lights, one pedestrian-operated; a stop may wake a baby more than a bump.
+
+- **What the map holds**, wider Windsor area (51.33 to 51.62 N, 0.88 to
+  0.40 W, data 2026-10-12T14:37Z): 3,452 lights, grouped (lights within
+  40 m are one junction or one crossing; a signalled crossing beside
+  junction lights belongs to the junction) into **702 junctions** and **141
+  pedestrian-operated crossings** (signal-controlled crossings, and lights
+  tagged pelican, puffin, toucan or pegasus). OSM tells them apart well; an
+  ambiguous light with no tags counts as a junction.
+- **Counted** like bumps (`core/calming.lights_along`): each junction or
+  crossing once, within 12 m of the drive; no count outside the data.
+- **Ranked** with bumps under the same guard (`scorer.calmer_lead`: no extra
+  turn-arounds, within 3 minutes): W_LIGHTS 0.3, full at one per km.
+- **Card:** "Traffic lights at about N junctions and M pedestrian crossings
+  mapped along this drive".
+
+**Measured offline** on the same 160 real candidates (no new calls): one
+start's candidates range from 3 to 29 junctions with lights; a median drive
+meets about 8 junctions and 3 pedestrian lights. Ranking with bumps and
+lights together changes the first drive in 1 of 20 (Englefield Green,
+Quieter: bumps 7 to 5, junctions 10 to 5, pedestrian 2 to 0); across all
+20, bumps 255 to 253, junctions 123 to 118, pedestrian lights 44 to 42, no
+added turn-arounds, timing unchanged. Bumps alone had changed the two
+Datchet drives, but their calmer candidates had more lights.
+
+The guard is why the effect is small: the calmest candidates are mostly
+the ones with a turn-around or off the time. NEXT (proposed): build calm
+candidates on purpose, by placing waypoints to steer round dense clusters
+of lights and bumps, then the same guard picks among better options.
+
