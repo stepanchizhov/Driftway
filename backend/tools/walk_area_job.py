@@ -18,7 +18,13 @@ Each run:
 Settings, from the environment (GitHub Actions secrets and variables):
   API                 the Driftway API, default https://driftway.onrender.com
   WALKS_JOB_TOKEN     the job's own token (same value as on the API)
-  ANTHROPIC_API_KEY   optional; without it, step 2 is skipped
+  Anthropic access, either (preferred, founder 12 Oct 2026) Workload
+  Identity Federation, with no key stored anywhere: the workflow grants
+  `id-token: write`, and these four repository variables (IDs, not secrets)
+  name the Console's federation rule:
+    ANTHROPIC_FEDERATION_RULE_ID, ANTHROPIC_ORGANIZATION_ID,
+    ANTHROPIC_SERVICE_ACCOUNT_ID, ANTHROPIC_WORKSPACE_ID
+  or, as a fallback, ANTHROPIC_API_KEY. With neither, step 2 is skipped.
   DESCRIPTION_MODEL   default claude-sonnet-5-5
   MAX_AREAS, MAX_DESCRIPTIONS   per-run caps, default 3 and 20
 
@@ -33,7 +39,9 @@ import os
 import re
 import sys
 import tempfile
+import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Dict, List, Optional
 
@@ -172,28 +180,87 @@ def check(text: str, facts: Dict) -> Optional[str]:
     return None
 
 
-def describe(facts: Dict, key: str) -> str:
+# ------------------------------------------------- Anthropic access
+
+class AnthropicAccess:
+    """Headers for the Claude API: a short-lived token from Workload Identity
+    Federation (GitHub's OIDC token exchanged at /v1/oauth/token), refreshed
+    before it expires; or the API key, if that is what is configured."""
+
+    AUDIENCE = "https://api.anthropic.com"
+
+    def __init__(self) -> None:
+        self.key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+        self.fed = {k: (os.getenv(f"ANTHROPIC_{k.upper()}") or "").strip()
+                    for k in ("federation_rule_id", "organization_id",
+                              "service_account_id", "workspace_id")}
+        self.token, self.expires = "", 0.0
+
+    @property
+    def federated(self) -> bool:
+        return all(self.fed[k] for k in ("federation_rule_id", "organization_id",
+                                         "service_account_id"))
+
+    @property
+    def available(self) -> bool:
+        return bool(self.key) or self.federated
+
+    def _github_jwt(self) -> str:
+        url = os.getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
+        bearer = os.getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+        if not url or not bearer:
+            raise RuntimeError("no GitHub identity token: the workflow needs "
+                               "permissions: id-token: write")
+        req = urllib.request.Request(url + "&audience=" + urllib.parse.quote(self.AUDIENCE, safe=""),
+                                     headers={"Authorization": f"Bearer {bearer}"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())["value"]
+
+    def _exchange(self) -> None:
+        body = {"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "assertion": self._github_jwt(), **{k: v for k, v in self.fed.items() if v}}
+        req = urllib.request.Request("https://api.anthropic.com/v1/oauth/token", method="POST",
+                                     data=json.dumps(body).encode(),
+                                     headers={"content-type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                out = json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            raise RuntimeError(f"Anthropic refused the federated sign-in ({e.code}); its reason "
+                               "is on the Console's Workload identity history page") from None
+        self.token = out["access_token"]
+        self.expires = time.monotonic() + float(out.get("expires_in", 600))
+
+    def headers(self) -> Dict[str, str]:
+        if self.key:
+            return {"x-api-key": self.key}
+        if time.monotonic() > self.expires - 120:      # refresh two minutes early
+            self._exchange()
+        return {"authorization": f"Bearer {self.token}"}
+
+
+def describe(facts: Dict, access: "AnthropicAccess") -> str:
     body = {"model": MODEL, "max_tokens": 300, "system": SYSTEM,
             "messages": [{"role": "user", "content":
                           "Facts about the walk, as JSON:\n" + json.dumps(facts, ensure_ascii=False)
                           + "\n\nWrite the description."}]}
     req = urllib.request.Request(
         "https://api.anthropic.com/v1/messages", method="POST", data=json.dumps(body).encode(),
-        headers={"x-api-key": key, "anthropic-version": "2023-06-01",
+        headers={**access.headers(), "anthropic-version": "2023-06-01",
                  "content-type": "application/json"})
     with urllib.request.urlopen(req, timeout=60) as resp:
         out = json.loads(resp.read())
     return "".join(b.get("text", "") for b in out.get("content", []) if b.get("type") == "text").strip()
 
 
-def process_descriptions(token: str, key: str) -> None:
+def process_descriptions(token: str, access: "AnthropicAccess") -> None:
     walks = _call("GET", f"/api/admin/curated-walks?description_status=none&limit={MAX_DESCRIPTIONS}",
                   token=token)
     print(f"\n{len(walks)} walk(s) without a description")
     for w in walks:
         facts = facts_of(w["route"])
         try:
-            text = describe(facts, key)
+            text = describe(facts, access)
         except urllib.error.HTTPError as e:
             print(f"  {w['id']}: Anthropic said {e.code}; stopping descriptions for this run")
             return
@@ -214,6 +281,17 @@ def main() -> None:
     token = (os.getenv("WALKS_JOB_TOKEN") or "").strip()
     if not token:
         raise SystemExit("WALKS_JOB_TOKEN is not set.")
+    access = AnthropicAccess()
+    if access.federated and not access.key:
+        # Sign in once at the start: shows at once whether federation works
+        # (and passes the Console's connection test even with nothing to
+        # describe), before any long build.
+        try:
+            access.headers()
+            print("Anthropic: signed in with workload identity federation")
+        except Exception as e:  # noqa: BLE001
+            print(f"::warning title=Walk descriptions::{e}")
+            access = None
     try:
         process_areas(token)
     except ApiRefused as e:
@@ -221,11 +299,10 @@ def main() -> None:
         # the step's log (first run, 12 Oct 2026: just "exit code 1").
         print(f"::error title=Walk areas::{e}")
         raise SystemExit(1)
-    key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
-    if key:
-        process_descriptions(token, key)
+    if access is not None and access.available:
+        process_descriptions(token, access)
     else:
-        print("\nANTHROPIC_API_KEY not set: no descriptions this run.")
+        print("\nNo Anthropic access configured: no descriptions this run.")
 
 
 if __name__ == "__main__":

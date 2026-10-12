@@ -10,9 +10,13 @@
 #   WALKS_JOB_TOKEN    the same value as WALKS_JOB_TOKEN on the Render API.
 #                      It can read the queue, upload walks and add pending
 #                      descriptions; it cannot approve them or touch accounts.
-#   ANTHROPIC_API_KEY  optional. Without it, walks are built but get no
-#                      description. Cost is capped per run (MAX_DESCRIPTIONS)
-#                      and by the spending limit in the Anthropic console.
+# Anthropic access, for descriptions (optional; without it walks are built
+# but get no description). Preferred: Workload Identity Federation, with no
+# key stored: four repository *variables* (IDs, not secrets) from the Claude
+# Console's GitHub Actions connection, ANTHROPIC_FEDERATION_RULE_ID,
+# ANTHROPIC_ORGANIZATION_ID, ANTHROPIC_SERVICE_ACCOUNT_ID and
+# ANTHROPIC_WORKSPACE_ID. Fallback: an ANTHROPIC_API_KEY secret. Cost is
+# capped per run (MAX_DESCRIPTIONS) and by the workspace's spend limit.
 #
 # Known limits, as for the other scheduled workflows: scheduled runs can
 # start late or be dropped when GitHub is busy, and stop after 60 days with
@@ -28,6 +32,8 @@ on:
 
 permissions:
   contents: read
+  # GitHub's short-lived identity token, exchanged for an Anthropic token.
+  id-token: write
 
 concurrency:
   group: walk-areas
@@ -50,6 +56,10 @@ jobs:
           API: https://driftway.onrender.com
           WALKS_JOB_TOKEN: ${{ secrets.WALKS_JOB_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_FEDERATION_RULE_ID: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
+          ANTHROPIC_ORGANIZATION_ID: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
+          ANTHROPIC_SERVICE_ACCOUNT_ID: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
+          ANTHROPIC_WORKSPACE_ID: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
           MAX_AREAS: "3"
           MAX_DESCRIPTIONS: "20"
         run: |

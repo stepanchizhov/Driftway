@@ -448,10 +448,22 @@ How it works: `docs/WALKING.md`, "Walks anywhere". One-time setup:
    repository, Settings, Secrets and variables, Actions: a secret
    `WALKS_JOB_TOKEN` with the same value. It can read the queue, upload
    walks and add pending descriptions, nothing else.
-2. **The AI key (optional).** Anthropic console: create an API key, and set
-   a monthly spending limit there. GitHub: a secret `ANTHROPIC_API_KEY`.
-   Without it, walks are still built, just without descriptions. Each run
-   writes at most 20 descriptions, a few hundred words of output in all.
+2. **AI access (optional), without a stored key** (founder decision, 12 Oct
+   2026: Workload Identity Federation). Claude Console, **Settings →
+   Workload identity → Connect workload → GitHub Actions**: repository
+   `stepanchizhov/Driftway`, branch `main` (the rule's subject is
+   `repo:stepanchizhov/Driftway:ref:refs/heads/main`, plus
+   `repository_owner` = `stepanchizhov`), scope `workspace:developer`,
+   token lifetime 600 s. Note the four IDs it shows: federation rule
+   (`fdrl_…`), service account (`svac_…`), organisation, workspace
+   (`wrkspc_…`). GitHub, Settings, Secrets and variables, Actions,
+   **Variables** tab (not Secrets: these are IDs, not keys):
+   `ANTHROPIC_FEDERATION_RULE_ID`, `ANTHROPIC_SERVICE_ACCOUNT_ID`,
+   `ANTHROPIC_ORGANIZATION_ID`, `ANTHROPIC_WORKSPACE_ID`. Set a spend limit
+   on that workspace in the Console. Run the workflow within the wizard's
+   15-minute test window: the job signs in at the start of every run.
+   Fallback: an `ANTHROPIC_API_KEY` secret works too, and wins if both are
+   set, so don't add one.
 3. **Run it once by hand.** GitHub, Actions, "Walk areas", Run workflow.
    Then it runs every six hours.
 4. **Review.** `https://driftway.stepan.chizhov.com/review.html`, with the
