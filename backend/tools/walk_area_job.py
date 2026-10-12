@@ -59,13 +59,36 @@ SYSTEM = (
 )
 
 
+class ApiRefused(RuntimeError):
+    pass
+
+
+#: What a refusal from the API means for whoever reads the run's summary.
+_MEANING = {
+    403: "the API refused the job's token: WALKS_JOB_TOKEN must be exactly the "
+         "same in the GitHub secret and on the Render API (check for a missing "
+         "or extra character), and Render must have restarted since it was set",
+    503: "the API says the walk-area job isn't configured there, or its "
+         "database is unavailable: set WALKS_JOB_TOKEN on the Render API",
+    404: "the API doesn't have the walk-area endpoints: is it running 0.8.9 or later?",
+}
+
+
 def _call(method: str, path: str, body: Optional[Dict] = None, token: str = "") -> object:
     req = urllib.request.Request(
         API + path, method=method,
         data=json.dumps(body).encode() if body is not None else None,
-        headers={"Content-Type": "application/json", "X-Walks-Job-Token": token})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read() or b"null")
+        headers={"Content-Type": "application/json", "X-Walks-Job-Token": token,
+                 "User-Agent": "Driftway-walk-area-job (+https://github.com/stepanchizhov/Driftway)"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            return json.loads(resp.read() or b"null")
+    except urllib.error.HTTPError as e:
+        detail = e.read()[:300].decode("utf-8", "replace")
+        raise ApiRefused(f"{method} {path}: {e.code} {detail}. "
+                         + _MEANING.get(e.code, "see the API's logs")) from None
+    except urllib.error.URLError as e:
+        raise ApiRefused(f"{method} {path}: couldn't reach {API} ({e.reason})") from None
 
 
 # ------------------------------------------------------------------ areas
@@ -178,8 +201,12 @@ def process_descriptions(token: str, key: str) -> None:
         if problem:
             print(f"  {w['id']}: not uploaded ({problem})")
             continue
-        _call("POST", f"/api/admin/curated-walks/{w['id']}/description",
-              {"text": text, "model": MODEL}, token)
+        try:
+            _call("POST", f"/api/admin/curated-walks/{w['id']}/description",
+                  {"text": text, "model": MODEL}, token)
+        except ApiRefused as e:
+            print(f"::warning title=Walk descriptions::{w['id']}: {e}")
+            continue
         print(f"  {w['id']}: description awaiting approval")
 
 
@@ -187,7 +214,13 @@ def main() -> None:
     token = (os.getenv("WALKS_JOB_TOKEN") or "").strip()
     if not token:
         raise SystemExit("WALKS_JOB_TOKEN is not set.")
-    process_areas(token)
+    try:
+        process_areas(token)
+    except ApiRefused as e:
+        # An annotation, so it shows on the run's summary page, not only in
+        # the step's log (first run, 12 Oct 2026: just "exit code 1").
+        print(f"::error title=Walk areas::{e}")
+        raise SystemExit(1)
     key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
     if key:
         process_descriptions(token, key)
