@@ -723,6 +723,21 @@ descriptions; only `ADMIN_API_TOKEN` approves. A walk in `data/walks/`
 always wins over a stored one with the same id. Privacy policy 1.7.
 Tests: `tests/test_walk_areas.py`.
 
+**Long trails, in sections (12 Oct 2026, 0.8.10).** Founder idea: a trail
+far longer than a walk still passes through somewhere a parent can walk.
+In the job's broad mode, a trail longer than 10 km by its own paths is not
+skipped: its usable paths inside the area are taken as connected runs
+(`build_walk.trail_runs`; never joined across a gap or a path closed to
+walkers), cut into pieces of about 4 km (`_cut`; a remainder under 1 km
+joins the piece before), and each piece becomes a walk there and back named
+after where it starts ("Tiergartenring: from Hiroshimasteg"), so the usual
+time fitting turns back when the time is up. At most 3 sections per trail
+and 9 per area per run, for the terrain service's daily allowance. Gates
+and other barriers on the trail's paths come with the route itself.
+Central Berlin (52.5 to 52.6 N, 13.3 to 13.4 E), which had no walk under
+10 km, now gives 9 sections of the Tiergartenring, Heiligenseer Weg and
+Lübarser Weg.
+
 OPEN: the first real run, and Katya's area as the first test outside
 Windsor. LATER: tell a parent when their area's walks are ready (it would
 need a contact, so not without asking them).

@@ -35,11 +35,16 @@ from typing import List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools.build_walk import _overpass, build, fetch_relation, haversine, osgb_to_wgs84  # noqa: E402
+from tools.build_walk import (  # noqa: E402
+    _overpass, build, build_trail_sections, fetch_relation, haversine, osgb_to_wgs84,
+)
 
 SPECS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                      "data", "walks", "specs")
 MAX_KM = 8.0
+#: Long trails become sections (broad mode): at most this many per area, so a
+#: run stays inside the terrain service's daily allowance.
+MAX_SECTIONS_PER_AREA = 9
 
 
 def _km(raw: str):
@@ -193,15 +198,49 @@ def import_area(south: float, west: float, north: float, east: float, *,
     rels.sort(key=lambda e: (_km(e["tags"].get("distance", "")) or 99, e["tags"]["name"]))
     os.makedirs(specs_dir, exist_ok=True)
     results: List[dict] = []
+    sections_left = MAX_SECTIONS_PER_AREA
     for rel in rels[:max_routes]:
         name = rel["tags"]["name"]
         km = _km(rel["tags"].get("distance", ""))
-        if km and km > MAX_KM:
+        long_by_tag = bool(km and km > MAX_KM)
+        if long_by_tag and not broad:
             results.append({"id": None, "status": "skip", "reason": f"{name}: {km:g} km", "relation": rel["id"]})
             say(f"skip  {name}: {km:g} km")
             continue
         full = fetch_relation(rel["id"])
         mapped_km = _mapped_km(full)
+        if broad and (long_by_tag or mapped_km > MAX_KM * 1.25):
+            # A long trail: walks for the parts of it inside this area.
+            if sections_left <= 0:
+                results.append({"id": None, "status": "skip", "relation": rel["id"],
+                                "reason": f"{name}: long trail, no sections left this run"})
+                continue
+            t = rel["tags"]
+            try:
+                outs = build_trail_sections(
+                    full, (south, west, north, east),
+                    # The area is part of the id: one trail has sections in many areas.
+                    id_prefix=(f"osm-{rel['id']}-a{round(south * 10)}-{round(west * 10)}-"
+                               + _slug(name))[:70],
+                    name=name.split(",")[0].strip(), operator=(t.get("operator") or "").split(";")[0].strip(),
+                    website=t.get("website") if (t.get("website") or "").startswith("https://") else None,
+                    total_km=max(km or 0, mapped_km), out_dir=out_dir or os.path.join(specs_dir, "..", "sections"),
+                    max_sections=min(3, sections_left))
+            except Exception as e:  # noqa: BLE001
+                results.append({"id": None, "status": "fail", "relation": rel["id"],
+                                "reason": f"{name}: {type(e).__name__}: {e}"[:300]})
+                say(f"FAIL  {name} (sections): {type(e).__name__}: {e}")
+                continue
+            sections_left -= len(outs)
+            for out in outs:
+                wid = os.path.basename(out)[:-5]
+                results.append({"id": wid, "status": "built", "out": out, "relation": rel["id"],
+                                "reason": "section of a long trail"})
+                say(f"built {wid}: section of {name}")
+            if not outs:
+                results.append({"id": None, "status": "skip", "relation": rel["id"],
+                                "reason": f"{name}: no section of 1 km or more here"})
+            continue
         if mapped_km > MAX_KM * 1.25 or mapped_km < 0.3:
             results.append({"id": None, "status": "skip", "relation": rel["id"],
                             "reason": f"{name}: its paths add up to {mapped_km:.1f} km"})

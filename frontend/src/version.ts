@@ -37,6 +37,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.10",
+    date: "12 Oct 2026",
+    changes: [
+      "Long trails near you, in sections: a ring round a city park or a long-distance path is offered as walks of a few kilometres there and back, turning back when your time is up.",
+    ],
+  },
+  {
     version: "0.8.9",
     date: "11 Oct 2026",
     changes: [

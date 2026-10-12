@@ -169,10 +169,11 @@ def _overpass(query: str) -> Dict:
 def fetch_relation(rel_id: int) -> Dict:
     """A route relation with its member ways (nodes and geometry)."""
     data = _overpass(f"[out:json][timeout:90];relation({int(rel_id)});out body;"
-                     f"way(r);out body geom;")
+                     f"way(r);out body geom;node(w)[barrier];out body;")
     rel = next(e for e in data["elements"] if e["type"] == "relation")
     ways = {e["id"]: e for e in data["elements"] if e["type"] == "way"}
-    return {"relation": rel, "ways": ways,
+    barriers = [e for e in data["elements"] if e["type"] == "node"]
+    return {"relation": rel, "ways": ways, "barriers": barriers,
             "osm_base": data.get("osm3s", {}).get("timestamp_osm_base", "")}
 
 
@@ -821,6 +822,11 @@ def build(spec_path: str, out_dir: str = OUT_DIR) -> str:
     obs_path = spec_path.replace(".spec.json", ".observations.json")
     notes = list(spec.get("notes", [])) + extra_notes + _apply_observations(sections, obs_path)
 
+    return _write_route(spec, sections, notes, graph.osm_base, rel, terrain, out_dir)
+
+
+def _write_route(spec: Dict, sections: List[Section], notes: List[str], osm_base: str,
+                 rel: Optional[Dict], terrain: Optional[str], out_dir: str) -> str:
     first = sections[0].geometry[0]
     route = {
         "id": spec["id"],
@@ -834,10 +840,10 @@ def build(spec_path: str, out_dir: str = OUT_DIR) -> str:
         "sample": bool(spec.get("sample")),
         "notes": notes,
         "sources": [
-            {"id": "osm", "label": "OpenStreetMap", "as_of": graph.osm_base,
+            {"id": "osm", "label": "OpenStreetMap", "as_of": osm_base,
              "licence": "ODbL", "attribution": "© OpenStreetMap contributors"},
         ] + ([
-            {"id": "osm-route", "label": f"OpenStreetMap route relation {spec['osm_relation']}",
+            {"id": "osm-route", "label": f"OpenStreetMap route relation {rel['relation']['id']}",
              "as_of": rel["osm_base"], "licence": "ODbL",
              "attribution": "© OpenStreetMap contributors",
              "limitation": "The trail as mapped by volunteers. The trail itself "
@@ -851,6 +857,139 @@ def build(spec_path: str, out_dir: str = OUT_DIR) -> str:
     with open(out, "w", encoding="utf-8") as f:
         json.dump(route, f, indent=1, ensure_ascii=False)
     return out
+
+
+# ------------------------------------------------------- long trails, in sections
+#
+# Founder idea, 12 Oct 2026: a trail far longer than a walk (a 23 km ring, a
+# 200 km long-distance path) still passes through somewhere a parent can
+# walk. Only its paths inside the area asked about are used, as connected
+# runs (never joined across a gap), cut into pieces of about SECTION_KM. Each
+# piece is a walk there and back, so the usual time fitting turns back when
+# the time is up.
+
+SECTION_KM = 4.0
+SECTION_MIN_KM = 1.0
+_GENERIC_LABELS = {"Footpath", "Path", "Street", "Track", "Cycle path", "Bridleway",
+                   "Pedestrian street", "Steps", "Not on a mapped path"}
+
+
+def _usable(tags: Dict) -> bool:
+    return tags.get("highway") in WALKABLE and not access_forbidden(tags)
+
+
+def trail_runs(rel: Dict, bbox: Tuple[float, float, float, float]) -> List[List[Tuple[int, int]]]:
+    """Connected runs of a trail's usable paths inside `bbox`, each as
+    [(node, way)], never joined across a gap or an unusable path."""
+    s, w, n, e = bbox
+    segs: List[Tuple[int, List[int]]] = []
+    for m in rel["relation"].get("members", []):
+        if m["type"] != "way" or m.get("role", "") not in _ROUTE_ROLES:
+            continue
+        way = rel["ways"].get(m["ref"])
+        if not way or not _usable(way.get("tags", {})):
+            continue
+        run: List[int] = []
+        for nid, g in zip(way["nodes"], way["geometry"]):
+            if s <= g["lat"] <= n and w <= g["lon"] <= e:
+                run.append(nid)
+            else:
+                if len(run) >= 2:
+                    segs.append((way["id"], run))
+                run = []
+        if len(run) >= 2:
+            segs.append((way["id"], run))
+    # Segments meet at shared end nodes; walk them into chains.
+    ends: Dict[int, List[int]] = {}
+    for i, (_, nodes) in enumerate(segs):
+        for end in (nodes[0], nodes[-1]):
+            ends.setdefault(end, []).append(i)
+    used = set()
+    runs: List[List[Tuple[int, int]]] = []
+    starts = sorted(range(len(segs)), key=lambda i: min(len(ends[segs[i][1][0]]), len(ends[segs[i][1][-1]])))
+    for first in starts:
+        if first in used:
+            continue
+        wid, nodes = segs[first]
+        # Begin at the segment's loose end, if it has one.
+        if len(ends[nodes[0]]) > 1 and len(ends[nodes[-1]]) == 1:
+            nodes = nodes[::-1]
+        used.add(first)
+        chain = [(nodes[0], wid)] + [(nid, wid) for nid in nodes[1:]]
+        while True:
+            here = chain[-1][0]
+            nxt = next((i for i in ends.get(here, []) if i not in used), None)
+            if nxt is None:
+                break
+            used.add(nxt)
+            wid2, nodes2 = segs[nxt]
+            if nodes2[0] != here:
+                nodes2 = nodes2[::-1]
+            chain += [(nid, wid2) for nid in nodes2[1:]]
+        runs.append(chain)
+    return runs
+
+
+def _cut(run: List[Tuple[int, int]], coord: Dict[int, Tuple[float, float]]) -> List[List[Tuple[int, int]]]:
+    """A run cut at nodes into pieces of about SECTION_KM; a short remainder
+    joins the piece before it."""
+    pieces, cur, length = [], [run[0]], 0.0
+    for a, b in zip(run, run[1:]):
+        length += haversine(coord[a[0]], coord[b[0]])
+        cur.append(b)
+        if length >= SECTION_KM * 1000:
+            pieces.append(cur)
+            cur, length = [b], 0.0
+    if len(cur) > 1:
+        if length < SECTION_MIN_KM * 1000 and pieces:
+            pieces[-1] += cur[1:]
+        else:
+            pieces.append(cur)
+    return pieces
+
+
+def build_trail_sections(rel: Dict, bbox: Tuple[float, float, float, float], *,
+                         id_prefix: str, name: str, operator: str, website: Optional[str],
+                         total_km: float, out_dir: str, max_sections: int = 3) -> List[str]:
+    """Walks for the parts of a long trail inside `bbox`. Returns their files."""
+    graph = Graph({"elements": list(rel["ways"].values()) + list(rel.get("barriers", []))})
+    pieces = []
+    for run in trail_runs(rel, bbox):
+        pieces += _cut(run, graph.coord)
+    pieces = [p for p in pieces
+              if sum(haversine(graph.coord[a[0]], graph.coord[b[0]]) for a, b in zip(p, p[1:]))
+              >= SECTION_MIN_KM * 1000]
+    pieces.sort(key=len, reverse=True)
+    outs = []
+    for k, piece in enumerate(pieces[:max_sections], start=1):
+        pts = [(graph.coord[nid], wid, nid) for nid, wid in piece]
+        sections = _merge(_sections(graph, pts, matched_by_proximity=False))
+        sections = _split_long(sections)
+        terrain = _attach_gradients(sections)
+        here_km = sections[-1].to_m / 1000
+        label = next((x.label for x in sections if x.label not in _GENERIC_LABELS), None)
+        who = f"{operator}'s " if operator else ""
+        spec = {
+            "id": f"{id_prefix}-s{k}",
+            "name": f"{name}: from {label}" if label else f"{name}, section {k}",
+            "area": "",
+            "summary": (f"A section of {who}{name}: {here_km:.1f} km of a trail about "
+                        f"{total_km:.0f} km long, walked there and back. Turn back "
+                        "whenever your time is up."),
+            "shape": "out_and_back",
+            "start_label": f"On the {name}" + (f", at {label}" if label else ""),
+        }
+        notes = [
+            "Route line from OpenStreetMap, built on the date shown. Nobody from "
+            "Driftway has walked it, so surfaces and barriers are as mapped, not as found.",
+            f"Part of a long trail. Only the paths the trail itself uses are "
+            "followed here; it carries on beyond both ends.",
+        ]
+        if operator or website:
+            notes.append(f"The trail is {operator or 'run by its operator'}"
+                         + (f": {website}" if website else "."))
+        outs.append(_write_route(spec, sections, notes, rel["osm_base"], rel, terrain, out_dir))
+    return outs
 
 
 def _routed_leg(graph: "Graph", waypoints, offset_m: float, how: str) -> List[Section]:

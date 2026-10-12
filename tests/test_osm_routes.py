@@ -119,3 +119,50 @@ class SpecTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LongTrailTests(unittest.TestCase):
+    """Founder idea, 12 Oct 2026: long trails offered in sections."""
+
+    @staticmethod
+    def line_trail(n_nodes=101, step=0.001, private_at=None, reverse_second=False):
+        # Nodes along a meridian, ~111 m apart; ways of 10 nodes each.
+        ways, members = {}, []
+        for k, start in enumerate(range(0, n_nodes - 1, 10)):
+            nodes = list(range(start, min(start + 11, n_nodes)))
+            if reverse_second and k == 1:
+                nodes = nodes[::-1]
+            tags = {"highway": "footway"}
+            if private_at is not None and k == private_at:
+                tags["access"] = "private"
+            wid = 1000 + k
+            ways[wid] = {"type": "way", "id": wid, "nodes": nodes, "tags": tags,
+                         "geometry": [{"lat": 52.0 + i * step, "lon": 13.0} for i in nodes]}
+            members.append({"type": "way", "ref": wid, "role": ""})
+        return {"relation": {"id": 9, "tags": {}, "members": members}, "ways": ways,
+                "barriers": [], "osm_base": "test"}
+
+    def test_only_paths_inside_the_area_are_used(self):
+        from tools.build_walk import trail_runs
+        rel = self.line_trail()
+        runs = trail_runs(rel, (52.02, 12.9, 52.06, 13.1))
+        self.assertEqual(len(runs), 1)
+        nodes = [n for n, _ in runs[0]]
+        self.assertEqual((min(nodes), max(nodes)), (20, 60))
+
+    def test_reversed_members_join_and_unusable_paths_split(self):
+        from tools.build_walk import trail_runs
+        joined = trail_runs(self.line_trail(reverse_second=True), (51.9, 12.9, 52.2, 13.1))
+        self.assertEqual(len(joined), 1)
+        split = trail_runs(self.line_trail(private_at=5), (51.9, 12.9, 52.2, 13.1))
+        self.assertEqual(len(split), 2)                  # never joined across it
+
+    def test_runs_are_cut_into_walkable_pieces(self):
+        from tools.build_walk import Graph, _cut, trail_runs
+        rel = self.line_trail()                          # about 11 km
+        graph = Graph({"elements": list(rel["ways"].values())})
+        pieces = _cut(trail_runs(rel, (51.9, 12.9, 52.2, 13.1))[0], graph.coord)
+        lengths = [round((len(p) - 1) * 0.111, 1) for p in pieces]
+        self.assertEqual(len(pieces), 3)
+        self.assertTrue(all(3.9 <= x <= 4.1 for x in lengths[:2]))
+        self.assertGreaterEqual(lengths[2], 1.0)
