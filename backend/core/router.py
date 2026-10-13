@@ -42,6 +42,8 @@ class EvaluatedRoute:
     road_mix: RoadMix
     geometry: List[Coord] = field(default_factory=list)  # full path, if provided
     has_uturn: bool = False
+    #: Where the provider asks the driver to turn round, when it says.
+    uturn_points: List[Coord] = field(default_factory=list)
     raw: Optional[dict] = None
     #: False when the time comes from a provider without live traffic; the
     #: route then says so rather than presenting a guess as a live estimate.
@@ -339,6 +341,7 @@ class TomTomRouter:
             road_mix=_infer_mix(profile),   # coarse for alpha; see note above
             geometry=geometry,
             has_uturn=_has_uturn(routes[0]),
+            uturn_points=_uturn_points(routes[0]),
             raw=summary,
         )
 
@@ -479,6 +482,7 @@ class ORSRouter:
             geometry=[Coord(lat=c[1], lng=c[0])
                       for c in feats[0]["geometry"]["coordinates"]],
             has_uturn=any(st.get("type") == _ORS_UTURN for st in steps),
+            uturn_points=_ors_uturn_points(feats[0], steps),
             raw=summary,
             live_traffic=False,
         )
@@ -557,6 +561,28 @@ def _has_uturn(route: dict) -> bool:
     """
     instructions = (route.get("guidance") or {}).get("instructions") or []
     return any("UTURN" in (i.get("maneuver") or "") for i in instructions)
+
+
+def _uturn_points(route: dict) -> List[Coord]:
+    """Where TomTom's guidance asks the driver to turn round."""
+    out = []
+    for i in (route.get("guidance") or {}).get("instructions") or []:
+        pt = i.get("point") or {}
+        if "UTURN" in (i.get("maneuver") or "") and "latitude" in pt:
+            out.append(Coord(lat=pt["latitude"], lng=pt["longitude"]))
+    return out
+
+
+def _ors_uturn_points(feature: dict, steps: list) -> List[Coord]:
+    """Where openrouteservice's steps turn round (a step's first way point
+    indexes the route's coordinates)."""
+    coords = feature.get("geometry", {}).get("coordinates") or []
+    out = []
+    for st in steps:
+        wp = st.get("way_points") or []
+        if st.get("type") == _ORS_UTURN and wp and wp[0] < len(coords):
+            out.append(Coord(lat=coords[wp[0]][1], lng=coords[wp[0]][0]))
+    return out
 
 
 def _infer_mix(profile: str) -> RoadMix:

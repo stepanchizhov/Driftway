@@ -24,6 +24,15 @@ more than a bump). Two kinds, counted apart:
 Each point carries its group, so a drive passing a junction's lights counts
 the junction once.
 
+Easy places to turn round (founder, 13 Oct 2026: a turn-around is fine,
+better still where it needs no three-point turn, like a loop round a small
+island at the end of a street). Each is [lat, lng, kind, radius in metres]:
+  roundabout       a roundabout or circular junction (all its ways joined)
+  mini_roundabout  a mini-roundabout node
+  turning_circle   a turning circle or turning loop node at a street's end
+  loop             a road that runs round and rejoins itself, under
+                   LOOP_MAX_M round: how most such loops are mapped (no tag)
+
 Source and terms, checked 11 Oct 2026: OpenStreetMap via the Overpass API,
 ODbL 1.0, attribution "© OpenStreetMap contributors". The written file is a
 derived database under the same licence. Overpass asks for modest use and a
@@ -150,6 +159,78 @@ def extract_signals(raw: dict) -> list:
     return out
 
 
+#: Spots and their roads are looked for along these roads (no service roads:
+#: car-park aisles are not for turning round in).
+TURN_ROADS = "primary|secondary|tertiary|unclassified|residential|living_street"
+#: A road loop longer than this round is a block, not a turning loop.
+LOOP_MAX_M = 300.0
+#: Roundabout pieces this close together are one roundabout.
+JOIN_ROUNDABOUT_M = 60.0
+
+
+def turns_query(south, west, north, east) -> str:
+    box = f"{south},{west},{north},{east}"
+    return (f"[out:json][timeout:180];("
+            f'node[highway~"^(turning_circle|turning_loop|mini_roundabout)$"]({box});'
+            f'way[junction~"^(roundabout|circular)$"]({box}););out body geom;')
+
+
+def loops_query(south, west, north, east) -> str:
+    box = f"{south},{west},{north},{east}"
+    return f'[out:json][timeout:180];way[highway~"^({TURN_ROADS})$"]({box});out skel geom;'
+
+
+def _spot(points) -> list:
+    """[lat, lng, radius] round a set of (lat, lng)."""
+    lat = sum(p[0] for p in points) / len(points)
+    lng = sum(p[1] for p in points) / len(points)
+    r = max(_metres((lat, lng), p) for p in points)
+    return [round(lat, 6), round(lng, 6), round(r)]
+
+
+def extract_turns(tagged: dict, roads: dict) -> list:
+    """[[lat, lng, kind, radius_m]] for every easy place to turn round."""
+    out = []
+    pieces = []
+    for e in tagged.get("elements", []):
+        if e.get("type") == "node":
+            kind = e.get("tags", {}).get("highway")
+            kind = "turning_circle" if kind == "turning_loop" else kind
+            out.append([round(e["lat"], 6), round(e["lon"], 6), kind, 10 if kind == "turning_circle" else 8])
+        elif e.get("type") == "way" and e.get("geometry"):
+            pieces.append([(g["lat"], g["lon"]) for g in e["geometry"]])
+    # Roundabouts come in pieces: join pieces whose centres are close.
+    groups: list = []
+    for pts in pieces:
+        c = _spot(pts)
+        for g in groups:
+            if _metres((c[0], c[1]), (g[0][0], g[0][1])) <= JOIN_ROUNDABOUT_M:
+                g[1].extend(pts)
+                break
+        else:
+            groups.append((c, list(pts)))
+    for _c, pts in groups:
+        lat, lng, r = _spot(pts)
+        out.append([lat, lng, "roundabout", r])
+    # Road loops: a way that comes back to a node it has already passed.
+    for e in roads.get("elements", []):
+        nodes, geom = e.get("nodes") or [], e.get("geometry") or []
+        if len(nodes) != len(geom):
+            continue
+        first: dict = {}
+        for i, n in enumerate(nodes):
+            if n in first:
+                loop = [(g["lat"], g["lon"]) for g in geom[first[n]:i + 1]]
+                round_m = sum(_metres(a, b) for a, b in zip(loop, loop[1:]))
+                if 30.0 <= round_m <= LOOP_MAX_M:
+                    lat, lng, r = _spot(loop)
+                    out.append([lat, lng, "loop", r])
+                break
+            first[n] = i
+    out.sort()
+    return out
+
+
 def extract(raw: dict) -> list:
     points = []
     for e in raw.get("elements", []):
@@ -177,6 +258,8 @@ def main() -> None:
     ap.add_argument("--from", dest="source", help="an Overpass JSON response saved earlier")
     ap.add_argument("--signals-from", dest="signals_source",
                     help="an Overpass JSON response for traffic lights saved earlier")
+    ap.add_argument("--turns-from", dest="turns_source",
+                    help="[tagged, roads] Overpass JSON responses for turning places saved earlier")
     a = ap.parse_args()
     if a.source:
         with open(a.source, encoding="utf-8") as f:
@@ -190,6 +273,13 @@ def main() -> None:
     else:
         sig_raw = download_query(signals_query(a.south, a.west, a.north, a.east))
     signals = extract_signals(sig_raw)
+    if a.turns_source:
+        with open(a.turns_source, encoding="utf-8") as f:
+            tagged, roads = json.load(f)
+    else:
+        tagged = download_query(turns_query(a.south, a.west, a.north, a.east))
+        roads = download_query(loops_query(a.south, a.west, a.north, a.east))
+    turns = extract_turns(tagged, roads)
     as_of = raw.get("osm3s", {}).get("timestamp_osm_base") or datetime.now(timezone.utc).isoformat()
     out = {
         "region": a.region,
@@ -203,6 +293,8 @@ def main() -> None:
         "signals_as_of": sig_raw.get("osm3s", {}).get("timestamp_osm_base") or as_of,
         "signal_kinds": ["junction", "pedestrian"],
         "signals": signals,
+        "turn_kinds": ["roundabout", "mini_roundabout", "turning_circle", "loop"],
+        "turns": turns,
     }
     os.makedirs(OUT_DIR, exist_ok=True)
     path = os.path.join(OUT_DIR, f"{a.region}.json")
@@ -214,7 +306,9 @@ def main() -> None:
         groups[g] = kind
     print(f"data/calming/{a.region}.json: {len(points)} points, data as of {as_of}; "
           f"{len(signals)} lights in {sum(1 for k in groups.values() if k == 'junction')} junctions "
-          f"and {sum(1 for k in groups.values() if k == 'pedestrian')} crossings")
+          f"and {sum(1 for k in groups.values() if k == 'pedestrian')} crossings; "
+          f"{len(turns)} easy places to turn round "
+          f"({', '.join(f'{k} {sum(1 for t in turns if t[2] == k)}' for k in ('roundabout', 'mini_roundabout', 'turning_circle', 'loop'))})")
 
 
 if __name__ == "__main__":

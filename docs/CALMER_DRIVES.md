@@ -333,12 +333,43 @@ no calls): first drive changed in 7 of 20; across all 20, bumps 222 to
 turn-arounds. With a turn-around at 3: 5 of 20 changed, bumps 169, lights
 146, turn-arounds 19.
 
-NEXT: easy places to turn round. The founder's own example (Slough, 13 Oct
-2026): a drive's spike ended at a turning loop round a small island at the
-end of a residential street, driven round with no three-point turn.
-OpenStreetMap maps these (turning loops and circles, mini-roundabouts,
-roundabouts); a turn-around at one could count less, and a turn-back
-waypoint could be placed on one. And per child (founder): let parents say
-which stops are worse for theirs, as their own weights on this scale.
+NEXT: per child (founder): let parents say which stops are worse for
+theirs, as their own weights on this scale.
+
+## Easy places to turn round (0.8.13, 13 Oct 2026)
+
+IMPLEMENTED. The founder's own example (Slough): a drive's spike ended at a
+loop round a small island at the end of a residential street, driven round
+with no three-point turn. In OpenStreetMap that loop has no tag: the street
+runs in, round the island and back to a point it has already passed.
+
+- **Data** (`tools/build_calming.py`, `turns` in data/calming/windsor.json,
+  OSM 2026-10-13T12:09Z): 3,152 easy places to turn round, as [lat, lng,
+  kind, radius]: 1,631 turning circles or loops tagged at a street's end,
+  616 roundabouts (pieces joined), 423 mini-roundabouts, 482 road loops
+  found by shape (a road on residential to primary roads that rejoins
+  itself within 300 m; service roads and car parks left out). The founder's
+  example is found, radius 16 m.
+- **Where a drive turns round:** at a waypoint (the geometry detector) or
+  where TomTom's guidance says U-turn (its point, now kept). Within 30 m of
+  an easy place's edge it is easy (`calming.easy_turn_at`).
+- **Counted** at `EASY_TURN_WEIGHT` 0.3 of a hard turn-around, in the
+  ranking's smoothness and on the stops scale. The card says "turns round
+  once, at a roundabout" (or a mini-roundabout, a turning circle, round a
+  loop at the end of a street) instead of "doubles back once".
+- **Moved:** for the two leading drives, a waypoint the drive turns round at
+  away from an easy place moves to the nearest one within 700 m, and the
+  drive is routed again (one call), kept if better on the stops scale
+  (`steering.easier_turn_candidates`).
+
+**Measured** on the same 20 requests: of 134 waypoint turn-arounds on all
+candidates, only 2 were at an easy place, so the weight alone changes
+nothing; the move is what counts. Moves tried 12, all better; the first
+drive changed in 8 of 20. First drives: turn-arounds 22 to 20, at an easy
+place 0 to 12, and often fewer stops too (Englefield Green, Mixed: stop
+weight 19 to 3.6; Windsor and Eton Central, Mixed: 12.6 to 7.6). The cost
+is time: 16 more minutes off in total over 20 drives, and three drives 4
+to 8 minutes further from the time (all within the 10-minute window), the
+ranking preferring a smoother drive. Up to two more TomTom calls a request.
 Measurement scripts: scratchpad `steer_measure.py`, `steer_diag.py`,
 `steer_variants.py` (not in the repo; counts only).

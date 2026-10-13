@@ -95,7 +95,18 @@ def _nearest_index(geometry: List[Coord], point: Coord) -> int:
 
 
 def turnaround_waypoints(route: EvaluatedRoute) -> int:
-    """Count waypoints the route has to double back at.
+    """Count waypoints the route has to double back at."""
+    return len(turnaround_points(route))
+
+
+def turnaround_points(route: EvaluatedRoute) -> List[Coord]:
+    """Where the route doubles back at a waypoint."""
+    return [p for _i, p in turnaround_anchors(route)]
+
+
+def turnaround_anchors(route: EvaluatedRoute) -> List[Tuple[int, Coord]]:
+    """(waypoint index, where on the route) for each waypoint the route
+    doubles back at.
 
     This is the three-point-turn / dead-end-spur detector. The global overlap
     ratio cannot see these: a 200 m spur off a 12 km loop is a rounding error
@@ -105,9 +116,9 @@ def turnaround_waypoints(route: EvaluatedRoute) -> int:
     """
     geometry = route.geometry
     if len(geometry) < 6 or not route.anchors:
-        return 0
-    count = 0
-    for anchor in route.anchors:
+        return []
+    points: List[Tuple[int, Coord]] = []
+    for n, anchor in enumerate(route.anchors):
         idx = _nearest_index(geometry, anchor)
         before = _walk_from(geometry, idx, -1, TURNAROUND_WINDOW_KM)
         after = _walk_from(geometry, idx, +1, TURNAROUND_WINDOW_KM)
@@ -117,8 +128,31 @@ def turnaround_waypoints(route: EvaluatedRoute) -> int:
         leaving = initial_bearing(geometry[idx], after)
         turn = abs(((leaving - arriving + 180) % 360) - 180)
         if turn >= TURNAROUND_ANGLE_DEG:
-            count += 1
-    return count
+            points.append((n, geometry[idx]))
+    return points
+
+
+# A turn-around at an easy place to turn (a roundabout, a turning circle, a
+# loop round an island: calming.easy_turn_at) counts this much of one that
+# needs a three-point turn. Founder, 13 Oct 2026, from a drive whose spike
+# ended at a loop round a small island: easy places are better. HYPOTHESIS
+# weight.
+EASY_TURN_WEIGHT = 0.3
+
+
+def easy_turns(route: EvaluatedRoute) -> List[str]:
+    """The kinds of easy place the route turns round at, one per turn-around
+    that is at one (the rest need a three-point turn or a U-turn)."""
+    pts = list(route.uturn_points) + turnaround_points(route)
+    return [k for k in (calming.easy_turn_at(p.lat, p.lng) for p in pts) if k]
+
+
+def turn_load(route: EvaluatedRoute) -> float:
+    """Turn-arounds, an easy one counting EASY_TURN_WEIGHT."""
+    n = turnaround_count(route)
+    if n == 0:
+        return 0.0
+    return max(0.0, n - (1.0 - EASY_TURN_WEIGHT) * min(n, len(easy_turns(route))))
 
 
 def turnaround_count(route: EvaluatedRoute) -> int:
@@ -256,7 +290,7 @@ def _bump_score(route: EvaluatedRoute) -> float:
 
 def _smoothness(route: EvaluatedRoute) -> float:
     """1.0 = never asks the driver to double back."""
-    return max(0.0, 1.0 - TURNAROUND_COST * turnaround_count(route))
+    return max(0.0, 1.0 - TURNAROUND_COST * turn_load(route))
 
 
 def score_route(route: EvaluatedRoute, target_minutes: int, profile: str,
@@ -329,7 +363,7 @@ def stop_weight(route: EvaluatedRoute) -> float:
 
 def stops_met(route: EvaluatedRoute) -> float:
     """Everything that stops or turns the car round, on one scale."""
-    return stop_weight(route) + TURN_WEIGHT * turnaround_count(route)
+    return stop_weight(route) + TURN_WEIGHT * turn_load(route)
 
 
 def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,

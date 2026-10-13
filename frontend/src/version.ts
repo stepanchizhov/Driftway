@@ -42,6 +42,7 @@ export const RELEASES: Release[] = [
     changes: [
       "Drives try to go round the busiest stretch of speed bumps, traffic lights and roadworks, using waypoints Google Maps follows too.",
       "A turn-around now counts like a speed bump, less than a red light: a drive with many fewer bumps and lights can go first even with a turn-around.",
+      "Where a drive has to turn round, it does so at a roundabout, a turning circle or a loop at the end of a street when there's one nearby, and the card says where.",
     ],
   },
   {

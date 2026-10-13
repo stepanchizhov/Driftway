@@ -33,6 +33,17 @@ detour itself is calmer says little: it is forced the long way round,
 while the waypoint drive is free to take a better road.
 
 Cost: two routing calls per drive steered, MAX_STEERED drives a request.
+
+Turning round at an easy place (founder, 13 Oct 2026). A loop that has to
+double back at a waypoint usually does so mid-road, where the waypoint's
+geometry happened to land: measured on 134 such turn-arounds around
+Windsor, 2 were at a roundabout, turning circle or loop. The founder's own
+drive ended its spike at a loop round a small island, with no three-point
+turn. So for the leading drives, a waypoint the drive turns round at is
+moved to the nearest easy place to turn within TURN_SHIFT_M
+(calming.easy_places_near), and the drive routed again (one call), kept if
+it is better on the same scale (scorer.stops_met, where an easy turn-around
+counts EASY_TURN_WEIGHT).
 """
 
 from __future__ import annotations
@@ -44,7 +55,9 @@ from typing import Callable, List, Optional, Sequence, Tuple
 
 from .models import Coord
 from .router import EvaluatedRoute
-from .scorer import CALM_GAIN, stop_weight, stops_met, stops_on, turnaround_count  # noqa: F401
+from . import calming
+from .scorer import (CALM_GAIN, stop_weight, stops_met, stops_on,  # noqa: F401
+                     turnaround_anchors, turnaround_count)
 
 log = logging.getLogger("driftway")
 
@@ -64,6 +77,13 @@ MAX_STEERED = 2
 MAX_WAYPOINTS = 3
 #: A steered drive must spare at least this much (scorer.stops_met).
 MIN_GAIN = CALM_GAIN
+#: How far a turn-back waypoint may move to reach an easy place to turn.
+TURN_SHIFT_M = 700.0
+#: Leading drives whose turn-arounds are moved, per request.
+MAX_TURN_MOVES = 2
+#: A drive with a moved turn-around must gain at least this (an easy
+#: turn-around instead of a hard one gains 0.7).
+TURN_GAIN = 0.3
 #: Points compared when finding the apex: enough for a 200 m test on a
 #: 40 km drive, few enough to stay quick.
 APEX_POINTS = 250
@@ -218,6 +238,46 @@ async def calmer_candidates(router, start: Coord, finish: Coord,
         if not isinstance(g, EvaluatedRoute):
             continue
         if stops_met(g) <= stops_met(base) - MIN_GAIN:
+            g.steered = True
+            out.append(g)
+    return out
+
+
+def easier_turn_waypoints(route: EvaluatedRoute) -> Optional[List[Coord]]:
+    """The drive's waypoints with each one it turns round at, away from any
+    easy place to turn, moved to the nearest easy place within TURN_SHIFT_M;
+    None when there is nothing to move."""
+    anchors = list(route.anchors)
+    moved = False
+    for i, p in turnaround_anchors(route):
+        if calming.easy_turn_at(p.lat, p.lng):
+            continue
+        near = calming.easy_places_near(p.lat, p.lng, TURN_SHIFT_M)
+        if near:
+            _d, lat, lng, _kind = near[0]
+            anchors[i] = Coord(lat=lat, lng=lng)
+            moved = True
+    return anchors if moved else None
+
+
+async def easier_turn_candidates(router, start: Coord, finish: Coord,
+                                 leading: List[EvaluatedRoute], profile: str) -> List[EvaluatedRoute]:
+    """The leading drives with their turn-arounds moved to easy places to
+    turn, each kept only if it is better on the stops scale."""
+    plans = []
+    for route in leading:
+        anchors = easier_turn_waypoints(route)
+        if anchors is not None:
+            plans.append((route, anchors))
+        if len(plans) >= MAX_TURN_MOVES:
+            break
+    if not plans:
+        return []
+    got = await asyncio.gather(*(router.evaluate(start, finish, a, profile) for _r, a in plans),
+                               return_exceptions=True)
+    out = []
+    for (base, _a), g in zip(plans, got):
+        if isinstance(g, EvaluatedRoute) and stops_met(g) <= stops_met(base) - TURN_GAIN:
             g.steered = True
             out.append(g)
     return out

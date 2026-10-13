@@ -63,7 +63,16 @@ from .scorer import (
     rejection_reason,
     score_route,
     turnaround_count,
+    easy_turns,
 )
+
+# How the card says where a turn-around is easy (calming.easy_turn_at).
+EASY_PLACE = {
+    "roundabout": "at a roundabout",
+    "mini_roundabout": "at a mini-roundabout",
+    "turning_circle": "at a turning circle",
+    "loop": "round a loop at the end of a street",
+}
 
 # How many candidates to build in the first pass. Kept modest because the
 # request budget now goes on refinement rather than breadth.
@@ -164,10 +173,14 @@ def _caveat(ev: EvaluatedRoute, finish: Coord, req: GenerateRequest) -> Optional
             f"{req.target_minutes} +/- {req.tolerance_minutes} min window"
         )
     turns = turnaround_count(ev)
-    if turns == 1:
+    easy = easy_turns(ev) if turns else []
+    if turns == 1 and easy:
+        notes.append(f"turns round once, {EASY_PLACE[easy[0]]}")
+    elif turns == 1:
         notes.append("doubles back once")
     elif turns > 1:
-        notes.append(f"doubles back {turns} times")
+        notes.append(f"doubles back {turns} times"
+                     + (f" ({min(len(easy), turns)} at an easy place to turn)" if easy else ""))
     reason = rejection_reason(ev, finish)
     if reason == "overlap":
         notes.append("repeats part of the route")
@@ -525,6 +538,12 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
                                                    req.target_minutes, rescale)
         if steered:
             evaluated = evaluated + steered
+            top = _pick_top_three(evaluated, finish, req, profile)
+        # And turn round at an easy place where the drive has to turn round.
+        turned = await steering.easier_turn_candidates(router, start, finish, top, profile)
+        if turned:
+            steered = steered + turned
+            evaluated = evaluated + turned
             top = _pick_top_three(evaluated, finish, req, profile)
 
     # Diagnostic breadcrumbs - visible in the Render logs. If routes come back

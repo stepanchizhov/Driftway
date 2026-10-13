@@ -11,6 +11,10 @@ A count is only as good as the mapping: a hump nobody mapped is not counted.
 So the card says "mapped", never "none", and a drive outside every prepared
 region gets no count at all rather than a zero.
 
+Easy places to turn round (founder, 13 Oct 2026) come from the same data:
+roundabouts, mini-roundabouts, turning circles and road loops round an
+island (easy_turn_at); a turn-around at one needs no three-point turn.
+
 Traffic lights (founder, 12 Oct 2026) come in groups: every light of a
 junction, or both sides of a crossing, share a group, and a drive passing
 any of them counts the group once. Junction lights and pedestrian-operated
@@ -41,6 +45,11 @@ CELL = 0.0005
 #: count to mean anything.
 MIN_COVERED = 0.8
 ATTRIBUTION = "Speed bumps and traffic lights: © OpenStreetMap contributors"
+#: A turn-around this close to the edge of an easy place to turn is at it.
+TURN_NEAR_M = 30.0
+#: Cells searched round a point for easy places to turn (a big roundabout
+#: can be 150 m across).
+TURN_CELLS = 3
 
 
 @dataclass(frozen=True)
@@ -81,6 +90,8 @@ class _Index:
         #: Lights: (lat, lng, kind, group), the group unique across regions.
         self.lights: Dict[Tuple[int, int], List[Tuple[float, float, str, str]]] = defaultdict(list)
         self.has_lights: List[Tuple[float, float, float, float]] = []
+        #: Easy places to turn round: (lat, lng, kind, radius_m).
+        self.turns: Dict[Tuple[int, int], List[Tuple[float, float, str, float]]] = defaultdict(list)
         self.as_of: List[str] = []
         for n, r in enumerate(regions):
             box = tuple(r["bbox"])
@@ -88,6 +99,8 @@ class _Index:
             self.as_of.append(r.get("as_of", ""))
             for lat, lng, kind in r["points"]:
                 self.cells[(int(lat / CELL), int(lng / CELL))].append((lat, lng, kind))
+            for lat, lng, kind, radius in r.get("turns", []):
+                self.turns[(int(lat / CELL), int(lng / CELL))].append((lat, lng, kind, float(radius)))
             if "signals" in r:
                 self.has_lights.append(box)
                 for lat, lng, kind, group in r["signals"]:
@@ -212,6 +225,38 @@ def stops_along(geometry: Sequence, index: Optional[_Index] = None) -> List[Tupl
         if group not in first or s < first[group][0]:
             first[group] = (s, lat, lng, kind)
     out.extend(first.values())
+    return sorted(out)
+
+
+def easy_turn_at(lat: float, lng: float, index: Optional[_Index] = None) -> Optional[str]:
+    """The kind of easy place to turn round at this point ("roundabout",
+    "mini_roundabout", "turning_circle", "loop"), or None."""
+    idx = index or load()
+    ci, cj = int(lat / CELL), int(lng / CELL)
+    best = None
+    for di in range(-TURN_CELLS, TURN_CELLS + 1):
+        for dj in range(-TURN_CELLS, TURN_CELLS + 1):
+            for t_lat, t_lng, kind, radius in idx.turns.get((ci + di, cj + dj), ()):
+                d = _metres((lat, lng), (t_lat, t_lng)) - radius
+                if d <= TURN_NEAR_M and (best is None or d < best[0]):
+                    best = (d, kind)
+    return best[1] if best else None
+
+
+def easy_places_near(lat: float, lng: float, within_m: float,
+                     index: Optional[_Index] = None) -> List[Tuple[float, float, float, str]]:
+    """Easy places to turn round within `within_m` of a point, nearest
+    first: (metres, lat, lng, kind)."""
+    idx = index or load()
+    ci, cj = int(lat / CELL), int(lng / CELL)
+    reach = int(within_m / (CELL * 111320.0)) + 2
+    out = []
+    for di in range(-reach, reach + 1):
+        for dj in range(-reach, reach + 1):
+            for t_lat, t_lng, kind, _radius in idx.turns.get((ci + di, cj + dj), ()):
+                d = _metres((lat, lng), (t_lat, t_lng))
+                if d <= within_m:
+                    out.append((d, t_lat, t_lng, kind))
     return sorted(out)
 
 
