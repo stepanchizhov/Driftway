@@ -57,6 +57,8 @@ class EvaluatedRoute:
     #: Street Manager roadworks on the route now (core.roadworks): see
     #: scorer.works_of.
     works: Optional[list] = None
+    #: Built to go round a cluster of stops (core.steering).
+    steered: bool = False
 
 
 class Router(Protocol):
@@ -219,6 +221,20 @@ class TomTomRouter:
         self._limiter = _RateLimiter(_TOMTOM_RATE)
 
     async def evaluate(self, start, finish, anchors, profile):
+        return await self._calculate(start, finish, anchors, profile)
+
+    async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
+        """The same route, kept out of the given boxes (south, west, north,
+        east): TomTom's avoidAreas, which only its POST form accepts. Used to
+        find a calmer way round a cluster of lights or bumps
+        (core/steering.py); the result is a search aid, never shown as is."""
+        body = {"avoidAreas": {"rectangles": [
+            {"southWestCorner": {"latitude": s, "longitude": w},
+             "northEastCorner": {"latitude": n, "longitude": e}}
+            for s, w, n, e in boxes[:10]]}}
+        return await self._calculate(start, finish, anchors, profile, body=body)
+
+    async def _calculate(self, start, finish, anchors, profile, body=None):
         # Build the "lat,lng:lat,lng:..." locations string.
         pts = [start, *anchors, finish]
         locs = ":".join(f"{p.lat:.6f},{p.lng:.6f}" for p in pts)
@@ -254,7 +270,10 @@ class TomTomRouter:
         for attempt in range(_TOMTOM_MAX_RETRIES):
             await self._limiter.wait()
             try:
-                resp = await self._client.get(url, params=params)
+                if body is None:
+                    resp = await self._client.get(url, params=params)
+                else:
+                    resp = await self._client.post(url, params=params, json=body)
             except httpx.HTTPError as e:
                 # The type only: an httpx error's text includes the URL, and
                 # the URL carries the key.
@@ -409,6 +428,15 @@ class ORSRouter:
         self._client = client or httpx.AsyncClient(timeout=20.0)
 
     async def evaluate(self, start, finish, anchors, profile):
+        return await self._directions(start, finish, anchors, profile)
+
+    async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
+        """The same route, kept out of the boxes (south, west, north, east)."""
+        polygons = [[[[w, s], [e, s], [e, n], [w, n], [w, s]]] for s, w, n, e in boxes]
+        return await self._directions(start, finish, anchors, profile,
+                                      avoid={"type": "MultiPolygon", "coordinates": polygons})
+
+    async def _directions(self, start, finish, anchors, profile, avoid=None):
         from core import ors
         pts = [start, *anchors, finish]
         body = {
@@ -416,8 +444,13 @@ class ORSRouter:
             "radiuses": [_ORS_SNAP_M] * len(pts),
             "instructions": True,
         }
+        options = {}
         if profile == "quiet":
-            body["options"] = {"avoid_features": ["highways"]}
+            options["avoid_features"] = ["highways"]
+        if avoid:
+            options["avoid_polygons"] = avoid
+        if options:
+            body["options"] = options
         try:
             resp = await ors.request(self._client, "POST",
                                      "/v2/directions/driving-car/geojson",
@@ -499,6 +532,13 @@ class FailoverRouter:
             if route is not None or tomtom_available():
                 return route
         return await self.backup.evaluate(start, finish, anchors, profile)
+
+    async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
+        if tomtom_available():
+            route = await self.primary.evaluate_avoiding(start, finish, anchors, profile, boxes)
+            if route is not None or tomtom_available():
+                return route
+        return await self.backup.evaluate_avoiding(start, finish, anchors, profile, boxes)
 
     async def travel_matrix(self, origins, destinations, profile):
         if tomtom_available():

@@ -185,6 +185,36 @@ class _Route:
         return seen
 
 
+def stops_along(geometry: Sequence, index: Optional[_Index] = None) -> List[Tuple[float, float, float, str]]:
+    """Where the drive meets each mapped bump and each group of lights:
+    (metres from the start, lat, lng, kind), kind "bump", "junction" or
+    "pedestrian", in driving order. Used to find the stretch worth steering
+    round (core/steering.py); empty outside the prepared data."""
+    idx = index or load()
+    pts = [(p.lat, p.lng) if hasattr(p, "lat") else (p[0], p[1]) for p in geometry]
+    route = _Route(pts, idx.boxes)
+    if not route.counts:
+        return []
+    cum = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        cum.append(cum[-1] + _metres(a, b))
+
+    def along(lat: float, lng: float) -> float:
+        # The nearest vertex is close enough: provider geometry has a point
+        # every few tens of metres.
+        i = min(range(len(pts)), key=lambda j: (pts[j][0] - lat) ** 2 + ((pts[j][1] - lng) * route.k) ** 2)
+        return cum[i]
+
+    out = [(along(lat, lng), lat, lng, "bump") for lat, lng, _kind in route.hits(idx.cells)]
+    first: Dict[str, Tuple[float, float, float, str]] = {}
+    for lat, lng, kind, group in route.hits(idx.lights):
+        s = along(lat, lng)
+        if group not in first or s < first[group][0]:
+            first[group] = (s, lat, lng, kind)
+    out.extend(first.values())
+    return sorted(out)
+
+
 def count_along(geometry: Sequence, index: Optional[_Index] = None) -> Optional[BumpCount]:
     """Mapped speed bumps within NEAR_M of the drive, each counted once, or
     None when too little of the drive lies inside prepared regions.

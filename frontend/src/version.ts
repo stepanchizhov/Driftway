@@ -37,6 +37,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.13",
+    date: "13 Oct 2026",
+    changes: [
+      "Drives try to go round the busiest stretch of speed bumps, traffic lights and roadworks, using waypoints Google Maps follows too. A drive that goes round is offered only if it really has fewer stops and no extra turn-arounds.",
+    ],
+  },
+  {
     version: "0.8.12",
     date: "12 Oct 2026",
     changes: [

@@ -265,3 +265,54 @@ the ones with a turn-around or off the time. NEXT (proposed): build calm
 candidates on purpose, by placing waypoints to steer round dense clusters
 of lights and bumps, then the same guard picks among better options.
 
+
+## Steering round busy stretches (0.8.13, 13 Oct 2026)
+
+IMPLEMENTED (`core/steering.py`), the "next" above. For the two leading
+drives of a request:
+
+1. find the densest 2 km of stops on the drive (bump 1, junction lights
+   1.2, pedestrian lights 1, roadworks that stop traffic 4; at least 3),
+   leaving alone the first and last 800 m: a parent's own street can't be
+   avoided;
+2. ask TomTom for the same drive kept out of a box round that stretch
+   (`avoidAreas`, which only its POST form takes; one call);
+3. take the point where that detour strays furthest from the drive (at
+   least 200 m) as an extra waypoint, pulling the drive's own waypoints in
+   to pay for the detour's extra minutes; Google Maps on a phone takes three
+   waypoints, so with three already the nearest gives way;
+4. route the waypoints again, plainly (one call), and keep the result only
+   if it has **fewer stops as a parent meets them** (at least 2 less stop
+   weight; not per km, since a longer drive with more lights is not calmer)
+   and no more turn-arounds than the drive it came from.
+
+Why waypoints: Google Maps, which most parents drive with, gets only our
+waypoints and picks its own roads between them. An avoid-area exists only
+inside TomTom, so a drive is offered only as the waypoints make it.
+Steered drives then compete with the rest under the usual rules.
+
+Cost: up to four extra TomTom calls a request (two per drive steered).
+Simulated routing is never steered. The generate log line says
+`steered=<chosen>/<built>`.
+
+**Measured** on the 20 Windsor requests above (10 starts, Quieter and Mixed,
+30 minutes; cached candidates, live steering calls):
+
+- A detour around the busiest stretch usually meets as many stops
+  elsewhere: of 29 avoid-area detours with an apex, the waypoint drive was
+  calmer in 6 with the loop pulled in, 3 without. The avoid-area detour's
+  own count says little: it is forced the long way round.
+- The first drive changed in **4 of 20**. Two clear wins: Dedworth Road,
+  Mixed (bumps 19 to 10, same lights, same turn-arounds, 2.4 min from the
+  time); Eton Wick, Quieter (bumps 27 to 9, turn-arounds 3 to 1, 4 minutes
+  further from the time). Two trade-offs the existing ranking made: Dedworth
+  Road, Quieter (20 to 30 minutes, on time now, lights 6 to 0, but two
+  turn-arounds where there were none) and Windsor & Eton Central, Mixed
+  (one turn-around fewer, three more lights, 5.5 minutes longer).
+
+The trade-offs are the ranking's own: duration, then turn-arounds, then
+calm. A steered drive is always calmer than the one it was built from, but
+may win first place on time. OPEN: whether a drive with more turn-arounds
+than the current first should ever replace it (the Dedworth case).
+Measurement scripts: scratchpad `steer_measure.py`, `steer_diag.py`,
+`steer_variants.py` (not in the repo; counts only).

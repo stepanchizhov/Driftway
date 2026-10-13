@@ -51,7 +51,7 @@ from .models import (
     RouteOption,
 )
 from .router import EvaluatedRoute, MockRouter, Router
-from . import roadworks
+from . import roadworks, steering
 from .scorer import (
     bumps_of,
     calmer_lead,
@@ -512,6 +512,21 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
     # first - see _pick_top_three.
     top = _pick_top_three(evaluated, finish, req, profile)
 
+    # 4b. Calmer on purpose: for the leading drives, try going round their
+    # busiest stretch of lights, bumps and roadworks, as plain waypoints,
+    # then choose again under the same rules (core/steering.py).
+    steered: List[EvaluatedRoute] = []
+    if not simulated and top:
+        if is_loop:
+            rescale = lambda a, s: rescale_anchors(start, a, s)  # noqa: E731
+        else:
+            rescale = lambda a, s: rescale_detour(start, finish, a, s)  # noqa: E731
+        steered = await steering.calmer_candidates(router, start, finish, top, profile,
+                                                   req.target_minutes, rescale)
+        if steered:
+            evaluated = evaluated + steered
+            top = _pick_top_three(evaluated, finish, req, profile)
+
     # Diagnostic breadcrumbs - visible in the Render logs. If routes come back
     # empty or off-target, this tells you *where* in the pipeline they went.
     from collections import Counter
@@ -521,7 +536,7 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
     )
     log.info(
         "generate: provider=%s candidates=%d evaluated=%d valid=%d on_time=%d "
-        "smooth=%d returned=%s rejects=%s (target=%dmin +/-%d %s)",
+        "smooth=%d steered=%d/%d returned=%s rejects=%s (target=%dmin +/-%d %s)",
         provider_name,
         len(candidates),
         len(evaluated),
@@ -531,6 +546,8 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
         # How many candidates never ask the driver to double back. If this is
         # persistently 0, the provider is the problem, not the search.
         sum(1 for ev in evaluated if turnaround_count(ev) == 0),
+        sum(1 for ev in top if ev.steered),
+        len(steered),
         [f"{ev.minutes:.0f}min/{turnaround_count(ev)}turns" for ev in top],
         dict(reasons),
         req.target_minutes,
