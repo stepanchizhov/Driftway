@@ -136,6 +136,26 @@ class PermitTests(unittest.TestCase):
         elsewhere = [(52.0, 13.0), (52.01, 13.0)]
         self.assertEqual(self.rw.works_along(self.s, elsewhere), [])
 
+    def test_planned_works_are_not_on_the_road_until_they_start(self):
+        self.rw.store_permit(self.s, permit(work_status_ref="planned"))
+        street = self.rw.parse_location(VICTORIA_ST)
+        drive = [(street[0][0] - 0.001, street[0][1]), street[0], street[1], (street[1][0] + 0.001, street[1][1])]
+        self.assertEqual(self.rw.works_along(self.s, drive), [])
+        # WORK_START: now they are.
+        self.rw.handle_event(self.s, {"object_type": "PERMIT", "event_type": "WORK_START",
+                                      "object_data": permit(work_status_ref="in_progress")})
+        self.assertEqual(len(self.rw.works_along(self.s, drive)), 1)
+
+    def test_works_overrunning_their_end_count_for_a_day(self):
+        today = dt.date.today()
+        self.rw.store_permit(self.s, permit(proposed_end_date=(today - dt.timedelta(days=1)).isoformat(),
+                                            proposed_start_date=(today - dt.timedelta(days=3)).isoformat()))
+        street = self.rw.parse_location(VICTORIA_ST)
+        drive = [(street[0][0] - 0.001, street[0][1]), street[0], street[1], (street[1][0] + 0.001, street[1][1])]
+        self.assertEqual(len(self.rw.works_along(self.s, drive)), 1)
+        later = dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=2)
+        self.assertEqual(self.rw.works_along(self.s, drive, at=later), [])
+
     def test_the_endpoint_refuses_unsigned_posts(self):
         r = self.client.post("/api/roadworks/street-manager", content=json.dumps({"Type": "Notification"}),
                              headers={"Content-Type": "text/plain"})

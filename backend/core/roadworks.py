@@ -56,6 +56,13 @@ CLOSURE = {"road_closure"}
 NEAR_M = 25.0
 #: Works are forgotten this long after they end.
 KEEP_DAYS = 7
+#: Works on a drive are those under way: Street Manager's work status
+#: "in_progress", set by a WORK_START (measured 13 Oct 2026: 76 in 90 minutes
+#: across England). Planned or merely applied-for works are not on the road
+#: yet, whatever their proposed dates say (a third of messages that evening
+#: were PERMIT_SUBMITTED). One still in progress after its proposed end
+#: counts this much longer, until its WORK_STOP arrives.
+OVERRUN = timedelta(days=1)
 ATTRIBUTION = ("Roadworks: Street Manager. Contains public sector information "
                "licensed under the Open Government Licence v3.0.")
 LABEL = {
@@ -269,15 +276,15 @@ def _tally(payload: Dict) -> None:
 
 def summary(session: Session) -> Dict:
     """For the founder: what has arrived, and what is kept for drives."""
-    rows = session.execute(select(Roadwork.control, Roadwork.starts, Roadwork.ends)).all()
+    rows = session.execute(select(Roadwork)).scalars().all()
     now = _now().replace(tzinfo=None)
-    running = [r for r in rows if (r.starts is None or r.starts.replace(tzinfo=None) <= now)
-               and (r.ends is None or r.ends.replace(tzinfo=None) > now)]
+    under_way = [r for r in rows if running(r, now)]
     return {
         "since": _seen_since.isoformat(timespec="seconds"),
         "messages": sum(_seen["events"].values()),
         **{k: dict(c.most_common(40)) for k, c in _seen.items()},
-        "kept": {"total": len(rows), "running_now": len(running),
+        "kept": {"total": len(rows), "running_now": len(under_way),
+                 "by_status": dict(Counter(r.status for r in rows)),
                  "by_control": dict(Counter(r.control for r in rows))},
         "example_stopping_permit": _example,
     }
@@ -321,6 +328,16 @@ def _seg_dist(p, a, b) -> float:
     return math.hypot(ax + t * dx - px, ay + t * dy - py)
 
 
+def running(r: "Roadwork", at_naive: datetime) -> bool:
+    """Under way at this (UTC, naive) time: started, not stopped, and not
+    long past its proposed end."""
+    if r.status != "in_progress":
+        return False
+    start = r.starts.replace(tzinfo=None) if r.starts else None
+    end = r.ends.replace(tzinfo=None) if r.ends else None
+    return not (start and start > at_naive) and not (end and end + OVERRUN < at_naive)
+
+
 def works_along(session: Session, geometry: Sequence, at: Optional[datetime] = None) -> List[Roadwork]:
     """Works on the drive that stop or close traffic at time `at` (now)."""
     pts = [(p.lat, p.lng) if hasattr(p, "lat") else (p[0], p[1]) for p in geometry]
@@ -335,9 +352,7 @@ def works_along(session: Session, geometry: Sequence, at: Optional[datetime] = N
     found = []
     naive = at.replace(tzinfo=None)
     for r in rows:
-        start = r.starts.replace(tzinfo=None) if r.starts else None
-        end = r.ends.replace(tzinfo=None) if r.ends else None
-        if (start and start > naive) or (end and end < naive):
+        if not running(r, naive):
             continue
         work_pts = [tuple(x) for x in json.loads(r.points_json)]
         if any(_seg_dist(wp, a, b) <= NEAR_M for wp in work_pts for a, b in zip(pts, pts[1:])):

@@ -23,6 +23,7 @@ import { useDriftwayAuth } from "../auth/AuthProvider";
 import { CheckpointPicker } from "./CheckpointPicker";
 import { MyWalksSection } from "./MyWalksSection";
 import { NearbyTrails, needsArea } from "./NearbyTrails";
+import { alongText, metresInText } from "./textUnits";
 import { lineOfWalk, useMyWalks } from "./myWalks";
 import {
   type Checkpoint,
@@ -67,12 +68,6 @@ const DURATIONS = [20, 30, 45, 60, 90];
 function distance(m: number, units: Units): string {
   if (units === "mi") return `${(m / 1609.344).toFixed(1)} mi`;
   return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
-}
-
-function at(m: number | null, units: Units): string {
-  if (m == null) return "";
-  if (units === "mi") return `after ${Math.round(m * 1.0936)} yd`;
-  return `after ${Math.round(m / 10) * 10} m`;
 }
 
 function duration(min: number): string {
@@ -1543,9 +1538,9 @@ function Findings({
       <ul>
         {items.map((f, i) => (
           <li key={i}>
-            <span className="finding-reason">{f.reason}</span>
+            <span className="finding-reason">{metresInText(f.reason, units)}</span>
             <span className="finding-meta">
-              {[at(f.at_m, units), BASIS_LABEL[f.basis]].filter(Boolean).join(" · ")}
+              {[alongText(f.at_m, units), BASIS_LABEL[f.basis]].filter(Boolean).join(" · ")}
             </span>
           </li>
         ))}

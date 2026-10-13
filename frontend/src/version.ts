@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.14",
+    date: "13 Oct 2026",
+    changes: [
+      "Roadworks on a drive card are only those actually under way now, not ones merely planned or applied for.",
+      "Distances in a walk's notes follow your units (miles or kilometres), and \"after 0 yd\" reads \"at the start\".",
+    ],
+  },
+  {
     version: "0.8.13",
     date: "13 Oct 2026",
     changes: [
