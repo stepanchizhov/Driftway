@@ -37,6 +37,10 @@ async def street_manager(request: Request, session: Session = Depends(get_sessio
     except ValueError:
         raise HTTPException(status_code=400, detail="Not JSON.")
     if not isinstance(msg, dict) or not await run_in_threadpool(roadworks.verify, msg):
+        # Enough to tell a real Street Manager message we refuse (a topic we
+        # don't know, say) from noise; none of it is secret.
+        if isinstance(msg, dict) and msg.get("TopicArn"):
+            log.warning("Street Manager message refused: %s from %s", msg.get("Type"), msg.get("TopicArn"))
         raise HTTPException(status_code=403, detail="Not a signed Street Manager message.")
     kind = msg.get("Type")
     if kind == "SubscriptionConfirmation":
