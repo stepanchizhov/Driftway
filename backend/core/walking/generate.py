@@ -27,6 +27,10 @@ can still be someone's home, so it is location data about a person; Driftway
 neither stores nor logs it (error logs blank every number), but the provider
 receives it and handles it under its own terms. Requests go from this server
 only, and generated walks are not stored.
+
+While openrouteservice struggles (13 Oct 2026), loops other than pram walks
+are made with TomTom's walking routes instead (tomtom_walk.py): TomTom then
+receives the start, as it does for drives. See "When it struggles" below.
 """
 
 from __future__ import annotations
@@ -35,6 +39,7 @@ import asyncio
 import logging
 import os
 import re
+import time
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
@@ -126,10 +131,112 @@ def pram_character(profile: str, character: str) -> Tuple[str, Optional[str]]:
     return character, None
 
 
+# ------------------------------------------------------- when it struggles
+#
+# Founder, 13 Oct 2026: walks failed all afternoon, "This happens too often.
+# We need a proper fallback and messaging towards the user." That day
+# openrouteservice's walking routing timed out (over 40 s) while its
+# wheelchair routing answered, and every walk waited 20 s and more before
+# "Couldn't make walks". Now a profile that times out, fails on the
+# provider's side or answers slower than SLOW_S is treated as struggling for
+# COOLDOWN_S: walks for it go straight to the stand-in (core/walking/
+# tomtom_walk.py) or say plainly what is wrong. Whether it has recovered is
+# checked in the background, at most every PROBE_S and only when someone
+# asks for a walk, so nobody waits for the check.
+
+#: A walk call gives up after this long (it usually takes 1 to 4 s).
+ORS_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+SLOW_S = 8.0
+COOLDOWN_S = 300.0
+PROBE_S = 60.0
+_struggling: Dict[str, float] = {}          # ORS profile -> struggling until
+_probed: Dict[str, float] = {}              # ORS profile -> last real try
+
+
+class ProviderSlow(GenerationUnavailable):
+    """openrouteservice isn't answering properly for this kind of walk."""
+
+    code = "provider_slow"
+
+
+#: A short public walk for the background check (Trafalgar Square, London).
+PROBE_BODY = {"coordinates": [[-0.1281, 51.5080], [-0.1270, 51.5074]]}
+
+
+def struggling(ors_profile: str) -> bool:
+    """True while the profile is struggling; starts a background check at
+    most every PROBE_S."""
+    now = time.monotonic()
+    if _struggling.get(ors_profile, 0.0) <= now:
+        return False
+    if now - _probed.get(ors_profile, 0.0) >= PROBE_S:
+        _probed[ors_profile] = now
+        try:
+            asyncio.get_running_loop().create_task(_probe(ors_profile))
+        except RuntimeError:
+            pass
+    return True
+
+
+async def _probe(ors_profile: str) -> None:
+    """Is the profile answering properly again? Clears it if so."""
+    began = time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=ORS_TIMEOUT) as client:
+            resp = await ors.request(client, "POST", DIRECTIONS_PATH.format(profile=ors_profile),
+                                     "directions", json=PROBE_BODY)
+        ok = resp.status_code == 200 and time.monotonic() - began <= SLOW_S
+    except Exception:  # noqa: BLE001 - a failed check is just "not yet"
+        ok = False
+    _note(ors_profile, ok)
+    if ok:
+        log.info("openrouteservice %s answering again", ors_profile)
+
+
+def _note(ors_profile: str, ok: bool) -> None:
+    if ok:
+        _struggling.pop(ors_profile, None)
+    else:
+        if _struggling.get(ors_profile, 0.0) <= time.monotonic():
+            log.warning("openrouteservice %s struggling; using the stand-in for %d s",
+                        ors_profile, COOLDOWN_S)
+        _struggling[ors_profile] = time.monotonic() + COOLDOWN_S
+
+
+def reset_health() -> None:
+    """For tests."""
+    _struggling.clear()
+    _probed.clear()
+
+
 async def _post(client: httpx.AsyncClient, ors_profile: str, body: Dict) -> httpx.Response:
-    """One directions call, already counted, with the fallback address."""
-    return await ors.request(client, "POST", DIRECTIONS_PATH.format(profile=ors_profile),
-                             "directions", count=False, json=body)
+    """One directions call, already counted, with the fallback address.
+    Raises ProviderSlow at once while the profile is struggling, and when the
+    call times out or fails in transport."""
+    if struggling(ors_profile):
+        raise ProviderSlow(ors_profile)
+    began = time.monotonic()
+    try:
+        resp = await ors.request(client, "POST", DIRECTIONS_PATH.format(profile=ors_profile),
+                                 "directions", count=False, json=body)
+    except httpx.HTTPError:
+        _note(ors_profile, False)
+        raise ProviderSlow(ors_profile)
+    slow = time.monotonic() - began > SLOW_S
+    _note(ors_profile, not (slow or resp.status_code >= 500))
+    return resp
+
+
+def slow_message(profile: str) -> str:
+    """What the parent is told when openrouteservice is struggling."""
+    base = ("openrouteservice, the map service Driftway makes walks with, isn't "
+            "answering properly just now. That's on their side, not your phone or "
+            "connection.")
+    if profile == "pram":
+        return (base + " Pram walks need its pram-friendly routing, so there's no "
+                "stand-in for them. Your own walks and the checked walks near you "
+                "still work; try again in a few minutes.")
+    return base + " Your own walks and the checked walks near you still work; try again in a few minutes."
 
 
 class ProviderRefused(GenerationUnavailable):
@@ -288,11 +395,21 @@ def _haversine(a, b) -> float:
     return 2 * 6371000.0 * math.asin(math.sqrt(h))
 
 
+#: Walks made from TomTom's walking routes (core/walking/tomtom_walk.py)
+#: while openrouteservice struggles: what they can't say.
+TOMTOM_NOTE = ("Made with TomTom's walking routes, because openrouteservice was "
+               "struggling: surfaces, steps, slopes and gates aren't known for this "
+               "walk.")
+
+
 def route_from_ors(feature: Dict, *, walk_id: str, name: str,
-                   start_label: str, routing_note: Optional[str] = None) -> Route:
-    """Turn one ORS GeoJSON feature into a Route the catalogue can judge."""
+                   start_label: str, routing_note: Optional[str] = None,
+                   provider: str = "ors") -> Route:
+    """Turn one ORS GeoJSON feature (or a TomTom route shaped like one:
+    provider "tomtom") into a Route the catalogue can judge."""
     coords = feature["geometry"]["coordinates"]          # [lng, lat, ele]
     pts = [(c[1], c[0]) for c in coords]
+    has_heights = all(len(c) > 2 for c in coords)
     heights = [c[2] if len(c) > 2 else 0.0 for c in coords]
     dist = [0.0]
     for a, b in zip(pts, pts[1:]):
@@ -340,13 +457,28 @@ def route_from_ors(feature: Dict, *, walk_id: str, name: str,
                                         Status.MAPPED, SOURCE))
         sections.append(sec)
 
-    attach_gradients(sections, dist, smooth(heights), HEIGHT_SOURCE)
+    if has_heights:
+        # Without heights nothing is said about slopes: unknown, never flat.
+        attach_gradients(sections, dist, smooth(heights), HEIGHT_SOURCE)
 
     # Along streets and roads: way types 1-3 (state road, road, street).
     total = dist[-1] or 1.0
     on_roads = sum(dist[min(b, len(dist) - 1)] - dist[a]
                    for a, b, v in way_r if v in (1, 2, 3))
 
+    if provider == "tomtom":
+        from .tomtom_walk import ATTRIBUTION as TOMTOM_ATTRIBUTION
+        return Route(
+            id=walk_id, name=name, area="", shape="loop",
+            summary="Made from your start along TomTom's walking routes.",
+            start={"lat": pts[0][0], "lng": pts[0][1], "label": start_label},
+            sections=sections,
+            sources=[{"id": "tomtom", "label": "TomTom", "attribution": TOMTOM_ATTRIBUTION}],
+            built_on=date.today().isoformat(),
+            notes=["Generated just now; nobody has checked it on foot.", TOMTOM_NOTE]
+            + ([routing_note] if routing_note else []),
+            road_share=None,
+        )
     return Route(
         id=walk_id, name=name, area="", shape="loop",
         summary="Made from your start along mapped paths.",
@@ -476,10 +608,11 @@ def despike(feature: Dict) -> Tuple[Dict, float]:
     return out, removed
 
 
-def walk_minutes(feature: Dict) -> float:
+def walk_minutes(feature: Dict, provider: str = "ors") -> float:
     """The walk's time, measured the way its card measures it."""
     from .catalogue import _full_minutes
-    return _full_minutes(route_from_ors(feature, walk_id="m", name="m", start_label="m"))
+    return _full_minutes(route_from_ors(feature, walk_id="m", name="m", start_label="m",
+                                        provider=provider))
 
 
 def fit_rank(minutes_actual: float, minutes_asked: int) -> Tuple[int, float]:
@@ -500,7 +633,7 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
     character, pram_note = pram_character(profile, character)
 
     own = client is None
-    client = client or httpx.AsyncClient(timeout=20.0)
+    client = client or httpx.AsyncClient(timeout=ORS_TIMEOUT)
     try:
         async def one(seed: int, length_m: Optional[float] = None):
             global _WEIGHT_FORM
@@ -591,10 +724,32 @@ async def generate(start: Tuple[float, float], profile: str, minutes: int,
         no = next((o for o in results if isinstance(o, ProviderRefused)), None)
         if no:
             raise no
+        if any(isinstance(o, ProviderSlow) for o in results):
+            return await _stand_in(start, profile, minutes, start_label, pram_note)
         raise GenerationUnavailable(
             "Couldn't make walks from here just now. Try again in a moment, "
             "or pick a nearby start.")
     return routes
+
+
+async def _stand_in(start: Tuple[float, float], profile: str, minutes: int,
+                    start_label: str, pram_note: Optional[str]) -> List[Route]:
+    """Walks from TomTom while openrouteservice struggles; never for a pram.
+    Raises ProviderSlow, with what to tell the parent, when there are none."""
+    from . import tomtom_walk
+    if profile != "pram":
+        feats = await tomtom_walk.loops(start, target_length_m(minutes))
+        measured = []
+        for f in feats:
+            f, _ = despike(f)
+            measured.append((f, walk_minutes(f, provider="tomtom")))
+        measured.sort(key=lambda m: fit_rank(m[1], minutes))
+        if measured:
+            log.info("walks made with TomTom while openrouteservice struggles")
+            return [route_from_ors(f, walk_id=f"generated-{n}", name=f"Walk {n} from {start_label}",
+                                   start_label=start_label, routing_note=pram_note, provider="tomtom")
+                    for n, (f, _m) in enumerate(measured, start=1)]
+    raise ProviderSlow(slow_message(profile))
 
 
 # ------------------------------------------------------------- via a place
@@ -1024,7 +1179,7 @@ async def via_walk(start: Tuple[float, float], via,
         return body(base, [at, start], [search_m, START_SEARCH_M], avoid)
 
     own = client is None
-    client = client or httpx.AsyncClient(timeout=20.0)
+    client = client or httpx.AsyncClient(timeout=ORS_TIMEOUT)
     found: List[Tuple[Dict, Optional[str], Tuple[float, float], List[Tuple[float, float]]]] = []
     used: List[Dict] = []        # corridors of every line found so far
     dropped = 0
@@ -1259,7 +1414,7 @@ async def trace_walk(points: List[Tuple[float, float]], profile: str, name: str,
     req["radiuses"] = [TRACE_SNAP_M] * len(pts)
 
     own = client is None
-    client = client or httpx.AsyncClient(timeout=20.0)
+    client = client or httpx.AsyncClient(timeout=ORS_TIMEOUT)
     try:
         _spend()
         resp = await _post(client, ors_profile, req)

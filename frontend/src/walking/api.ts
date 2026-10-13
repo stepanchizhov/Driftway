@@ -158,6 +158,25 @@ export interface GeneratedWalks {
   walks: Walk[];
   attribution: string;
   checkpoint?: CheckpointOutcome;
+  /** Who made them: TomTom stands in while openrouteservice struggles. */
+  provider?: "openrouteservice" | "tomtom";
+  /** Said above the walks when they come from the stand-in. */
+  notice?: string;
+}
+
+/**
+ * The route provider is struggling or refusing (founder, 13 Oct 2026: walks
+ * failed all afternoon with one red line). The message says what is wrong
+ * and what still works; the screen offers to try again.
+ */
+export class ProviderTrouble extends Error {
+  constructor(
+    message: string,
+    readonly code: "provider_slow" | "provider_refused",
+    readonly retryAfterS: number | null,
+  ) {
+    super(message);
+  }
 }
 
 /** The checkpoint itself is the problem, and the parent can fix it. */
@@ -220,6 +239,10 @@ export async function generateWalks(body: {
     if (res.status === 422 && d && typeof d === "object" && "code" in d) {
       const c = d as { code: CheckpointError["code"]; message: string; minimum_minutes: number | null };
       throw new CheckpointError(c.message, c.code, c.minimum_minutes ?? null);
+    }
+    if (res.status === 503 && d && typeof d === "object" && "code" in d) {
+      const p = d as { code: ProviderTrouble["code"]; message: string; retry_after_s?: number | null };
+      throw new ProviderTrouble(p.message, p.code, p.retry_after_s ?? null);
     }
     if (typeof d === "string") detail = d;
     throw new Error(detail);

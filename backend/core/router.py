@@ -174,6 +174,20 @@ class _RateLimiter:
 # TomTom free tier: 5 req/sec. Stay just under it.
 _TOMTOM_RATE = 4.0
 _TOMTOM_MAX_RETRIES = 3
+_limiters: dict = {}
+
+
+def tomtom_limiter() -> _RateLimiter:
+    """The one limiter for every TomTom call in this event loop: drives,
+    walks made with TomTom (core/walking/tomtom_walk.py) and concurrent
+    requests share TomTom's per-second ceiling. Measured 13 Oct 2026: walk
+    calls with their own pace drew 429s."""
+    loop = asyncio.get_running_loop()
+    lim = _limiters.get(id(loop))
+    if lim is None:
+        _limiters.clear()               # an old loop's limiter is never used again
+        lim = _limiters[id(loop)] = _RateLimiter(_TOMTOM_RATE)
+    return lim
 
 #: How long TomTom is treated as down after it refuses or fails, before it is
 #: tried again. Module-level because a router is made per request, and the
@@ -220,7 +234,6 @@ class TomTomRouter:
             raise ValueError("TomTom API key is required for TomTomRouter")
         self._key = api_key
         self._client = client or httpx.AsyncClient(timeout=12.0)
-        self._limiter = _RateLimiter(_TOMTOM_RATE)
 
     async def evaluate(self, start, finish, anchors, profile):
         return await self._calculate(start, finish, anchors, profile)
@@ -270,7 +283,7 @@ class TomTomRouter:
         data = None
         failure = None          # why TomTom itself failed, if it did
         for attempt in range(_TOMTOM_MAX_RETRIES):
-            await self._limiter.wait()
+            await tomtom_limiter().wait()
             try:
                 if body is None:
                     resp = await self._client.get(url, params=params)

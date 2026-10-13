@@ -6,6 +6,7 @@ import {
   NotAdmitted,
   assessWalks,
   generateWalks,
+  ProviderTrouble,
   type GeneratedWalks,
   type Basis,
   type Verdict,
@@ -171,6 +172,7 @@ export function Walks({
   const [cp, dispatchCp] = useReducer(checkpointReducer, initialCheckpoint);
   const dirty = JSON.stringify(setup) !== JSON.stringify(applied) || checkpointChanged(cp);
   const [runToken, setRunToken] = useState(0);
+  const [curatedOpen, setCuratedOpen] = useState(false);
   const [result, setResult] = useState<WalksResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notAdmitted, setNotAdmitted] = useState<string | null>(null);
@@ -337,6 +339,13 @@ export function Walks({
               onSetMinutes={setMinutes}
               onSaveWalk={(w) => mine.add(w.name, lineOfWalk(w), "made")}
               savedPlaces={savedPlaces}
+              hasCurated={result.walks.length > 0}
+              onShowCurated={() => {
+                setCuratedOpen(true);
+                requestAnimationFrame(() =>
+                  document.getElementById("walks-curated")?.scrollIntoView({ behavior: "smooth" }),
+                );
+              }}
             />
           )}
 
@@ -366,8 +375,14 @@ export function Walks({
           )}
 
           {/* Curated walks follow, folded when walks can be made: outside the
-              founder's own area there are hardly any yet. */}
-          <details className="walks-more walks-curated" open={!canGenerate}>
+              founder's own area there are hardly any yet. Opened when walks
+              can't be made just now. */}
+          <details
+            className="walks-more walks-curated"
+            id="walks-curated"
+            open={!canGenerate || curatedOpen}
+            onToggle={(e) => setCuratedOpen((e.target as HTMLDetailsElement).open)}
+          >
             <summary>Curated walks</summary>
             <WalkGroups
               walks={result.walks}
@@ -1042,6 +1057,8 @@ function MakeWalks({
   onSetMinutes,
   onSaveWalk,
   savedPlaces,
+  hasCurated,
+  onShowCurated,
 }: {
   setup: WalkSetup;
   here: Coord | null;
@@ -1060,6 +1077,10 @@ function MakeWalks({
   onSaveWalk: (w: Walk) => void;
   savedPlaces: Endpoint[];
   onSetMinutes: (n: number) => void;
+  /** Curated walks are listed below. */
+  hasCurated: boolean;
+  /** Open the curated walks and scroll to them. */
+  onShowCurated: () => void;
 }) {
   // The checkpoints in use, in order (11 Oct: up to three).
   const checkpoints = cp.applied;
@@ -1075,6 +1096,7 @@ function MakeWalks({
   const [madeKey, setMadeKey] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [trouble, setTrouble] = useState<ProviderTrouble | null>(null);
   const [cpError, setCpError] = useState<CheckpointError | null>(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -1102,6 +1124,7 @@ function MakeWalks({
     const forKey = key;
     setBusy(true);
     setError(null);
+    setTrouble(null);
     setCpError(null);
     try {
       const res = await generateWalks({
@@ -1135,6 +1158,7 @@ function MakeWalks({
     } catch (e) {
       if (!gate.current.isCurrent(token)) return;
       if (e instanceof CheckpointError) setCpError(e);
+      else if (e instanceof ProviderTrouble) setTrouble(e);
       else setError(e instanceof Error ? e.message : "Couldn't make walks just now.");
     } finally {
       if (gate.current.isCurrent(token)) setBusy(false);
@@ -1340,11 +1364,27 @@ function MakeWalks({
             } and back, each avoiding the paths of the others. Their length follows from where the checkpoints are.`
           : "Up to three walks from mapped paths, judged for your setup."}{" "}
         To plan them, your start{pending.length ? " and checkpoints are" : " is"} sent to
-        openrouteservice as {pending.length ? "points" : "a point"} on the map, with nothing
-        that names you. Driftway doesn&rsquo;t keep {pending.length ? "them" : "it"}.
+        openrouteservice{pending.length ? "" : " (or, when it’s struggling, TomTom)"} as{" "}
+        {pending.length ? "points" : "a point"} on the map, with nothing that names you.
+        Driftway doesn&rsquo;t keep {pending.length ? "them" : "it"}.
       </p>
 
       {error && <p className="account-error">{error}</p>}
+      {trouble && (
+        <div className="walks-conflict" role="alert">
+          <p>{trouble.message}</p>
+          <div className="cp-actions">
+            <button type="button" className="btn-quiet" disabled={busy} onClick={() => void make()}>
+              {busy ? "Trying…" : "Try again"}
+            </button>
+            {hasCurated && (
+              <button type="button" className="btn-quiet" onClick={onShowCurated}>
+                Show the checked walks
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {cpError && (
         <div className="walks-conflict" role="alert">
           <p>{cpError.message}</p>
@@ -1371,6 +1411,11 @@ function MakeWalks({
 
       {made && (
         <>
+          {made.notice && (
+            <p className="walks-stale" role="status">
+              {made.notice}
+            </p>
+          )}
           {stale && (
             <p className="walks-stale" role="status">
               These walks are for your previous settings. Tap Update walks to

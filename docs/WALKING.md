@@ -742,3 +742,38 @@ OPEN: the first real run, and Katya's area as the first test outside
 Windsor. LATER: tell a parent when their area's walks are ready (it would
 need a contact, so not without asking them).
 
+## When openrouteservice struggles (0.8.13, 13 Oct 2026)
+
+Founder: walks failed all afternoon, "This happens too often. We need a
+proper fallback and messaging towards the user." Measured that afternoon on
+api.heigit.org: foot-walking round trips timed out after 40 s, a simple
+driving route took 33 s, wheelchair routing answered in 0.1 to 6 s; the
+dashboard showed 13 errors in 14 requests with the quota almost unused.
+Every walk waited 20 s and more, then said only "Couldn't make walks".
+
+- **Fail fast** (`generate._post`): a walk call gives up after 10 s. One
+  that times out, fails on the provider's side or takes over 8 s marks that
+  ORS profile (foot-walking, wheelchair) as struggling for 5 minutes; walks
+  for it then don't call it at all. Whether it has recovered is checked in
+  the background, at most once a minute and only when someone asks.
+- **Stand-in** (`core/walking/tomtom_walk.py`): loops other than pram walks
+  are made with TomTom's walking routes (travelMode pedestrian, on the
+  drives' key and rate limiter): a triangle of waypoints round the start,
+  three directions, fitted to the length once. TomTom gives no surfaces, way
+  types or heights, so these walks say "surfaces, steps, slopes and gates
+  aren't known" and slopes are left unknown, never flat. Measured live while
+  ORS was down: three 45-minute walks in 1.3 s (48 minutes long).
+- **Never for a pram**: TomTom can't keep a pram's rules (surface, slope,
+  kerbs, steps), and a stand-in must not weaken them (product rule, 10 Oct).
+- **Said plainly**: the screen says openrouteservice is struggling, that
+  it's on their side and not the parent's phone or connection, and what
+  still works (their own walks, the checked walks near them), with "Try
+  again" and "Show the checked walks". Walks from the stand-in carry a
+  notice above them. The endpoint answers 503 with
+  `{"code": "provider_slow" | "provider_refused", "message", "retry_after_s"}`.
+- **Privacy**: TomTom then receives a walk's start (and two points its loop
+  passes), as it already does for drives. Privacy policy 1.8.
+
+Not covered yet: walks via checkpoints and "follow my route" (My walks) need
+openrouteservice's avoid-areas and snapping; while it struggles they fail
+fast with the same message instead of waiting.

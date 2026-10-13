@@ -243,8 +243,10 @@ async def generate_walks(
     other walk.
 
     The start and any checkpoint go to openrouteservice as precise
-    coordinates, and nowhere else; Driftway does not log or store them, and the
-    walks are not stored. No name, account or label is sent with them.
+    coordinates; while it struggles, a loop's start goes to TomTom instead
+    (never for a pram: core/walking/tomtom_walk.py). Nowhere else. Driftway
+    does not log or store them, and the walks are not stored. No name,
+    account or label is sent with them.
     """
     if not walking_enabled():
         raise HTTPException(status_code=404, detail="Not found.")
@@ -301,12 +303,27 @@ async def _generate(body: GenerateIn, setup, minutes: int, pins, labels):
         # time, so it is a 422 the screen can act on, not an outage.
         raise HTTPException(status_code=422, detail={
             "code": e.code, "message": str(e), "minimum_minutes": e.minimum_minutes})
+    except gen.ProviderSlow:
+        # Said as what it is, with what still works (founder, 13 Oct 2026).
+        raise HTTPException(status_code=503, headers={"Retry-After": str(int(gen.PROBE_S))}, detail={
+            "code": gen.ProviderSlow.code, "message": gen.slow_message(body.profile),
+            "retry_after_s": int(gen.PROBE_S)})
+    except gen.ProviderRefused as e:
+        raise HTTPException(status_code=503, detail={
+            "code": "provider_refused", "message": str(e), "retry_after_s": None})
     except gen.GenerationUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
 
     walks = [assess_route(r, body.profile, setup, minutes, body.allow_out_and_back)
              for r in routes]
-    out = {"walks": walks, "attribution": gen.ATTRIBUTION}
+    stand_in = bool(routes) and routes[0].sources and routes[0].sources[0].get("id") == "tomtom"
+    out = {"walks": walks,
+           "attribution": routes[0].sources[0]["attribution"] if stand_in else gen.ATTRIBUTION,
+           "provider": "tomtom" if stand_in else "openrouteservice"}
+    if stand_in:
+        out["notice"] = ("openrouteservice, which Driftway makes walks with, is struggling "
+                         "just now, so these walks come from TomTom's walking routes. "
+                         "Surfaces, steps and slopes aren't known for them.")
     if pins and routes:
         each = routes[0].vias or [routes[0].via]
         via = each[-1]
@@ -390,6 +407,8 @@ async def trace_walks(
         except gen.TraceProblem as e:
             raise HTTPException(status_code=422, detail={
                 "code": "trace", "message": str(e), "point": e.point})
+        except gen.ProviderSlow:
+            raise HTTPException(status_code=503, detail=gen.slow_message(body.profile))
         except gen.GenerationUnavailable as e:
             raise HTTPException(status_code=503, detail=str(e))
         walk = assess_route(route, body.profile, setup, body.minutes,

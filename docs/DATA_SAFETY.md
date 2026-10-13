@@ -46,8 +46,9 @@ stay on the device; they are sent with a walk request only to judge the walk,
 and are not stored.
 
 **Service providers** (not "sharing"): Render (hosting), Auth0 (sign-in),
-TomTom (search, routes, travel times), openrouteservice by HeiGIT (walks,
-and TomTom's stand-in). Each receives only what its job needs.
+TomTom (search, routes, travel times, and openrouteservice's stand-in for
+walks), openrouteservice by HeiGIT (walks, and TomTom's stand-in). Each
+receives only what its job needs.
 
 **Opened by the user's choice**: Google Maps, Waze, Apple Maps. When the
 parent opens a route there, the route's points travel in the link. Under
@@ -85,6 +86,11 @@ but the privacy policy says so plainly.
 
 The domain went live on 10 Oct 2026: both URLs answer over HTTPS. The same
 pages remain on `driftway-front.onrender.com`.
+
+**0.8.13 (13 Oct 2026), walks when openrouteservice struggles:** a walk's
+start (and two points its loop passes) can go to TomTom instead, already a
+processor for drives; nothing new is collected or stored. Pram walks never
+use the stand-in. Privacy policy 1.8.
 
 **0.8.9 (11 Oct 2026), walks for new areas:** a grid square about 10 km
 across is stored when a parent asks for walks where there are none, with a

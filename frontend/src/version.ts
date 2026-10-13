@@ -43,6 +43,7 @@ export const RELEASES: Release[] = [
       "Drives try to go round the busiest stretch of speed bumps, traffic lights and roadworks, using waypoints Google Maps follows too.",
       "A turn-around now counts like a speed bump, less than a red light: a drive with many fewer bumps and lights can go first even with a turn-around.",
       "Where a drive has to turn round, it does so at a roundabout, a turning circle or a loop at the end of a street when there's one nearby, and the card says where.",
+      "When openrouteservice, the map service walks are made with, is struggling, walks come from TomTom's walking routes instead (not pram walks), and the screen says what's wrong and what still works, with Try again. No more long waits for a bare error.",
     ],
   },
   {
