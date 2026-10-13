@@ -11,14 +11,17 @@ subscribed to the permit topic.
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from core import roadworks
+from core.config import admin_token
 from core.db import get_session, storage_available
 
 log = logging.getLogger("driftway")
@@ -57,3 +60,18 @@ async def street_manager(request: Request, session: Session = Depends(get_sessio
         return {"ignored": "message not JSON"}
     row = roadworks.handle_event(session, payload)
     return {"kept": bool(row)}
+
+
+@router.get("/admin/roadworks/summary")
+def roadworks_summary(x_admin_token: Optional[str] = Header(None),
+                      session: Session = Depends(get_session)):
+    """Founder only: what Street Manager has sent since the API started, and
+    what is kept for drives."""
+    admin = admin_token()
+    if not admin:
+        raise HTTPException(status_code=503, detail="Admin access is not configured on this deployment.")
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, admin):
+        raise HTTPException(status_code=403, detail="Not permitted.")
+    if not storage_available():
+        raise HTTPException(status_code=503, detail="Storage unavailable.")
+    return roadworks.summary(session)

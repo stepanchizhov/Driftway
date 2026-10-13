@@ -149,6 +149,25 @@ class PermitTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text)
         self.assertTrue(r.json()["kept"])
 
+    def test_the_founder_sees_what_arrived(self):
+        from unittest import mock
+        with mock.patch("core.roadworks._fetch_cert", lambda url: _cert):
+            self.client.post("/api/roadworks/street-manager", content=json.dumps(notification(permit())),
+                             headers={"Content-Type": "text/plain"})
+        with mock.patch.dict(os.environ, {"ADMIN_API_TOKEN": "founder"}):
+            self.assertEqual(self.client.get("/api/admin/roadworks/summary").status_code, 403)
+            self.assertEqual(self.client.get("/api/admin/roadworks/summary",
+                                             headers={"X-Admin-Token": "wrong"}).status_code, 403)
+            r = self.client.get("/api/admin/roadworks/summary", headers={"X-Admin-Token": "founder"})
+        self.assertEqual(r.status_code, 200, r.text)
+        s = r.json()
+        self.assertGreaterEqual(s["events"].get("PERMIT PERMIT_GRANTED", 0), 1)
+        self.assertGreaterEqual(s["controls"].get("traffic_management_type_ref=two_way_signals", 0), 1)
+        self.assertGreaterEqual(s["coordinates"].get("grid metres", 0), 1)
+        self.assertIn("works_location_coordinates", s["fields"])
+        self.assertEqual(s["kept"]["by_control"], {"two_way_signals": 1})
+        self.assertEqual(s["example_stopping_permit"]["street_name"], "VICTORIA STREET")
+
 
 class RankingTests(unittest.TestCase):
     def test_a_drive_through_temporary_lights_ranks_lower(self):

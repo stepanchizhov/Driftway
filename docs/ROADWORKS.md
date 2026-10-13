@@ -4,7 +4,17 @@ Founder, 12 Oct 2026, after a real drive: one stop-go and three or four sets
 of lights; a stop-go may be the worst thing for a sleeping baby. Temporary
 works are never on a map, so they need a live source.
 
-## England: Street Manager (IMPLEMENTED 0.8.12, not yet receiving)
+## England: Street Manager (IMPLEMENTED 0.8.12; subscribed 13 Oct 2026)
+
+Onboarded by the Street Manager team (request SPBS-20493); the endpoint
+confirmed the permit topic subscription itself on 13 Oct 2026
+(`arn:aws:sns:eu-west-2:287813576808:prod-permit-topic`, as documented).
+
+**What has arrived:** `GET /api/admin/roadworks/summary` with the
+`X-Admin-Token` header (founder only) counts, since the API last started,
+the events, traffic-control values, coordinate kinds and field names
+received, what is kept for drives, and one example stopping permit. That is
+how the assumptions below get checked.
 
 The Department for Transport's Street Manager is where councils and utility
 companies in England record their works, including how traffic is

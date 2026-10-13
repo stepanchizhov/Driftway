@@ -28,6 +28,7 @@ import logging
 import math
 import re
 import time
+from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
 from urllib.parse import urlparse
@@ -231,8 +232,60 @@ def store_permit(session: Session, data: Dict) -> Optional[Roadwork]:
     return row
 
 
+# What has actually arrived since the API started, to check the assumptions
+# above (field names, control values, grid metres) against real messages.
+# In memory only: it starts again after a deploy.
+_seen: Dict[str, Counter] = {k: Counter() for k in ("events", "controls", "coordinates", "fields")}
+_seen_since = _now()
+_example: Dict = {}
+
+
+def _coordinate_kind(wkt: str) -> str:
+    m = _COORDS.search(wkt or "")
+    if not m:
+        return "none" if not wkt else "unreadable"
+    x, y = float(m.group(1)), float(m.group(2))
+    if abs(x) <= 180 and abs(y) <= 90:
+        return "degrees"
+    return "grid metres" if 0 <= x <= 700000 and 0 <= y <= 1300000 else "other numbers"
+
+
+def _tally(payload: Dict) -> None:
+    data = payload.get("object_data") or {}
+    _seen["events"][f"{payload.get('object_type')} {payload.get('event_type')}"] += 1
+    if not isinstance(data, dict):
+        return
+    _seen["fields"].update(data.keys())
+    for key in ("traffic_management_type_ref", "current_traffic_management_type_ref"):
+        if data.get(key):
+            _seen["controls"][f"{key}={data[key]}"] += 1
+    _seen["coordinates"][_coordinate_kind(data.get("works_location_coordinates") or "")] += 1
+    control = data.get("current_traffic_management_type_ref") or data.get("traffic_management_type_ref")
+    if control in STOPPING or not _example:
+        _example.clear()
+        _example.update({k: (v[:160] if isinstance(v, str) else v) for k, v in data.items()
+                         if not isinstance(v, (dict, list))})
+
+
+def summary(session: Session) -> Dict:
+    """For the founder: what has arrived, and what is kept for drives."""
+    rows = session.execute(select(Roadwork.control, Roadwork.starts, Roadwork.ends)).all()
+    now = _now().replace(tzinfo=None)
+    running = [r for r in rows if (r.starts is None or r.starts.replace(tzinfo=None) <= now)
+               and (r.ends is None or r.ends.replace(tzinfo=None) > now)]
+    return {
+        "since": _seen_since.isoformat(timespec="seconds"),
+        "messages": sum(_seen["events"].values()),
+        **{k: dict(c.most_common(40)) for k, c in _seen.items()},
+        "kept": {"total": len(rows), "running_now": len(running),
+                 "by_control": dict(Counter(r.control for r in rows))},
+        "example_stopping_permit": _example,
+    }
+
+
 def handle_event(session: Session, payload: Dict) -> Optional[Roadwork]:
     """One Street Manager event (the SNS Message, parsed)."""
+    _tally(payload)
     if (payload.get("object_type") or "").upper() != "PERMIT":
         return None
     data = payload.get("object_data") or {}
