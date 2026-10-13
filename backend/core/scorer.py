@@ -8,7 +8,9 @@ HYPOTHESES from the project bible; real ride data should retune them.
 
 from __future__ import annotations
 
-from typing import List, Optional
+import json
+import math
+from typing import List, Optional, Tuple
 
 from .geometry import haversine_km, initial_bearing
 from .models import Coord, RoadMix
@@ -277,29 +279,84 @@ def score_route(route: EvaluatedRoute, target_minutes: int, profile: str,
 #: for than the drive it replaces, and no more.
 CALM_SLACK_MIN = 3.0
 
+# Stops as a parent meets them, on one scale (founder, 13 Oct 2026: "a
+# turn-around is better than a red light, and especially better than a
+# stop-go"). A bump and a turn-around count 1, lights 1.2, roadworks that
+# stop traffic 4. Counted per drive, not per km: a longer drive with more
+# lights is not calmer.
+STOP_WEIGHT = {"bump": 1.0, "junction": 1.2, "pedestrian": 1.0, "works": 4.0}
+TURN_WEIGHT = 1.0
+#: A drive must spare at least this much (two bumps) to go first for it.
+CALM_GAIN = 2.0
+
+
+def stops_on(route: EvaluatedRoute) -> List[Tuple[float, float, float, float]]:
+    """(metres along, lat, lng, weight) for every mapped stop on the drive:
+    bumps, lights (core.calming) and roadworks that stop traffic."""
+    out = [(s, lat, lng, STOP_WEIGHT[kind])
+           for s, lat, lng, kind in calming.stops_along(route.geometry)]
+    pts = [(p.lat, p.lng) for p in route.geometry]
+    if len(pts) < 2:
+        return out
+    k = math.cos(math.radians(pts[0][0]))
+    cum = None
+    for w in works_of(route):
+        if w.control not in roadworks.STOPPING:
+            continue
+        wp = json.loads(w.points_json or "[]")
+        if not wp:
+            continue
+        lat, lng = sum(p[0] for p in wp) / len(wp), sum(p[1] for p in wp) / len(wp)
+        if cum is None:
+            cum = [0.0]
+            for a, b in zip(pts, pts[1:]):
+                cum.append(cum[-1] + math.hypot((b[0] - a[0]) * 111320.0, (b[1] - a[1]) * 111320.0 * k))
+        i = min(range(len(pts)), key=lambda j: (pts[j][0] - lat) ** 2 + ((pts[j][1] - lng) * k) ** 2)
+        out.append((cum[i], lat, lng, STOP_WEIGHT["works"]))
+    return sorted(out)
+
+
+def stop_weight(route: EvaluatedRoute) -> float:
+    """The drive's mapped stops, weighted (STOP_WEIGHT), from the counts the
+    card shows: 0 outside the prepared data."""
+    b, lights = bumps_of(route), lights_of(route)
+    stopping = sum(1 for w in works_of(route) if w.control in roadworks.STOPPING)
+    return ((b.count if b else 0) * STOP_WEIGHT["bump"]
+            + (lights.junctions * STOP_WEIGHT["junction"] + lights.pedestrian * STOP_WEIGHT["pedestrian"]
+               if lights else 0.0)
+            + stopping * STOP_WEIGHT["works"])
+
+
+def stops_met(route: EvaluatedRoute) -> float:
+    """Everything that stops or turns the car round, on one scale."""
+    return stop_weight(route) + TURN_WEIGHT * turnaround_count(route)
+
 
 def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
                 profile: str) -> List[EvaluatedRoute]:
     """Put a calmer drive first, if one is as good on what already counted.
 
-    `ranked` is in the order the score without bumps gives. Measured on 20
-    drives (11 Oct 2026), a plain bump penalty bought fewer bumps with an
-    extra turn-around, or with ten minutes over the time, which is a worse
-    drive for a sleeping baby. So a candidate may replace the first drive
-    only with no more turn-arounds and at most CALM_SLACK_MIN minutes further
-    from the time; among those, and the first drive itself, the full score
-    (with bumps) decides. Only the first place changes.
+    `ranked` is in the order the score without bumps gives. A candidate at
+    most CALM_SLACK_MIN minutes further from the time may replace the first
+    drive if a parent meets fewer stops on it (stops_met, by at least
+    CALM_GAIN), turn-arounds counted like a bump. Only the first place
+    changes.
+
+    Until 13 Oct 2026 a calmer drive could never add a turn-around, which
+    made a turn-around worth about seven sets of lights. The founder, who
+    drives these with a sleeping baby: a turn-around is better than a red
+    light. Measured that day on 20 Windsor requests: the first drive changes
+    in 7; across all 20, bumps 222 to 167, lights 157 to 141, turn-arounds 14
+    to 22, timing no worse (82 to 78 minutes off in total).
     """
-    if not ranked or (W_BUMPS <= 0 and W_LIGHTS <= 0):
+    if not ranked:
         return ranked
     lead = ranked[0]
-    lead_turns = turnaround_count(lead)
     lead_miss = abs(lead.minutes - target_minutes)
     eligible = [ev for ev in ranked
-                if turnaround_count(ev) <= lead_turns
-                and abs(ev.minutes - target_minutes) <= lead_miss + CALM_SLACK_MIN]
-    best = max(eligible, key=lambda ev: score_route(ev, target_minutes, profile))
-    if best is lead:
+                if abs(ev.minutes - target_minutes) <= lead_miss + CALM_SLACK_MIN]
+    best = min(eligible, key=stops_met)
+    if best is lead or stops_met(best) > stops_met(lead) - CALM_GAIN:
         return ranked
     return [best] + [ev for ev in ranked if ev is not best]
 

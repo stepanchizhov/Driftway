@@ -128,8 +128,10 @@ class RankingTests(unittest.TestCase):
 
 
 class CalmerLeadTests(unittest.TestCase):
-    """Fewer bumps never at the cost of a turn-around or the time (measured
-    on 160 real candidates, 11 Oct 2026: a plain penalty bought both)."""
+    """Fewer stops, never at the cost of the time (measured on 160 real
+    candidates, 11 Oct 2026: a plain penalty bought ten minutes over). A
+    turn-around counts like a bump (founder, 13 Oct 2026: better than a red
+    light)."""
 
     def ranked(self, *routes):
         return scorer.calmer_lead(list(routes), 30, "mixed")
@@ -138,11 +140,15 @@ class CalmerLeadTests(unittest.TestCase):
         bumpy, calm = route(31, 2.0), route(32, 0.1)
         self.assertIs(self.ranked(bumpy, calm)[0], calm)
 
-    def test_not_if_it_adds_a_turn_around(self):
-        bumpy, calm = route(31, 2.0), route(31, 0.1)
+    def test_a_turn_around_counts_like_a_bump(self):
         orig = scorer.turnaround_count
-        scorer.turnaround_count = lambda r: 1 if r is calm else 0
         try:
+            # 40 bumps against 2 and a turn-around: the turn-around is worth it.
+            bumpy, calm = route(31, 2.0), route(31, 0.1)
+            scorer.turnaround_count = lambda r: 1 if r is calm else 0
+            self.assertIs(self.ranked(bumpy, calm)[0], calm)
+            # 3 bumps against 2 and a turn-around: it isn't.
+            bumpy, calm = route(31, 0.15), route(31, 0.1)
             self.assertIs(self.ranked(bumpy, calm)[0], bumpy)
         finally:
             scorer.turnaround_count = orig

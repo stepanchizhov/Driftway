@@ -282,9 +282,9 @@ drives of a request:
    to pay for the detour's extra minutes; Google Maps on a phone takes three
    waypoints, so with three already the nearest gives way;
 4. route the waypoints again, plainly (one call), and keep the result only
-   if it has **fewer stops as a parent meets them** (at least 2 less stop
-   weight; not per km, since a longer drive with more lights is not calmer)
-   and no more turn-arounds than the drive it came from.
+   if a parent meets **fewer stops** on it (`scorer.stops_met`, at least 2
+   less; not per km, since a longer drive with more lights is not calmer;
+   turn-arounds included, see below).
 
 Why waypoints: Google Maps, which most parents drive with, gets only our
 waypoints and picks its own roads between them. An avoid-area exists only
@@ -310,9 +310,35 @@ Simulated routing is never steered. The generate log line says
   turn-arounds where there were none) and Windsor & Eton Central, Mixed
   (one turn-around fewer, three more lights, 5.5 minutes longer).
 
-The trade-offs are the ranking's own: duration, then turn-arounds, then
-calm. A steered drive is always calmer than the one it was built from, but
-may win first place on time. OPEN: whether a drive with more turn-arounds
-than the current first should ever replace it (the Dedworth case).
+The trade-offs are the ranking's own: a steered drive is always calmer
+than the one it was built from, but may win first place on time.
+
+## Turn-arounds on the same scale (0.8.13, 13 Oct 2026)
+
+Founder, on the Dedworth case: "a turn-around is better than a red light
+and especially better than a stop-go", though better still at a spot where
+turning is easy. Until then a calmer drive could never add a turn-around,
+which made one turn-around worth about seven sets of lights.
+
+Now every stop is on one scale (`scorer.STOP_WEIGHT`, `TURN_WEIGHT`): a
+bump or a turn-around 1, lights 1.2, roadworks that stop traffic 4,
+counted as met on the drive. `calmer_lead`: a drive at most 3 minutes
+further from the time than the first may replace it when it spares at
+least 2 (`CALM_GAIN`). Steering keeps a drive on the same test.
+
+Measured offline on the 20 requests (candidates plus the steered drives,
+no calls): first drive changed in 7 of 20; across all 20, bumps 222 to
+167, lights 157 to 141, turn-arounds 14 to 22, minutes off the time 82 to
+78 in total. E.g. Bray, Mixed: 8 bumps and 16 lights to none and 1, for two
+turn-arounds. With a turn-around at 3: 5 of 20 changed, bumps 169, lights
+146, turn-arounds 19.
+
+NEXT: easy places to turn round. The founder's own example (Slough, 13 Oct
+2026): a drive's spike ended at a turning loop round a small island at the
+end of a residential street, driven round with no three-point turn.
+OpenStreetMap maps these (turning loops and circles, mini-roundabouts,
+roundabouts); a turn-around at one could count less, and a turn-back
+waypoint could be placed on one. And per child (founder): let parents say
+which stops are worse for theirs, as their own weights on this scale.
 Measurement scripts: scratchpad `steer_measure.py`, `steer_diag.py`,
 `steer_variants.py` (not in the repo; counts only).

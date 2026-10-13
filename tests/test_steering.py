@@ -150,10 +150,18 @@ class SteeringTests(_Base):
     def test_a_drive_that_goes_back_through_the_stops_is_not_kept(self):
         self.assertEqual(self.steer(FakeRouter(stubborn=True), [route(BASE, [NW, NE])]), [])
 
-    def test_a_calmer_drive_with_an_extra_turn_around_is_not_kept(self):
+    def test_a_turn_around_counts_like_a_bump(self):
+        # Four bumps spared for one turn-around: kept (founder, 13 Oct 2026:
+        # a turn-around is better than a red light).
         r = FakeRouter()
         r.evaluate = lambda *a: _async(route(CALM, a[2], uturn=True))
-        self.assertEqual(self.steer(r, [route(BASE, [NW, NE])]), [])
+        self.assertEqual(len(self.steer(r, [route(BASE, [NW, NE])])), 1)
+        # Four bumps spared for three turn-arounds: not enough.
+        r.evaluate = lambda *a: _async(route(CALM, a[2], uturn=True))
+        # The scorer steering itself uses (other tests reload core).
+        with mock.patch.dict(steering.stops_met.__globals__,
+                             {"turnaround_waypoints": lambda ev: 2 if ev.has_uturn else 0}):
+            self.assertEqual(self.steer(r, [route(BASE, [NW, NE])]), [])
 
     def test_the_loop_is_pulled_in_to_pay_for_a_long_detour(self):
         self.assertEqual(steering._pull_in(30, 30.5), 1.0)

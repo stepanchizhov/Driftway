@@ -20,15 +20,14 @@ Step 4 is the point. Google Maps, which most parents drive with, gets only
 our waypoints and chooses its own roads between them, so a drive is only
 calmer if its waypoints make it so. The avoid-area result is a search aid and
 is never offered; the drive from step 4 is a candidate like any other, under
-the same rules: no more turn-arounds, at most CALM_SLACK_MIN further from
-the time asked for (scorer.calmer_lead).
+the same rules (scorer.calmer_lead).
 
 The detour costs time, so the drive's own waypoints are pulled in to pay
 for it (measured 13 Oct 2026: without that, steered 30-minute loops came
-back 9 to 12 minutes long). And a steered drive is kept only if it has
-fewer stops than the drive it came from, counted as a parent meets them
-(not per km: a longer drive with more lights is not calmer), and no more
-turn-arounds. Measured the same day on 29 Windsor detours: 6 gave a
+back 9 to 12 minutes long). And a steered drive is kept only if a parent
+meets fewer stops on it than on the drive it came from (scorer.stops_met:
+turn-arounds included; not per km, since a longer drive with more lights
+is not calmer). Measured the same day on 29 Windsor detours: 6 gave a
 calmer drive with the loop pulled in, 3 without. Whether the avoid-area
 detour itself is calmer says little: it is forced the long way round,
 while the waypoint drive is free to take a better road.
@@ -39,14 +38,13 @@ Cost: two routing calls per drive steered, MAX_STEERED drives a request.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import math
 from typing import Callable, List, Optional, Sequence, Tuple
 
-from . import calming, roadworks
 from .models import Coord
 from .router import EvaluatedRoute
+from .scorer import CALM_GAIN, stop_weight, stops_met, stops_on, turnaround_count  # noqa: F401
 
 log = logging.getLogger("driftway")
 
@@ -56,9 +54,6 @@ EDGE_M = 800.0
 WINDOW_M = 2000.0
 #: A stretch is worth steering round from this much "stop weight".
 MIN_CLUSTER = 3.0
-#: How each kind of stop counts. Lights a little above bumps, as in the
-#: scorer (W_LIGHTS 0.3, W_BUMPS 0.25); works that stop traffic far above.
-WEIGHT = {"bump": 1.0, "junction": 1.2, "pedestrian": 1.0, "works": 4.0}
 #: Margin round the stretch's stops for the avoid-area.
 PAD_M = 120.0
 #: A detour closer than this to the original drive isn't one.
@@ -67,8 +62,8 @@ MIN_DETOUR_M = 200.0
 MAX_STEERED = 2
 #: Google Maps on a phone takes three waypoints.
 MAX_WAYPOINTS = 3
-#: A steered drive must spare at least this much stop weight (two bumps).
-MIN_GAIN = 2.0
+#: A steered drive must spare at least this much (scorer.stops_met).
+MIN_GAIN = CALM_GAIN
 #: Points compared when finding the apex: enough for a 200 m test on a
 #: 40 km drive, few enough to stay quick.
 APEX_POINTS = 250
@@ -90,32 +85,6 @@ def _cumulative(pts: Sequence[Tuple[float, float]], k: float) -> List[float]:
 
 def _nearest_index(pts: Sequence[Tuple[float, float]], lat: float, lng: float, k: float) -> int:
     return min(range(len(pts)), key=lambda j: (pts[j][0] - lat) ** 2 + ((pts[j][1] - lng) * k) ** 2)
-
-
-def stops_on(route: EvaluatedRoute) -> List[Tuple[float, float, float, float]]:
-    """(metres along, lat, lng, weight) for every stop on the drive."""
-    out = [(s, lat, lng, WEIGHT[kind]) for s, lat, lng, kind in calming.stops_along(route.geometry)]
-    pts = [(p.lat, p.lng) for p in route.geometry]
-    if len(pts) < 2:
-        return out
-    k = math.cos(math.radians(pts[0][0]))
-    cum = None
-    from .scorer import works_of
-    for w in works_of(route):
-        if w.control not in roadworks.STOPPING:
-            continue
-        wp = json.loads(w.points_json or "[]")
-        if not wp:
-            continue
-        lat, lng = sum(p[0] for p in wp) / len(wp), sum(p[1] for p in wp) / len(wp)
-        cum = cum or _cumulative(pts, k)
-        out.append((cum[_nearest_index(pts, lat, lng, k)], lat, lng, WEIGHT["works"]))
-    return sorted(out)
-
-
-def stop_weight(route: EvaluatedRoute) -> float:
-    """All the drive's stops, weighted (WEIGHT), as a parent meets them."""
-    return sum(s[3] for s in stops_on(route))
 
 
 def busiest_stretch(route: EvaluatedRoute) -> Optional[Box]:
@@ -214,7 +183,6 @@ async def calmer_candidates(router, start: Coord, finish: Coord,
     router can't avoid areas (simulated routing), or nothing is worth
     steering round. `rescale(anchors, scale)` pulls waypoints in (loops and
     detours scale differently)."""
-    from .scorer import turnaround_count
     avoid = getattr(router, "evaluate_avoiding", None)
     if avoid is None:
         return []
@@ -249,8 +217,7 @@ async def calmer_candidates(router, start: Coord, finish: Coord,
     for base, g in zip(bases, got):
         if not isinstance(g, EvaluatedRoute):
             continue
-        if (turnaround_count(g) <= turnaround_count(base)
-                and stop_weight(g) <= stop_weight(base) - MIN_GAIN):
+        if stops_met(g) <= stops_met(base) - MIN_GAIN:
             g.steered = True
             out.append(g)
     return out
