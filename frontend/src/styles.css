@@ -2191,3 +2191,8 @@ body {
 .card-works { margin: 6px 0 0; padding: 8px 10px; border-left: 3px solid var(--warn); }
 .card-works-title { margin: 0; font-weight: 600; font-size: 14px; }
 .card-works ul { margin: 4px 0; padding-left: 18px; font-size: 14px; }
+
+/* Settings shown: clear of the account block above it. */
+.settings-shown {
+  margin-top: 1.75rem;
+}

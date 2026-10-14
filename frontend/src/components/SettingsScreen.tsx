@@ -73,6 +73,7 @@ export function SettingsScreen({ settings, update, server }: Props) {
           sign-in provider is configured. */}
       <AccountSection />
 
+      <div className="settings-shown">
       <ChipGroup
         legend="Settings shown"
         columns={2}
@@ -88,6 +89,7 @@ export function SettingsScreen({ settings, update, server }: Props) {
         drive&rsquo;s tolerance and direction, or how close a walk comes to a
         checkpoint. An option you&rsquo;ve changed always stays in view.
       </p>
+      </div>
 
       <section className="set-block" aria-labelledby="wakes-title">
         <h3 className="settings-about-title" id="wakes-title">
