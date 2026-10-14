@@ -79,6 +79,47 @@ that first day):
 
 Scotland, Wales and Northern Ireland are not in Street Manager.
 
+## Wales, Scotland, Northern Ireland: TomTom incidents (0.8.14, 14 Oct 2026)
+
+Founder: "What about Wales, Scotland and NI?" Searched 13 Oct 2026: no open
+feed like Street Manager. Scotland's Road Works Register (kept by the
+Scottish Road Works Commissioner, public map at roadworks.scot) lists an open
+data section that couldn't be reached; Wales's councils publish through
+Elgin's roadworks.org on Traffic Wales (commercial); Northern Ireland's DfI
+Roads publishes road assets on Open Data NI but no works register. An email
+to the Scottish Commissioner asking about open access is drafted for the
+founder.
+
+IMPLEMENTED (`core/incidents.py`): TomTom's traffic incidents, everywhere,
+on the drives' key.
+
+- **Live, 13 Oct 2026:** Cardiff 17 roadworks and 15 closures, Edinburgh 36
+  and 43, Belfast 8 and 5, Windsor 21 and 6. Descriptions are mostly just
+  "Roadworks" or "Closed"; "Single alternate line traffic" (one direction at
+  a time) is the only one that says traffic stops.
+- **Kinds:** alternating traffic counts as stopping traffic (in `STOPPING`,
+  like temporary signals); a closure (category 8) as a closure; plain
+  roadworks as `roadworks`, traffic control not known: weight 1 on the stops
+  scale (a bump), a quarter of a stopping work in the score. A lane closed
+  with traffic flowing is not kept.
+- **Asked once per drive request,** for a box round the start and finish
+  (8 to 30 km margin, by the time asked), while the first candidates are
+  routed; the answer is cached five minutes per area. Only with live
+  routing; never from tests or the simulator.
+- **On the drive** only if at least 30 m of it runs along the drive (a drive
+  crossing a closed street at a junction is not on it), and for a closure
+  only the way the drive goes (TomTom closes one direction at a time, and
+  its own routes avoid closed roads). Both directions of the same works
+  count once. In England a TomTom work within 60 m of a Street Manager one
+  is dropped and Street Manager's record kept.
+- **Card:** "B39: roadworks, traffic control not known", credited "Traffic
+  incidents © TomTom". Privacy policy 1.9: TomTom receives the box.
+
+Measured live after these rules: 30-minute drives from Edinburgh Waverley
+listed 1 or 2 works each, Cardiff Central 0 or 1, Belfast 0 to 2; before the
+crossing and direction rules, up to five each, mostly closed side streets
+the drives only crossed.
+
 ## Other countries (planning, 12 Oct 2026)
 
 Unverified unless marked. Each needs checking before any build.

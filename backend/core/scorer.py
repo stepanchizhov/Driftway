@@ -267,6 +267,9 @@ def _light_score(route: EvaluatedRoute) -> float:
 # stop-go may be the worst thing for a sleeping baby). HYPOTHESIS: one such
 # work costs as much as a drive full of lights. Still under the guard.
 W_WORKS = 0.5
+#: A TomTom roadworks of unknown control counts this share of one that stops
+#: traffic: most roadworks narrow a lane without stopping anyone.
+UNKNOWN_WORKS_SHARE = 0.25
 
 
 def works_of(route: EvaluatedRoute) -> list:
@@ -276,8 +279,12 @@ def works_of(route: EvaluatedRoute) -> list:
 
 
 def _works_score(route: EvaluatedRoute) -> float:
-    stopping = sum(1 for w in works_of(route) if w.control in roadworks.STOPPING)
-    return 1.0 - min(1.0, float(stopping))
+    works = works_of(route)
+    stopping = sum(1 for w in works if w.control in roadworks.STOPPING)
+    # TomTom roadworks that don't say how traffic is controlled
+    # (core/incidents.py): some stop it, most don't.
+    unknown = sum(1 for w in works if w.control == "roadworks")
+    return 1.0 - min(1.0, stopping + UNKNOWN_WORKS_SHARE * unknown)
 
 
 def _bump_score(route: EvaluatedRoute) -> float:
@@ -318,7 +325,9 @@ CALM_SLACK_MIN = 3.0
 # stop-go"). A bump and a turn-around count 1, lights 1.2, roadworks that
 # stop traffic 4. Counted per drive, not per km: a longer drive with more
 # lights is not calmer.
-STOP_WEIGHT = {"bump": 1.0, "junction": 1.2, "pedestrian": 1.0, "works": 4.0}
+STOP_WEIGHT = {"bump": 1.0, "junction": 1.2, "pedestrian": 1.0, "works": 4.0,
+               # Roadworks whose traffic control isn't known (TomTom).
+               "roadworks": 1.0}
 TURN_WEIGHT = 1.0
 #: A drive must spare at least this much (two bumps) to go first for it.
 CALM_GAIN = 2.0
@@ -354,8 +363,11 @@ def stop_weight(route: EvaluatedRoute) -> float:
     """The drive's mapped stops, weighted (STOP_WEIGHT), from the counts the
     card shows: 0 outside the prepared data."""
     b, lights = bumps_of(route), lights_of(route)
-    stopping = sum(1 for w in works_of(route) if w.control in roadworks.STOPPING)
-    return ((b.count if b else 0) * STOP_WEIGHT["bump"]
+    works = works_of(route)
+    stopping = sum(1 for w in works if w.control in roadworks.STOPPING)
+    unknown = sum(1 for w in works if w.control == "roadworks")
+    return (unknown * STOP_WEIGHT["roadworks"]
+            + (b.count if b else 0) * STOP_WEIGHT["bump"]
             + (lights.junctions * STOP_WEIGHT["junction"] + lights.pedestrian * STOP_WEIGHT["pedestrian"]
                if lights else 0.0)
             + stopping * STOP_WEIGHT["works"])

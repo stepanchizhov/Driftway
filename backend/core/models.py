@@ -116,6 +116,8 @@ class RouteOption(BaseModel):
     # Roadworks on the drive now that stop or close traffic (Street Manager,
     # England): "Victoria Street: temporary traffic lights".
     roadworks: List[str] = []
+    #: Where they come from: "street_manager", "tomtom" (the card's credits).
+    roadworks_sources: List[str] = []
 
     # Every app that could drive this, best first. Empty for a simulated
     # route, which has nothing real to navigate. `maps_url` above remains the

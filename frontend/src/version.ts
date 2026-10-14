@@ -41,6 +41,7 @@ export const RELEASES: Release[] = [
     date: "13 Oct 2026",
     changes: [
       "Roadworks on a drive card are only those actually under way now, not ones merely planned or applied for.",
+      "Roadworks in Wales, Scotland and Northern Ireland too, from TomTom's traffic reports, and motorway works in England that Street Manager doesn't carry.",
       "Distances in a walk's notes follow your units (miles or kilometres), and \"after 0 yd\" reads \"at the start\".",
     ],
   },

@@ -107,6 +107,8 @@ export interface RouteOption {
   /** Roadworks on the drive now that stop or close traffic (Street
    *  Manager, England): "Victoria Street: temporary traffic lights". */
   roadworks?: string[];
+  /** Where the roadworks come from, for the credits under them. */
+  roadworks_sources?: string[];
 }
 
 export interface GenerateResponse {

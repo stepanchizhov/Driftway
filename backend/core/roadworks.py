@@ -50,7 +50,9 @@ TOPICS = {
 }
 #: Ways of controlling traffic that make a car stop and wait.
 STOPPING = {"two_way_signals", "multi_way_signals", "stop_go_boards", "convoy_workings",
-            "give_and_take", "priority_working"}
+            "give_and_take", "priority_working",
+            # TomTom's "single alternate line traffic" (core/incidents.py).
+            "alternating_traffic"}
 CLOSURE = {"road_closure"}
 #: Works this close to a drive are on it.
 NEAR_M = 25.0
@@ -73,6 +75,9 @@ LABEL = {
     "give_and_take": "give and take",
     "priority_working": "priority working",
     "road_closure": "road closed",
+    "alternating_traffic": "one direction at a time (lights or stop/go)",
+    # TomTom roadworks that don't say how traffic is controlled.
+    "roadworks": "roadworks, traffic control not known",
 }
 
 
@@ -354,10 +359,71 @@ def works_along(session: Session, geometry: Sequence, at: Optional[datetime] = N
     for r in rows:
         if not running(r, naive):
             continue
-        work_pts = [tuple(x) for x in json.loads(r.points_json)]
-        if any(_seg_dist(wp, a, b) <= NEAR_M for wp in work_pts for a, b in zip(pts, pts[1:])):
+        if _on_route(r, pts):
             found.append(r)
     return found
+
+
+def _on_route(work, pts) -> bool:
+    work_pts = [tuple(x) for x in json.loads(work.points_json)]
+    return any(_seg_dist(wp, a, b) <= NEAR_M for wp in work_pts for a, b in zip(pts, pts[1:]))
+
+
+#: A TomTom incident is on a drive when this much of it runs along the drive
+#: (checked every ALONG_STEP_M): a drive that only crosses a closed street at
+#: a junction meets it at one point, and is not on it (measured 13 Oct 2026:
+#: Edinburgh drives listed "road closed" for streets they crossed).
+ALONG_M = 30.0
+ALONG_STEP_M = 10.0
+
+
+#: A closure is on the drive only if the drive goes the way it is closed:
+#: TomTom closes one direction at a time, and its own routes avoid closed
+#: roads, so a "closed" road on a TomTom drive is the other carriageway.
+SAME_WAY_DEG = 60.0
+#: TomTom reports each direction of the same works apart: the same road and
+#: kind this close count once.
+SAME_WORK_M = 300.0
+
+
+def _bearing(a, b) -> float:
+    k = math.cos(math.radians(a[0]))
+    return math.degrees(math.atan2((b[1] - a[1]) * k, b[0] - a[0])) % 360
+
+
+def _samples(work) -> List[Tuple[Tuple[float, float], float]]:
+    """(point, bearing of its stretch) every ALONG_STEP_M along the work."""
+    line = [tuple(x) for x in json.loads(work.points_json)]
+    out = []
+    for a, b in zip(line, line[1:]):
+        n = max(1, int(_metres(a, b) / ALONG_STEP_M))
+        heading = _bearing(a, b)
+        out += [((a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n), heading)
+                for k in range(n)]
+    if line:
+        out.append((line[-1], out[-1][1] if out else 0.0))
+    return out
+
+
+def _runs_along(work, pts, same_way: bool = False) -> bool:
+    if len(json.loads(work.points_json)) < 2:
+        return not same_way and _on_route(work, pts)
+    samples = _samples(work)
+    segs = list(zip(pts, pts[1:]))
+    near = 0
+    for p, heading in samples:
+        for a, b in segs:
+            if _seg_dist(p, a, b) <= NEAR_M:
+                turn = abs((_bearing(a, b) - heading + 180) % 360 - 180)
+                if not same_way or turn <= SAME_WAY_DEG:
+                    near += 1
+                break
+    return near * ALONG_STEP_M >= min(ALONG_M, ALONG_STEP_M * len(samples))
+
+
+def sources(rows) -> List[str]:
+    """Which sources the works came from, for the card's attribution."""
+    return sorted({getattr(r, "source", "street_manager") for r in rows})
 
 
 def describe(rows: List[Roadwork]) -> List[str]:
@@ -376,26 +442,69 @@ def describe(rows: List[Roadwork]) -> List[str]:
 from contextlib import contextmanager  # noqa: E402
 from contextvars import ContextVar  # noqa: E402
 
-_lookup: ContextVar[Optional[object]] = ContextVar("roadworks_lookup", default=None)
+class _Lookup:
+    """One drive request's roadworks: Street Manager from the database (if
+    it is up), and TomTom's incidents for the area (prefetch)."""
+
+    def __init__(self, session: Optional[Session]):
+        self.session = session
+        self.incidents: list = []
+
+
+_lookup: ContextVar[Optional[_Lookup]] = ContextVar("roadworks_lookup", default=None)
 
 
 @contextmanager
 def lookup_for_request(session: Optional[Session]):
     """While planning one drive, let the generator ask which works are on a
-    candidate. Without a database, none are."""
-    token = _lookup.set((lambda geometry: works_along(session, geometry)) if session is not None else None)
+    candidate."""
+    token = _lookup.set(_Lookup(session))
     try:
         yield
     finally:
         _lookup.reset(token)
 
 
-def works_for(geometry) -> List[Roadwork]:
-    fn = _lookup.get()
-    if fn is None:
+async def prefetch(start, finish, minutes: int) -> None:
+    """TomTom's roadworks round the drive's area, once per request, while
+    the first candidates are routed (core/incidents.py)."""
+    from . import incidents
+    lk = _lookup.get()
+    if lk is None or not incidents.configured():
+        return
+    # A loop of this length stays within about this far of its ends.
+    margin_km = min(30.0, max(8.0, minutes * 0.5))
+    dlat = margin_km / 111.32
+    dlng = margin_km / (111.32 * math.cos(math.radians(start.lat)))
+    lk.incidents = await incidents.fetch(min(start.lat, finish.lat) - dlat, min(start.lng, finish.lng) - dlng,
+                                         max(start.lat, finish.lat) + dlat, max(start.lng, finish.lng) + dlng)
+
+
+def works_for(geometry) -> list:
+    lk = _lookup.get()
+    if lk is None:
         return []
     try:
-        return fn(geometry)
+        found = works_along(lk.session, geometry) if lk.session is not None else []
+        if lk.incidents:
+            from .incidents import DUPLICATE_M
+            pts = [(p.lat, p.lng) if hasattr(p, "lat") else (p[0], p[1]) for p in geometry]
+            known = [tuple(x) for r in found for x in json.loads(r.points_json)]
+            for inc in lk.incidents:
+                if not _runs_along(inc, pts, same_way=inc.control == "road_closure"):
+                    continue
+                mine = [p for p, _h in _samples(inc)] or [tuple(x) for x in json.loads(inc.points_json)]
+                # The same works Street Manager already reports: keep its record.
+                if any(_metres(a, b) <= DUPLICATE_M for a in mine for b in known):
+                    continue
+                twin = any(getattr(o, "source", "") == "tomtom" and o.street == inc.street
+                           and o.control == inc.control
+                           and any(_metres(a, b) <= SAME_WORK_M
+                                   for a in mine for b, _h in _samples(o))
+                           for o in found)
+                if not twin:
+                    found.append(inc)
+        return found
     except Exception as e:  # noqa: BLE001 - roadworks never break a drive
         log.error("roadworks lookup failed (%s)", type(e).__name__)
         return []

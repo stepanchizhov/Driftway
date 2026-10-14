@@ -372,6 +372,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         lights_junctions=lights.junctions if lights is not None else None,
         lights_pedestrian=lights.pedestrian if lights is not None else None,
         roadworks=roadworks.describe(works),
+        roadworks_sources=roadworks.sources(works),
     )
 
 
@@ -496,8 +497,11 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
         bulge = estimate_bulge_km(start, finish, req.target_minutes, profile)
         candidates = build_detour_candidates(start, finish, bulge)
 
-    # 3. evaluate
-    evaluated = await _evaluate_all(router, start, finish, candidates, profile)
+    # 3. evaluate, and meanwhile fetch the area's roadworks from TomTom
+    # (core/incidents.py; nothing unless live routing and a lookup are on).
+    evaluated, _ = await asyncio.gather(
+        _evaluate_all(router, start, finish, candidates, profile),
+        roadworks.prefetch(start, finish, req.target_minutes))
 
     provider_name = router.name
     simulated = isinstance(router, MockRouter)

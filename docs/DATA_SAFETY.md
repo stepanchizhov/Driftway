@@ -87,6 +87,11 @@ but the privacy policy says so plainly.
 The domain went live on 10 Oct 2026: both URLs answer over HTTPS. The same
 pages remain on `driftway-front.onrender.com`.
 
+**0.8.14 (14 Oct 2026), roadworks outside England:** TomTom (already a
+processor for drives) is asked for the roadworks in a box round a drive's
+area, tens of kilometres across, once per request; nothing is stored beyond
+a five-minute in-memory cache of the answer. Privacy policy 1.9.
+
 **0.8.13 (13 Oct 2026), walks when openrouteservice struggles:** a walk's
 start (and two points its loop passes) can go to TomTom instead, already a
 processor for drives; nothing new is collected or stored. Pram walks never
