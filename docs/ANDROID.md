@@ -81,6 +81,9 @@ link opened on the old address continues on the new one.
 
 ## 2. Play Console (founder)
 
+The step-by-step checklist for the first upload, with the store listing
+text, is `docs/PLAY_RELEASE.md` (14 Oct 2026).
+
 1. Create the app "Driftway" in iBookBinding Ltd's developer account.
 2. Package name: **`com.ibookbinding.driftway`** (DECISION, founder, 10 Oct).
    Permanent once an app is uploaded.

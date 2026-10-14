@@ -1,7 +1,8 @@
 # Google Play Data safety: Driftway's answers
 
 Reviewable answers for the Data safety form in Play Console, drawn from the
-inventory behind `frontend/public/privacy.html` (version 1.3, 10 Oct 2026).
+inventory behind `frontend/public/privacy.html` (version 1.3, 10 Oct 2026;
+brought up to version 1.9, 14 Oct 2026: see the dated notes at the end).
 That inventory was checked against the code: stored tables, device storage,
 logs, and every outside host, which `tests/test_privacy_inventory.py` keeps
 honest.
@@ -31,7 +32,7 @@ form as it is on the day; these are the facts to answer with.
 | Play data type | Collected? | Shared? | Ephemeral? | Required or optional | Purposes | Driftway's facts |
 |---|---|---|---|---|---|---|
 | **Location: precise** | Yes | No (service providers) | Partly: drive, walk and search requests are processed in memory and discarded. Meetup starting points are stored | Optional for most features. Location access can be refused; a place can be searched instead | App functionality | Start points, checkpoints, destinations and the points of a route of your own (My walks, kept on the device) go to the server, then to TomTom or openrouteservice to route. Meetup origins are stored until the meetup expires (30 days after its date, or 60 days after creation), and never shown to the other parent |
-| **Location: approximate** | Yes | No | No | Not avoidable | App functionality; security (rate limits) | IP addresses reach the server (rate limits, in memory for at most a day, not stored) and the hosting provider's request logs. The device fetches map images directly from OpenStreetMap. Fonts come with the app (0.8) |
+| **Location: approximate** | Yes | No | No | Not avoidable | App functionality; security (rate limits) | IP addresses reach the server (rate limits, in memory for at most a day, not stored) and the hosting provider's request logs. The device fetches map images directly from OpenStreetMap. Fonts come with the app (0.8). Since 0.8.9, asking for walks where there are none stores a grid square about 10 km across with a request count, not linked to the person (the position itself is discarded). Since 0.8.14, TomTom receives a box round a drive's area, tens of kilometres across, to ask about roadworks |
 | **Personal info: email address** | Yes | No (service provider: Auth0) | No | Optional (only to sign in) | Account management | Stored on the account only if Auth0 has verified it |
 | **Personal info: name** | Yes | No | No | Optional | Account management; app functionality (meetups) | An optional display name for the account or a meetup |
 | **Personal info: user IDs** | Yes | No | No | Optional (only to sign in) | Account management | The sign-in id from Auth0; a random device id for things saved without an account |
@@ -43,7 +44,9 @@ Not collected: financial information, health information, messages, photos
 or videos, audio, files, calendar, contacts, web browsing, device or other
 IDs (no advertising id). Pram and carrier details, and a child's weight,
 stay on the device; they are sent with a walk request only to judge the walk,
-and are not stored.
+and are not stored. Likewise the answers to "What wakes your little one?"
+(0.8.15): kept on the device, sent with a drive request only to choose the
+drive, not stored.
 
 **Service providers** (not "sharing"): Render (hosting), Auth0 (sign-in),
 TomTom (search, routes, travel times, and openrouteservice's stand-in for
