@@ -171,6 +171,43 @@ class StandInEndpointTests(EndpointTests):
     # The inherited tests run here too, with openrouteservice answering.
 
 
+class CheckpointAndOwnRouteTests(_Clean):
+    """14 Oct 2026: walks via checkpoints and routes of your own too."""
+
+    def test_a_walk_via_a_checkpoint_comes_from_tomtom(self):
+        g = gen()
+        tt = []
+        with mock.patch("core.walking.tomtom_walk._client", lambda: tomtom_client(tt)):
+            routes = asyncio.run(g.via_walk((52.0, 13.0), [(52.004, 13.003)], "carrier", "Start", "The oak",
+                                            client=timing_out(), minutes=45))
+        self.assertTrue(routes)
+        self.assertEqual(routes[0].sources[0]["id"], "tomtom")
+        self.assertEqual(routes[0].via["label"], "The oak")
+        # Start, checkpoint, back: one request per variant, walking, no road twice.
+        self.assertTrue(all("travelMode=pedestrian" in str(r.url) and "alreadyUsedRoads" in str(r.url) for r in tt))
+        # The same loop three times over is one walk.
+        self.assertEqual(len(routes), 1)
+
+    def test_a_pram_walk_via_a_checkpoint_is_told_plainly(self):
+        g = gen()
+        with self.assertRaises(g.ProviderSlow) as caught:
+            asyncio.run(g.via_walk((52.0, 13.0), [(52.004, 13.003)], "pram", "Start", "The oak",
+                                   client=timing_out(), minutes=45))
+        self.assertIn("pram-friendly routing", str(caught.exception))
+
+    def test_a_route_of_your_own_comes_from_tomtom_through_your_points(self):
+        g = gen()
+        tt = []
+        pts = [(52.0, 13.0), (52.003, 13.004), (52.0, 13.0)]
+        with mock.patch("core.walking.tomtom_walk._client", lambda: tomtom_client(tt)):
+            route = asyncio.run(g.trace_walk(pts, "walker", "Mine", "Start", client=timing_out()))
+        self.assertEqual(route.sources[0]["id"], "tomtom")
+        self.assertEqual(route.shape, "loop")
+        self.assertEqual(len(tt), 1)
+        # Your own route may walk a road twice: no "avoid" asked.
+        self.assertNotIn("alreadyUsedRoads", str(tt[0].url))
+
+
 class TomTomWalkTests(_Clean):
     def test_a_loop_far_off_its_length_is_asked_for_again(self):
         from core.walking import tomtom_walk

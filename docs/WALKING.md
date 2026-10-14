@@ -774,6 +774,13 @@ Every walk waited 20 s and more, then said only "Couldn't make walks".
 - **Privacy**: TomTom then receives a walk's start (and two points its loop
   passes), as it already does for drives. Privacy policy 1.8.
 
-Not covered yet: walks via checkpoints and "follow my route" (My walks) need
-openrouteservice's avoid-areas and snapping; while it struggles they fail
-fast with the same message instead of waiting.
+**Walks via checkpoints and routes of your own (0.8.15, 14 Oct 2026):**
+the same stand-in. A checkpoint walk asks TomTom for start, checkpoints and
+back in one request, its "no road twice" making the way back another way
+(openrouteservice's avoid-corridors aren't available in TomTom), plus two
+variants leaning to either side of the line to the last checkpoint; a
+variant repeating another is dropped. A stand-in walk goes right to each
+checkpoint (it can't turn back short of one, and says so). A route of your
+own goes through your points in order, roads walked twice allowed. Never for
+a pram. Measured live with openrouteservice marked struggling: a walk via
+Windsor Castle, two variants in 1.1 s; a route of your own in 0.3 s.

@@ -1107,6 +1107,63 @@ async def via_walk(start: Tuple[float, float], via,
                    client: Optional[httpx.AsyncClient] = None,
                    minutes: Optional[int] = None,
                    reach_m: float = CHECKPOINT_ON_ROUTE_M) -> List[Route]:
+    """Walks via checkpoints (_via_walk_ors); while openrouteservice
+    struggles, from TomTom's walking routes instead, never for a pram."""
+    try:
+        return await _via_walk_ors(start, via, profile, start_label, via_label,
+                                   character, client, minutes, reach_m)
+    except ProviderSlow:
+        pins = [tuple(via)] if isinstance(via[0], (int, float)) else [tuple(p) for p in via]
+        labels = [via_label] if isinstance(via_label, str) else list(via_label)
+        return await _via_stand_in(start, pins[:MAX_CHECKPOINTS], labels, profile,
+                                   start_label, character, reach_m)
+
+
+async def _via_stand_in(start, pins, labels, profile, start_label, character, reach_m) -> List[Route]:
+    """Walks via the checkpoints from TomTom (tomtom_walk.via_loops)."""
+    from . import tomtom_walk
+    if profile == "pram":
+        raise ProviderSlow(slow_message(profile))
+    labels = [(labels[i] if i < len(labels) and labels[i] else f"checkpoint {i + 1}")
+              for i in range(len(pins))]
+    feats = []
+    for f in await tomtom_walk.via_loops(start, pins):
+        line = f["geometry"]["coordinates"]
+        if not any(_overlap(line, g["geometry"]["coordinates"]) > DUPLICATE_SHARE for g in feats):
+            feats.append(f)
+    if not feats:
+        raise ProviderSlow(slow_message(profile))
+    _character, pram_note = pram_character(profile, character)
+    note = None
+    if reach_m > CHECKPOINT_ON_ROUTE_M:
+        note = ("Goes right to each checkpoint: while openrouteservice is struggling, "
+                "a walk can't turn back short of one.")
+    log.info("checkpoint walks made with TomTom while openrouteservice struggles")
+    routes = []
+    for n, f in enumerate(feats, start=1):
+        line = f["geometry"]["coordinates"]
+        points = []
+        for p in pins:
+            i = min(range(len(line)), key=lambda j: _haversine((line[j][1], line[j][0]), p))
+            points.append((line[i][1], line[i][0]))
+        r = route_from_ors(f, walk_id=f"via-{n}",
+                           name=f"Via {chain_name(labels)}" + (f", option {n}" if n > 1 else ""),
+                           start_label=start_label, routing_note=note, provider="tomtom")
+        r.vias = [{"lat": q[0], "lng": q[1], "label": lab,
+                   "requested": {"lat": p[0], "lng": p[1]},
+                   "offset_m": round(_haversine(p, q)), "reach_m": round(reach_m)}
+                  for p, q, lab in zip(pins, points, labels)]
+        r.via = r.vias[-1]
+        routes.append(r)
+    return routes
+
+
+async def _via_walk_ors(start: Tuple[float, float], via,
+                        profile: str, start_label: str, via_label,
+                        character: str = "any",
+                        client: Optional[httpx.AsyncClient] = None,
+                        minutes: Optional[int] = None,
+                        reach_m: float = CHECKPOINT_ON_ROUTE_M) -> List[Route]:
     """Up to three different walks through one to three chosen places, in
     order, and back home another way.
 
@@ -1335,6 +1392,9 @@ async def via_walk(start: Tuple[float, float], via,
                                  corridor(back["geometry"]["coordinates"], holes)) if c]
     except CheckpointProblem:
         raise
+    except ProviderSlow:
+        if not found:
+            raise                       # via_walk makes them with the stand-in
     except GenerationUnavailable:
         if not found:
             raise
@@ -1418,6 +1478,8 @@ async def trace_walk(points: List[Tuple[float, float]], profile: str, name: str,
     try:
         _spend()
         resp = await _post(client, ors_profile, req)
+    except ProviderSlow:
+        return await _trace_stand_in(pts, profile, name, start_label)
     finally:
         if own:
             await client.aclose()
@@ -1448,6 +1510,25 @@ async def trace_walk(points: List[Tuple[float, float]], profile: str, name: str,
 
     route = route_from_ors(features[0], walk_id="mine", name=name or "Your route",
                            start_label=start_label)
+    return _own_route(route, pts, profile)
+
+
+async def _trace_stand_in(pts, profile: str, name: str, start_label: str) -> Route:
+    """A route of the parent's own from TomTom, while openrouteservice
+    struggles; never for a pram."""
+    from . import tomtom_walk
+    if profile == "pram":
+        raise ProviderSlow(slow_message(profile))
+    f = await tomtom_walk.through(pts)
+    if f is None:
+        raise ProviderSlow(slow_message(profile))
+    route = route_from_ors(f, walk_id="mine", name=name or "Your route",
+                           start_label=start_label, provider="tomtom")
+    return _own_route(route, pts, profile)
+
+
+def _own_route(route: Route, pts, profile: str) -> Route:
+    """A routed line through the parent's own points, described as theirs."""
     closed = _haversine(pts[0], pts[-1]) <= TRACE_LOOP_M
     route.shape = "loop" if closed else "out_and_back"
     route.summary = ("Your own route, along mapped paths." if closed else

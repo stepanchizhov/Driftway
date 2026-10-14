@@ -42,6 +42,7 @@ export const RELEASES: Release[] = [
     changes: [
       "What wakes your little one? In Settings, say how much speed bumps, traffic lights, turning round and stop/go roadworks bother them, and drives are chosen with your answers.",
       "Settings shown: Simple or All. Simple keeps the finer options, like a drive's tolerance and direction, out of the way; anything you've changed stays in view.",
+      "Walks via checkpoints and your own routes in My walks keep working when openrouteservice is struggling too, from TomTom's walking routes (not pram walks).",
     ],
   },
   {

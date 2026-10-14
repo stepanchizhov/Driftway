@@ -14,7 +14,12 @@ also routes on foot, quickly, on the same key. What it lacks:
   * no round trip: loops are made the way drives are, from waypoints on a
     triangle round the start, then fitted to the length once.
 
-What TomTom receives: the start and two points the loop passes, as precise
+Walks via checkpoints and routes of the parent's own (14 Oct 2026) use it
+too: start, checkpoints and back in one request, TomTom's "no road twice"
+making the way back another way; or the parent's own points in order.
+
+What TomTom receives: the start and the points the walk passes (two made-up
+loop points, or the parent's checkpoints or own route), as precise
 coordinates, with the walking travel mode. No name, account or label; the
 walks are not stored. TomTom already receives drive starts on the same terms.
 """
@@ -23,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 import os
 from typing import Dict, List, Optional, Tuple
 
@@ -42,6 +48,9 @@ LENGTH_PER_RADIUS = 4.4
 BEARINGS = (0, 120, 240)
 #: A loop missing its length by more than this is asked for once more.
 FIT_SHARE = 0.15
+#: Variants of a walk via checkpoints lean this share of the distance to the
+#: last checkpoint to either side.
+SIDE_SHARE = 0.3
 TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
 
@@ -61,20 +70,23 @@ def _feature(route: dict) -> Dict:
             "properties": {"summary": {"distance": route.get("summary", {}).get("lengthInMeters", 0)}}}
 
 
-async def _route(client: httpx.AsyncClient, start: Coord, anchors: List[Coord]) -> Optional[Dict]:
+async def _route(client: httpx.AsyncClient, start: Coord, anchors: List[Coord],
+                 finish: Optional[Coord] = None, once: bool = True) -> Optional[Dict]:
+    """Start, anchors, finish (the start again if none). `once`: no road
+    walked twice where avoidable."""
     from core.router import tomtom_limiter
-    pts = [start, *anchors, start]
+    pts = [start, *anchors, finish or start]
+    params = {"travelMode": "pedestrian", "routeType": "shortest"}
+    if once:
+        # The same loop rule as drives: no road walked twice if avoidable.
+        params["avoid"] = "alreadyUsedRoads"
     locs = ":".join(f"{p.lat:.6f},{p.lng:.6f}" for p in pts)
     resp = None
     for attempt in range(3):
         await tomtom_limiter().wait()       # shared with drives
         try:
             resp = await client.get(URL.format(locs=locs), params={
-                "key": (os.getenv("TOMTOM_API_KEY") or "").strip(),
-                "travelMode": "pedestrian", "routeType": "shortest",
-                # The same loop rule as drives: no road walked twice if avoidable.
-                "avoid": "alreadyUsedRoads",
-            })
+                "key": (os.getenv("TOMTOM_API_KEY") or "").strip(), **params})
         except httpx.HTTPError as e:
             # The type only: the error's text includes the URL, and the URL the key.
             log.warning("TomTom walking request error: %s", type(e).__name__)
@@ -118,3 +130,50 @@ async def loops(start: Tuple[float, float], length_m: float,
         if own:
             await client.aclose()
     return [f for f in found if f and len(f["geometry"]["coordinates"]) >= 2]
+
+
+def _side_point(a: Tuple[float, float], b: Tuple[float, float], share: float) -> Tuple[float, float]:
+    """A point beside the middle of a to b, `share` of their distance away
+    (positive: to the left going from a to b)."""
+    mid = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+    k = math.cos(math.radians(mid[0]))
+    dx, dy = (b[1] - a[1]) * k, b[0] - a[0]
+    return (mid[0] + dx * share, mid[1] - dy * share / k)
+
+
+async def via_loops(start: Tuple[float, float], pins: List[Tuple[float, float]],
+                    client: Optional[httpx.AsyncClient] = None) -> List[Dict]:
+    """Up to three walks from the start through the checkpoints in order and
+    back another way: the direct one, and one leaning to each side of the
+    line to the last checkpoint."""
+    if not configured() or not pins:
+        return []
+    own = client is None
+    client = client or _client()
+    origin = Coord(lat=start[0], lng=start[1])
+    as_coord = lambda p: Coord(lat=p[0], lng=p[1])  # noqa: E731
+    sets = [[as_coord(p) for p in pins]]
+    for share in (SIDE_SHARE, -SIDE_SHARE):
+        sets.append([as_coord(_side_point(start, pins[-1], share))] + [as_coord(p) for p in pins])
+    try:
+        found = await asyncio.gather(*(_route(client, origin, a) for a in sets))
+    finally:
+        if own:
+            await client.aclose()
+    return [f for f in found if f and len(f["geometry"]["coordinates"]) >= 2]
+
+
+async def through(points: List[Tuple[float, float]],
+                  client: Optional[httpx.AsyncClient] = None) -> Optional[Dict]:
+    """The parent's own route through `points`, in order (roads may be walked
+    twice: it is their route)."""
+    if not configured() or len(points) < 2:
+        return None
+    own = client is None
+    client = client or _client()
+    c = [Coord(lat=p[0], lng=p[1]) for p in points]
+    try:
+        return await _route(client, c[0], c[1:-1], finish=c[-1], once=False)
+    finally:
+        if own:
+            await client.aclose()
