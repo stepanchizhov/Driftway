@@ -312,6 +312,7 @@ export default function App() {
         direction,
         mode,
         preferred_navigation: settings.preferredNavigation,
+        stops: settings.stopPrefs,
       });
       openScreen({
         name: "results",
@@ -436,6 +437,7 @@ export default function App() {
           savedPlaces={placeEndpoints}
           profile={settings.quickDriveProfile}
           tolerance={tolerance}
+          stops={settings.stopPrefs}
           onOpenPreferences={() => openScreen({ name: "settings" })}
           onRetryLocation={locate}
         />
@@ -524,25 +526,32 @@ export default function App() {
             onChange={setProfile}
           />
 
-          <div className="row-split">
-            <ChipGroup
-              legend="Tolerance"
-              columns={2}
-              options={[
-                { value: 5, label: "±5" },
-                { value: 10, label: "±10" },
-              ]}
-              value={tolerance}
-              onChange={setTolerance}
-            />
-            <ChipGroup
-              legend="Direction"
-              columns={5}
-              options={DIRECTION_OPTS}
-              value={direction}
-              onChange={setDirection}
-            />
-          </div>
+          {/* Finer options: shown with "All" settings, or once changed. */}
+          {(settings.advanced || tolerance !== 10 || direction !== "surprise") && (
+            <div className="row-split">
+              {(settings.advanced || tolerance !== 10) && (
+                <ChipGroup
+                  legend="Tolerance"
+                  columns={2}
+                  options={[
+                    { value: 5, label: "±5" },
+                    { value: 10, label: "±10" },
+                  ]}
+                  value={tolerance}
+                  onChange={setTolerance}
+                />
+              )}
+              {(settings.advanced || direction !== "surprise") && (
+                <ChipGroup
+                  legend="Direction"
+                  columns={5}
+                  options={DIRECTION_OPTS}
+                  value={direction}
+                  onChange={setDirection}
+                />
+              )}
+            </div>
+          )}
 
           {error && <p className="error">{error}</p>}
 
@@ -651,6 +660,7 @@ export default function App() {
           savedPlaces={placeEndpoints}
           canGenerate={features.walkGeneration}
           onOpenSettings={() => openScreen({ name: "settings" })}
+          advanced={settings.advanced}
         />
       )}
 

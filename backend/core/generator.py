@@ -466,6 +466,14 @@ async def _direct_route(router: Router, start: Coord, finish: Coord,
 
 
 async def generate_routes(req: GenerateRequest, router: Router) -> GenerateResponse:
+    """Drives for this request, weighed with what wakes the child, if the
+    parent has said (scorer.stop_preferences)."""
+    from . import scorer
+    with scorer.stop_preferences(req.stops):
+        return await _generate_routes(req, router)
+
+
+async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResponse:
     start = req.start
     finish = req.finish or req.start
     profile = req.road_profile.value

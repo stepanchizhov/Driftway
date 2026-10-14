@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import json
 import math
-from typing import List, Optional, Tuple
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from .geometry import haversine_km, initial_bearing
 from .models import Coord, RoadMix
@@ -297,7 +299,7 @@ def _bump_score(route: EvaluatedRoute) -> float:
 
 def _smoothness(route: EvaluatedRoute) -> float:
     """1.0 = never asks the driver to double back."""
-    return max(0.0, 1.0 - TURNAROUND_COST * turn_load(route))
+    return max(0.0, 1.0 - TURNAROUND_COST * turn_load(route) * feeling("turns"))
 
 
 def score_route(route: EvaluatedRoute, target_minutes: int, profile: str,
@@ -332,11 +334,45 @@ TURN_WEIGHT = 1.0
 #: A drive must spare at least this much (two bumps) to go first for it.
 CALM_GAIN = 2.0
 
+# What wakes this child (founder, 13 Oct 2026: it "can be different for each
+# child"). The parent's answer per kind of stop scales its weight above, in
+# the choice of the first drive, in steering round busy stretches, and for
+# turn-arounds also in the smoothness every drive is ranked by. HYPOTHESIS
+# factors: "doesn't bother them" keeps a quarter, "wakes them" counts two
+# and a half times.
+FEELING_FACTOR = {"fine": 0.25, "sometimes": 1.0, "wakes": 2.5}
+#: Which answer each weight follows.
+_FEELING_OF = {"bump": "bumps", "junction": "lights", "pedestrian": "lights",
+               "works": "works", "roadworks": "works"}
+_feelings: ContextVar[Dict[str, float]] = ContextVar("stop_feelings", default={})
+
+
+@contextmanager
+def stop_preferences(prefs) -> Iterator[None]:
+    """For one drive request: the parent's answers (models.StopPrefs, or
+    None for the usual weights)."""
+    factors = {} if prefs is None else {
+        k: FEELING_FACTOR[getattr(prefs, k).value] for k in ("bumps", "lights", "turns", "works")}
+    token = _feelings.set(factors)
+    try:
+        yield
+    finally:
+        _feelings.reset(token)
+
+
+def feeling(group: str) -> float:
+    return _feelings.get().get(group, 1.0)
+
+
+def weight(kind: str) -> float:
+    """A stop's weight on the scale, for this child."""
+    return STOP_WEIGHT[kind] * feeling(_FEELING_OF[kind])
+
 
 def stops_on(route: EvaluatedRoute) -> List[Tuple[float, float, float, float]]:
     """(metres along, lat, lng, weight) for every mapped stop on the drive:
     bumps, lights (core.calming) and roadworks that stop traffic."""
-    out = [(s, lat, lng, STOP_WEIGHT[kind])
+    out = [(s, lat, lng, weight(kind))
            for s, lat, lng, kind in calming.stops_along(route.geometry)]
     pts = [(p.lat, p.lng) for p in route.geometry]
     if len(pts) < 2:
@@ -355,7 +391,7 @@ def stops_on(route: EvaluatedRoute) -> List[Tuple[float, float, float, float]]:
             for a, b in zip(pts, pts[1:]):
                 cum.append(cum[-1] + math.hypot((b[0] - a[0]) * 111320.0, (b[1] - a[1]) * 111320.0 * k))
         i = min(range(len(pts)), key=lambda j: (pts[j][0] - lat) ** 2 + ((pts[j][1] - lng) * k) ** 2)
-        out.append((cum[i], lat, lng, STOP_WEIGHT["works"]))
+        out.append((cum[i], lat, lng, weight("works")))
     return sorted(out)
 
 
@@ -366,16 +402,16 @@ def stop_weight(route: EvaluatedRoute) -> float:
     works = works_of(route)
     stopping = sum(1 for w in works if w.control in roadworks.STOPPING)
     unknown = sum(1 for w in works if w.control == "roadworks")
-    return (unknown * STOP_WEIGHT["roadworks"]
-            + (b.count if b else 0) * STOP_WEIGHT["bump"]
-            + (lights.junctions * STOP_WEIGHT["junction"] + lights.pedestrian * STOP_WEIGHT["pedestrian"]
+    return (unknown * weight("roadworks")
+            + (b.count if b else 0) * weight("bump")
+            + (lights.junctions * weight("junction") + lights.pedestrian * weight("pedestrian")
                if lights else 0.0)
-            + stopping * STOP_WEIGHT["works"])
+            + stopping * weight("works"))
 
 
 def stops_met(route: EvaluatedRoute) -> float:
     """Everything that stops or turns the car round, on one scale."""
-    return stop_weight(route) + TURN_WEIGHT * turn_load(route)
+    return stop_weight(route) + TURN_WEIGHT * feeling("turns") * turn_load(route)
 
 
 def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,

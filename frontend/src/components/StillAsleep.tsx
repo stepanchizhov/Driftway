@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Coord, RoadProfile } from "../types";
+import type { Coord, RoadProfile, StopPrefs } from "../types";
 import { generateRoutes } from "../api";
 import { PlaceSearch } from "./PlaceSearch";
 import type { Endpoint } from "./PlaceSearch";
@@ -22,6 +22,8 @@ interface Props {
   /** Remembered planner defaults, reused rather than re-asked. */
   profile: RoadProfile;
   tolerance: number;
+  /** What wakes the child, from Settings. */
+  stops?: StopPrefs;
   onOpenPreferences: () => void;
   onRetryLocation: () => void;
 }
@@ -47,6 +49,7 @@ export function StillAsleep({
   savedPlaces,
   profile,
   tolerance,
+  stops,
   onOpenPreferences,
   onRetryLocation,
 }: Props) {
@@ -91,6 +94,7 @@ export function StillAsleep({
         road_profile: profile,
         direction: "surprise",
         mode: "destination",
+        stops,
       });
       const best = data.routes[0];
       if (!best) {

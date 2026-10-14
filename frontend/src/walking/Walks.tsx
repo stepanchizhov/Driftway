@@ -139,8 +139,11 @@ export function Walks({
   savedPlaces = [],
   canGenerate,
   onOpenSettings,
+  advanced = true,
 }: {
   units: Units;
+  /** Every setting shown, or only the main ones and any changed. */
+  advanced?: boolean;
   /** Your position, if known. Used on this device only, to group walks. */
   here: Coord | null;
   /** Saved places, Home first: one-tap starts and checkpoints. */
@@ -254,7 +257,7 @@ export function Walks({
       />
 
       <SetupPanel setup={setup} update={update} />
-      <PrefsPanel setup={setup} update={update} units={units} />
+      <PrefsPanel setup={setup} update={update} units={units} advanced={advanced} />
 
       <ChipGroup
         legend="About how long"
@@ -484,11 +487,17 @@ function PrefsPanel({
   setup,
   update,
   units,
+  advanced,
 }: {
   setup: WalkSetup;
   update: (patch: Partial<WalkSetup>) => void;
   units: Units;
+  /** Finer options shown; each also shows once changed from its default. */
+  advanced: boolean;
 }) {
+  const showRetrace = advanced || setup.maxRetrace !== 1;
+  const showReach = advanced || setup.checkpointReach !== 25;
+  const showTravel = advanced || !setup.allowTravel;
   return (
     <details className="walks-setup">
       <summary>
@@ -525,21 +534,25 @@ function PrefsPanel({
         walks made from your start are made long enough for it. Most people
         walk a little slower with a pram or a carrier than alone.
       </p>
-      <ChipGroup
-        legend="Walking the same path twice"
-        columns={3}
-        options={[
-          { value: "1", label: "Don't mind" },
-          { value: "0.15", label: "A little", sub: "up to ~15%" },
-          { value: "0.05", label: "Avoid" },
-        ]}
-        value={String(setup.maxRetrace)}
-        onChange={(v) => update({ maxRetrace: Number(v) })}
-      />
-      <p className="walks-hint">
-        A shared first and last stretch is common. Anything but "Don't mind"
-        also stops a long loop being shortened by turning back.
-      </p>
+      {showRetrace && (
+        <>
+          <ChipGroup
+            legend="Walking the same path twice"
+            columns={3}
+            options={[
+              { value: "1", label: "Don't mind" },
+              { value: "0.15", label: "A little", sub: "up to ~15%" },
+              { value: "0.05", label: "Avoid" },
+            ]}
+            value={String(setup.maxRetrace)}
+            onChange={(v) => update({ maxRetrace: Number(v) })}
+          />
+          <p className="walks-hint">
+            A shared first and last stretch is common. Anything but "Don't mind"
+            also stops a long loop being shortened by turning back.
+          </p>
+        </>
+      )}
       {setup.profile === "pram" ? (
         // 0.8: Greener/Quieter need walking routes, which drop the pram's
         // rules on surface, slope and kerbs, so they are not offered for a
@@ -571,34 +584,43 @@ function PrefsPanel({
         seaside can&rsquo;t be chosen yet: the provider doesn&rsquo;t offer
         them.
       </p>
-      <ChipGroup
-        legend="How close a walk must come to your checkpoint"
-        columns={4}
-        options={[
-          { value: "25", label: "To it" },
-          { value: "100", label: "100 m" },
-          { value: "250", label: "250 m" },
-          { value: "500", label: "500 m" },
-        ]}
-        value={String(setup.checkpointReach)}
-        onChange={(v) => update({ checkpointReach: Number(v) })}
-      />
+      {showReach && (
+        <>
+          <ChipGroup
+            legend="How close a walk must come to your checkpoint"
+            columns={4}
+            options={[
+              { value: "25", label: "To it" },
+              { value: "100", label: "100 m" },
+              { value: "250", label: "250 m" },
+              { value: "500", label: "500 m" },
+            ]}
+            value={String(setup.checkpointReach)}
+            onChange={(v) => update({ checkpointReach: Number(v) })}
+          />
+          <p className="walks-hint">
+            For a checkpoint you only want to pass, like a statue on a hill: the
+            walk turns back where it first comes this close, instead of climbing up
+            to it.
+          </p>
+        </>
+      )}
+      {showTravel && (
+        <ChipGroup
+          legend="Walks that need travel to the start"
+          columns={2}
+          options={[
+            { value: "yes", label: "Show" },
+            { value: "no", label: "Hide" },
+          ]}
+          value={setup.allowTravel ? "yes" : "no"}
+          onChange={(v) => update({ allowTravel: v === "yes" })}
+        />
+      )}
       <p className="walks-hint">
-        For a checkpoint you only want to pass, like a statue on a hill: the
-        walk turns back where it first comes this close, instead of climbing up
-        to it.
+        Saved on this device only.
+        {!advanced && " More options: Settings, Settings shown, All."}
       </p>
-      <ChipGroup
-        legend="Walks that need travel to the start"
-        columns={2}
-        options={[
-          { value: "yes", label: "Show" },
-          { value: "no", label: "Hide" },
-        ]}
-        value={setup.allowTravel ? "yes" : "no"}
-        onChange={(v) => update({ allowTravel: v === "yes" })}
-      />
-      <p className="walks-hint">Saved on this device only.</p>
     </details>
   );
 }

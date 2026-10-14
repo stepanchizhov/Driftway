@@ -333,8 +333,7 @@ no calls): first drive changed in 7 of 20; across all 20, bumps 222 to
 turn-arounds. With a turn-around at 3: 5 of 20 changed, bumps 169, lights
 146, turn-arounds 19.
 
-NEXT: per child (founder): let parents say which stops are worse for
-theirs, as their own weights on this scale.
+Per child: see "What wakes your little one?" below.
 
 ## Easy places to turn round (0.8.13, 13 Oct 2026)
 
@@ -373,3 +372,31 @@ to 8 minutes further from the time (all within the 10-minute window), the
 ranking preferring a smoother drive. Up to two more TomTom calls a request.
 Measurement scripts: scratchpad `steer_measure.py`, `steer_diag.py`,
 `steer_variants.py` (not in the repo; counts only).
+
+## What wakes your little one? (0.8.15, 14 Oct 2026)
+
+IMPLEMENTED. Founder: let parents "choose what types of obstacles are better
+and worse for their kids. It easily can be different for each child."
+
+- **Asked in Settings,** per kind of stop: speed bumps, stopping at traffic
+  lights, turning round, roadworks (stop/go and temporary lights). Answers:
+  Not at all / Sometimes (the usual) / Wakes them. Kept on the phone (one
+  set per phone; one per child would come with account sync) and sent with
+  every drive request as `stops`.
+- **Weighed** (`scorer.stop_preferences`, for one request): Not at all
+  keeps a quarter of the kind's weight on the stops scale, Wakes them two and
+  a half times (`FEELING_FACTOR`, HYPOTHESIS). It applies to choosing the
+  first drive (`stops_met`), to steering round the busiest stretch, and for
+  turning round also to the smoothness every drive is ranked by.
+- **Measured offline** on the 20 Windsor requests (cached candidates and
+  steered drives): each answer changes the first drive in 1 to 3 of 20.
+  "Lights wake them": lights 141 to 125 across the 20 first drives (bumps
+  167 to 179); "turn-arounds wake them": turn-arounds 22 to 21 (bumps up 17);
+  "bumps wake them, turning round is fine": minutes off the time 78 to 61.
+  Modest, because a request has few candidates and a calmer drive may be at
+  most 3 minutes further from the time; steering live uses the answers too.
+
+Settings now have **Simple** and **All** (founder: settings "are getting
+more and more"). Simple hides a drive's tolerance and direction and, for
+walks, retracing, checkpoint reach and walks that need travel; each still
+shows once changed from its default, so nothing in force is out of sight.

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { RoadProfile } from "../types";
+import type { RoadProfile, StopFeeling, StopPrefs } from "../types";
 import { APP_NAME, APP_VERSION, BUILD, RELEASES } from "../version";
 import type { Settings, Units } from "../hooks/useSettings";
 import { ChipGroup } from "./ChipGroup";
@@ -21,6 +21,19 @@ const PROFILE_OPTS: { value: RoadProfile; label: string }[] = [
 // Settings + a short About/roadmap section. Kept on one screen so it's easy to
 // reach and not over-built. Light/dark theme is deliberately deferred to a
 // later version (the app is designed for the night-drive dark mood).
+const FEELINGS: { value: StopFeeling; label: string }[] = [
+  { value: "fine", label: "Not at all" },
+  { value: "sometimes", label: "Sometimes" },
+  { value: "wakes", label: "Wakes them" },
+];
+
+const STOP_KINDS: { key: keyof StopPrefs; legend: string }[] = [
+  { key: "bumps", legend: "Speed bumps" },
+  { key: "lights", legend: "Stopping at traffic lights" },
+  { key: "turns", legend: "Turning round" },
+  { key: "works", legend: "Roadworks: stop/go and temporary lights" },
+];
+
 const NAV_APPS = [
   { id: "google_maps", label: "Google Maps" },
   { id: "waze", label: "Waze" },
@@ -61,6 +74,42 @@ export function SettingsScreen({ settings, update, server }: Props) {
       <AccountSection />
 
       <ChipGroup
+        legend="Settings shown"
+        columns={2}
+        options={[
+          { value: "simple", label: "Simple" },
+          { value: "all", label: "All", sub: "every option" },
+        ]}
+        value={settings.advanced ? "all" : "simple"}
+        onChange={(v) => update({ advanced: v === "all" })}
+      />
+      <p className="settings-note">
+        Simple shows what most parents need. All adds the finer options, like a
+        drive&rsquo;s tolerance and direction, or how close a walk comes to a
+        checkpoint. An option you&rsquo;ve changed always stays in view.
+      </p>
+
+      <section className="set-block" aria-labelledby="wakes-title">
+        <h3 className="settings-about-title" id="wakes-title">
+          What wakes your little one?
+        </h3>
+        <p className="settings-note">
+          Drives are chosen with your answers: what wakes them is avoided more,
+          what doesn&rsquo;t bother them counts for little. Kept on this phone.
+        </p>
+        {STOP_KINDS.map(({ key, legend }) => (
+          <ChipGroup
+            key={key}
+            legend={legend}
+            columns={3}
+            options={FEELINGS}
+            value={settings.stopPrefs[key]}
+            onChange={(v) => update({ stopPrefs: { ...settings.stopPrefs, [key]: v } })}
+          />
+        ))}
+      </section>
+
+      <ChipGroup
         legend="Distance units"
         columns={2}
         options={[
@@ -79,8 +128,9 @@ export function SettingsScreen({ settings, update, server }: Props) {
         onChange={(v) => update({ quickDriveProfile: v })}
       />
       <p className="settings-note">
-        Quieter roads are usually smoothest for a sleeping baby. Avoiding speed
-        bumps and traffic lights directly is coming in a later version.
+        Quieter roads are usually smoothest for a sleeping baby. Speed bumps,
+        traffic lights and roadworks are weighed on every drive, with your
+        answers above.
       </p>
 
       <div className="settings-about">

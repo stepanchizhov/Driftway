@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Coord, RoadProfile } from "../types";
+import type { Coord, RoadProfile, StopPrefs } from "../types";
 import { defaultUnits } from "../lib/defaultUnits";
 
 // Remembers the parent's last choices and saved Home between visits, using
@@ -20,7 +20,19 @@ export interface Settings {
    *  the device: miles in the UK (founder, 12 Oct 2026), km elsewhere. */
   unitsChosen?: boolean;
   quickDriveProfile: RoadProfile;  // road style for the one-tap quick drive
+  /** What wakes the little one: weighs each kind of stop on drives. */
+  stopPrefs: StopPrefs;
+  /** Show every setting, or only the ones most parents need (founder,
+   *  14 Oct 2026: "they are getting more and more of them"). */
+  advanced: boolean;
 }
+
+export const DEFAULT_STOPS: StopPrefs = {
+  bumps: "sometimes",
+  lights: "sometimes",
+  turns: "sometimes",
+  works: "sometimes",
+};
 
 const DEFAULTS: Settings = {
   preferredNavigation: "google_maps",
@@ -33,6 +45,8 @@ const DEFAULTS: Settings = {
   // (True speed-bump/traffic-light avoidance needs the smoothness data layer,
   // which is a later version; "quiet" favours minor roads in the meantime.)
   quickDriveProfile: "quiet",
+  stopPrefs: DEFAULT_STOPS,
+  advanced: false,
 };
 
 const KEY = "driftway.settings.v1";
@@ -41,6 +55,7 @@ function load(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
     const saved = raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
+    saved.stopPrefs = { ...DEFAULT_STOPS, ...(saved.stopPrefs ?? {}) };
     // Units the parent never chose were only ever the default (every visit
     // saved it): follow the device instead.
     if (!saved.unitsChosen) saved.units = defaultUnits();

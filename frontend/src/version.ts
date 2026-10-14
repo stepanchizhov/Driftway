@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.15",
+    date: "14 Oct 2026",
+    changes: [
+      "What wakes your little one? In Settings, say how much speed bumps, traffic lights, turning round and stop/go roadworks bother them, and drives are chosen with your answers.",
+      "Settings shown: Simple or All. Simple keeps the finer options, like a drive's tolerance and direction, out of the way; anything you've changed stays in view.",
+    ],
+  },
+  {
     version: "0.8.14",
     date: "13 Oct 2026",
     changes: [

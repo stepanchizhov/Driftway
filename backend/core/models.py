@@ -37,6 +37,24 @@ class RouteMode(str, Enum):
     DESTINATION = "destination"  # "go somewhere", taking about N minutes in total
 
 
+class StopFeeling(str, Enum):
+    """How much one kind of stop bothers a parent's child (founder, 13 Oct
+    2026: "allow the users choose what types of obstacles are better and
+    worse for their kids. It easily can be different for each child")."""
+    FINE = "fine"               # doesn't bother them
+    SOMETIMES = "sometimes"     # the usual weight
+    WAKES = "wakes"             # wakes them
+
+
+class StopPrefs(BaseModel):
+    """What wakes this child, one answer per kind of stop."""
+    bumps: StopFeeling = StopFeeling.SOMETIMES
+    lights: StopFeeling = StopFeeling.SOMETIMES
+    turns: StopFeeling = StopFeeling.SOMETIMES
+    #: Roadworks that stop traffic: stop/go, temporary lights, convoys.
+    works: StopFeeling = StopFeeling.SOMETIMES
+
+
 class GenerateRequest(BaseModel):
     start: Coord
     finish: Optional[Coord] = None          # defaults to start if omitted
@@ -52,6 +70,8 @@ class GenerateRequest(BaseModel):
     # Which navigation app the parent prefers. Advisory: a preference is never
     # honoured at the cost of dropping the route's shaping waypoints.
     preferred_navigation: Optional[str] = None
+    #: What wakes the child; without it, the usual weights.
+    stops: Optional[StopPrefs] = None
 
 
 class RoadMix(BaseModel):

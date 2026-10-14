@@ -40,6 +40,18 @@ export interface Coord {
   lng: number;
 }
 
+/** How much one kind of stop bothers this child (founder, 13 Oct 2026). */
+export type StopFeeling = "fine" | "sometimes" | "wakes";
+
+/** What wakes the little one, per kind of stop. */
+export interface StopPrefs {
+  bumps: StopFeeling;
+  lights: StopFeeling;
+  turns: StopFeeling;
+  /** Roadworks that stop traffic: stop/go, temporary lights. */
+  works: StopFeeling;
+}
+
 export interface GenerateRequest {
   start: Coord;
   finish?: Coord | null;
@@ -50,6 +62,8 @@ export interface GenerateRequest {
   mode?: RouteMode;
   /** Advisory: never honoured at the cost of the route's shaping points. */
   preferred_navigation?: string | null;
+  /** What wakes the child; servers before 0.8.15 ignore it. */
+  stops?: StopPrefs;
 }
 
 export interface RoadMix {
