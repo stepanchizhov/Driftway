@@ -405,11 +405,29 @@ def _samples(work) -> List[Tuple[Tuple[float, float], float]]:
     return out
 
 
+def _bounds(points, pad_m: float = 0.0) -> Tuple[float, float, float, float]:
+    """(south, west, north, east) round (lat, lng) points, padded."""
+    lat_pad = pad_m / 111320.0
+    lng_pad = pad_m / (111320.0 * math.cos(math.radians(points[0][0])))
+    return (min(p[0] for p in points) - lat_pad, min(p[1] for p in points) - lng_pad,
+            max(p[0] for p in points) + lat_pad, max(p[1] for p in points) + lng_pad)
+
+
+def _meets(a, b) -> bool:
+    return a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]
+
+
 def _runs_along(work, pts, same_way: bool = False) -> bool:
     if len(json.loads(work.points_json)) < 2:
         return not same_way and _on_route(work, pts)
     samples = _samples(work)
-    segs = list(zip(pts, pts[1:]))
+    # Only the drive's stretches near the work are compared (15 Oct 2026:
+    # comparing every stretch with every TomTom incident in the area took a
+    # 60-minute drive's ranking to 140 s).
+    box = _bounds([p for p, _h in samples], NEAR_M + 5)
+    segs = [(a, b) for a, b in zip(pts, pts[1:]) if _meets(box, _bounds([a, b]))]
+    if not segs:
+        return False
     near = 0
     for p, heading in samples:
         for a, b in segs:
@@ -546,7 +564,11 @@ def works_for(geometry) -> list:
             from .incidents import DUPLICATE_M
             pts = [(p.lat, p.lng) if hasattr(p, "lat") else (p[0], p[1]) for p in geometry]
             known = [tuple(x) for r in found for x in json.loads(r.points_json)]
+            drive_box = _bounds(pts, NEAR_M + 5)
             for inc in lk.incidents:
+                inc_pts = [tuple(x) for x in json.loads(inc.points_json)]
+                if not inc_pts or not _meets(drive_box, _bounds(inc_pts)):
+                    continue                    # nowhere near this drive
                 if not _runs_along(inc, pts, same_way=inc.control == "road_closure"):
                     continue
                 mine = [p for p, _h in _samples(inc)] or [tuple(x) for x in json.loads(inc.points_json)]

@@ -62,6 +62,20 @@ async def street_manager(request: Request, session: Session = Depends(get_sessio
     return {"kept": bool(row)}
 
 
+@router.get("/admin/provider-usage")
+def provider_usage(x_admin_token: Optional[str] = Header(None)):
+    """Founder only: provider calls since this server started, per API and
+    per operation, calls per drive request, and Driftway's own ceilings
+    (core/usage.py). Nothing about anyone: counts only."""
+    admin = admin_token()
+    if not admin:
+        raise HTTPException(status_code=503, detail="Admin access is not configured on this deployment.")
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, admin):
+        raise HTTPException(status_code=403, detail="Not permitted.")
+    from core import usage
+    return usage.summary()
+
+
 @router.get("/admin/roadworks/summary")
 def roadworks_summary(x_admin_token: Optional[str] = Header(None),
                       session: Session = Depends(get_session)):

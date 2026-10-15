@@ -82,7 +82,10 @@ async def _route(client: httpx.AsyncClient, start: Coord, anchors: List[Coord],
         params["avoid"] = "alreadyUsedRoads"
     locs = ":".join(f"{p.lat:.6f},{p.lng:.6f}" for p in pts)
     resp = None
+    from core import usage
     for attempt in range(3):
+        if not usage.spend("tomtom.routing"):   # Driftway's daily ceiling
+            return None
         await tomtom_limiter().wait()       # shared with drives
         try:
             resp = await client.get(URL.format(locs=locs), params={

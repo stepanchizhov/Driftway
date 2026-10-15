@@ -69,12 +69,16 @@ async def run_checks(client: Optional[httpx.AsyncClient] = None) -> Dict:
     checks = {}
 
     async def tomtom_routing():
+        from core import usage
+        usage.record("tomtom.routing")
         r = await client.get(
             f"https://api.tomtom.com/routing/1/calculateRoute/"
             f"{_A[0]},{_A[1]}:{_B[0]},{_B[1]}/json", params={"key": tomtom_key})
         return r, r.status_code == 200 and bool(r.json().get("routes")), ""
 
     async def tomtom_search():
+        from core import usage
+        usage.record("tomtom.search")
         r = await client.get("https://api.tomtom.com/search/2/search/SL4%201NJ.json",
                              params={"key": tomtom_key, "limit": 1, "countrySet": "GB"})
         return r, r.status_code == 200 and bool(r.json().get("results")), ""

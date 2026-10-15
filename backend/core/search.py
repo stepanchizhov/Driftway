@@ -211,6 +211,10 @@ class TomTomSearch:
             params["countrySet"] = default_country()
 
         url = f"{_SEARCH_BASE}/{quote(clean)}.json"
+        from core import usage
+        if not usage.spend("tomtom.search"):
+            # Driftway's daily ceiling (core/usage.py): the stand-in answers.
+            raise SearchUnavailable("Address search has reached today's limit.")
         try:
             resp = await self._client.get(url, params=params)
         except httpx.HTTPError as e:

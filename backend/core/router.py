@@ -284,7 +284,14 @@ class TomTomRouter:
 
         data = None
         failure = None          # why TomTom itself failed, if it did
+        from core import usage
         for attempt in range(_TOMTOM_MAX_RETRIES):
+            # Every attempt counts, retries included, against Driftway's own
+            # daily ceiling (core/usage.py); at it, TomTom stands down and
+            # drives go to openrouteservice, as when TomTom refuses.
+            if not usage.spend("tomtom.routing"):
+                _tomtom_failed("Driftway's daily ceiling for TomTom routing")
+                return None
             await tomtom_limiter().wait()
             try:
                 if body is None:
@@ -384,6 +391,10 @@ class TomTomRouter:
         grid: List[List[Optional[float]]] = [
             [None] * len(destinations) for _ in origins
         ]
+        from core import usage
+        if not usage.spend("tomtom.matrix"):
+            _tomtom_failed("Driftway's daily ceiling for TomTom's matrix")
+            return grid
         try:
             resp = await self._client.post(
                 "https://api.tomtom.com/routing/matrix/2", params=params, json=body,

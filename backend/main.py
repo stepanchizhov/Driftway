@@ -105,6 +105,10 @@ async def _validation_error(request, exc: RequestValidationError):
 # CORS: allow the PWA origin(s). Comma-separated in the env var.
 # Default permits local dev. Tighten before any public beta.
 _origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+# Provider calls labelled by the operation they serve (core/usage.py).
+from core.usage import UsageMiddleware  # noqa: E402
+
+app.add_middleware(UsageMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _origins.split(",") if o.strip()],

@@ -98,8 +98,10 @@ async def _trails_in(cell: str) -> Optional[List[Dict]]:
     query = (f'[out:json][timeout:20];relation[type=route]'
              f'[route~"^(hiking|foot|walking)$"]({s},{w},{n},{e});out tags;')
     async with httpx.AsyncClient(timeout=25.0, headers={"User-Agent": USER_AGENT}) as client:
+        from core import usage
         for host in OVERPASS:
             try:
+                usage.record("overpass")
                 r = await client.post(host, data={"data": query})
                 if r.status_code == 200 and r.text.lstrip().startswith("{"):
                     break

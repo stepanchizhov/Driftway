@@ -84,6 +84,21 @@ class OnTheDriveTests(unittest.TestCase):
         self.assertEqual([w.work_ref for w in got], ["SM1"])
 
 
+class SpeedTests(unittest.TestCase):
+    def test_many_incidents_elsewhere_cost_almost_nothing(self):
+        # 15 Oct 2026: every incident in the area was compared with every
+        # stretch of the drive; a 60-minute drive's ranking took 140 s.
+        import time
+        far = [incident([(52.2 + i * 0.001, 13.2), (52.2 + i * 0.001, 13.21)], iid=str(i)) for i in range(2000)]
+        long_drive = [(52.0 + i * 0.0001, 13.0) for i in range(3000)]
+        with roadworks.lookup_for_request(None):
+            lk = roadworks._lookup.get()
+            lk.incidents = incidents.parse({"incidents": far})
+            began = time.monotonic()
+            self.assertEqual(roadworks.works_for(long_drive), [])
+            self.assertLess(time.monotonic() - began, 1.0)
+
+
 class FetchTests(unittest.TestCase):
     def setUp(self):
         incidents.reset_cache()

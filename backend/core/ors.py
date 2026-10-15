@@ -148,7 +148,9 @@ async def request(client: httpx.AsyncClient, method: str, path: str,
     extra_headers = dict(kw.pop("headers", {}) or {})
     last_exc: Optional[Exception] = None
     resp: Optional[httpx.Response] = None
+    from core import usage
     for i, (base, key) in enumerate(targets):
+        usage.record(f"ors.{endpoint}")
         headers = dict(extra_headers)
         if key:
             headers["Authorization"] = key

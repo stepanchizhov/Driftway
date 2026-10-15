@@ -137,6 +137,11 @@ async def fetch(south: float, west: float, north: float, east: float,
     from core.router import tomtom_limiter
     own = client is None
     client = client or httpx.AsyncClient(timeout=httpx.Timeout(6.0, connect=3.0))
+    from core import usage
+    if not usage.spend("tomtom.incidents"):     # Driftway's daily ceiling
+        if own:
+            await client.aclose()
+        return None
     try:
         await tomtom_limiter().wait()
         resp = await client.get(URL, params={
