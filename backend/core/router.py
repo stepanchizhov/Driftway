@@ -61,6 +61,8 @@ class EvaluatedRoute:
     works: Optional[list] = None
     #: Built to go round a cluster of stops (core.steering).
     steered: bool = False
+    #: Which: "steered" round a busy stretch, or "turn_moved" to an easy place.
+    built_by: str = ""
 
 
 class Router(Protocol):

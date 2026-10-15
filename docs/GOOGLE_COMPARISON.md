@@ -62,3 +62,67 @@ to show the overlap rose.
    terms forbid automating the app, so only a handful of runs.
 
 Option 1 gives the 60 runs in an afternoon; option 2 gives perhaps ten.
+
+## The harness (15 Oct 2026)
+
+IMPLEMENTED: `backend/tools/google_compare.py`, tests in
+`tests/test_google_compare.py`. Two questions, kept apart:
+
+- **A. API:** how does a Google Routes API calculation through Driftway's
+  exported waypoints differ from Driftway's own final drive? The harness.
+- **B. Handoff:** what does the Google Maps app or browser actually do with
+  the link? Only a phone can say: the checklist below. A result for A is
+  never a result for B.
+
+**What Google is given:** exactly what the drive's Google Maps link holds:
+start, finish and its waypoints (at most three: Maps URLs allow three on
+mobile browsers and nine elsewhere, read 15 Oct 2026), in order. Sent to the
+Routes API as **stopovers** (its default; `via: true` would make them
+pass-through). Maps URLs don't say which their waypoints are; a stop is the
+cautious reading. `TRAFFIC_AWARE`, `DRIVE`, high-quality polyline. Driftway's
+internal shaping points are not sent.
+
+**Measured per case:** share of Driftway's drive within 30 m of Google's line
+and the reverse; minutes and km for both; mapped bumps, lights and
+turn-arounds at the waypoints on both lines (roadworks left out: they change
+by the hour). Results keep no key and no Google polyline.
+
+**Cases** (`backend/data/google_compare/cases.json`, prepared 15 Oct 2026
+with Driftway as in production, live TomTom, public starts only):
+
+| Case | Built by | Waypoints | Driftway min | Google Maps link (for B) |
+|---|---|---|---|---|
+| `windsor-central-30-mixed` | plain | 3 | 30.2 | [open](https://www.google.com/maps/dir/?api=1&origin=51.483400,-0.610500&destination=51.483400,-0.610500&waypoints=51.495320,-0.610250|51.491900,-0.587870|51.477950,-0.594408&travelmode=driving) |
+| `dedworth-30-mixed` | steered | 3 | 30.6 | [open](https://www.google.com/maps/dir/?api=1&origin=51.481500,-0.644000&destination=51.481500,-0.644000&waypoints=51.483610,-0.623050|51.459090,-0.647220|51.491018,-0.676861&travelmode=driving) |
+| `eton-wick-30-quiet` | plain | 2 | 23.6 | [open](https://www.google.com/maps/dir/?api=1&origin=51.493000,-0.647000&destination=51.493000,-0.647000&waypoints=51.499272,-0.639117|51.495360,-0.633400&travelmode=driving) |
+| `englefield-green-30-mixed` | plain | 3 | 29.4 | [open](https://www.google.com/maps/dir/?api=1&origin=51.430000,-0.570000&destination=51.430000,-0.570000&waypoints=51.423800,-0.586450|51.438181,-0.592862|51.443040,-0.571210&travelmode=driving) |
+| `holyport-45-quiet` | plain | 3 | 44.5 | [open](https://www.google.com/maps/dir/?api=1&origin=51.496000,-0.704000&destination=51.496000,-0.704000&waypoints=51.499680,-0.718359|51.509310,-0.704390|51.500170,-0.689990&travelmode=driving) |
+| `windsor-central-30-quiet` | turn_moved | 3 | 30.6 | [open](https://www.google.com/maps/dir/?api=1&origin=51.483400,-0.610500&destination=51.483400,-0.610500&waypoints=51.482252,-0.568842|51.474360,-0.579790|51.461671,-0.583201&travelmode=driving) |
+| `great-park-30-mixed` | steered | 3 | 24.9 | [open](https://www.google.com/maps/dir/?api=1&origin=51.460000,-0.623000&destination=51.460000,-0.623000&waypoints=51.436303,-0.597154|51.436960,-0.632550|51.446880,-0.640360&travelmode=driving) |
+| `windsor-to-maidenhead-35` | plain | 1 | 34.9 | [open](https://www.google.com/maps/dir/?api=1&origin=51.483400,-0.610500&destination=51.518800,-0.722500&waypoints=51.428452,-0.733120&travelmode=driving) |
+
+**Founder: to run A** (the key is entered by you, never in chat):
+
+1. https://console.cloud.google.com: a project (e.g. "driftway-research"),
+   billing linked.
+2. APIs & Services, Library: enable **Routes API**.
+3. Credentials, Create credentials, API key; edit it: API restrictions,
+   Restrict key, **Routes API** only.
+4. Optional: Routes API, Quotas: cap requests per day at about 200.
+5. Add `GOOGLE_ROUTES_API_KEY=...` to `backend/.env` yourself.
+6. Then the developer runs `python -m tools.google_compare run --limit 5`
+   (five requests), inspects them, and only then the rest of the eight.
+   Expanding toward about 60 cases waits for that look.
+
+**B: phone checklist** (OPEN, nobody has done it yet). For each link above,
+on Android (and an iPhone when one is at hand): open it, and note
+
+- whether Google Maps keeps all the waypoints, and in order;
+- whether it treats them as stops (arrival announcements, "Waypoint 1");
+- its route against the Driftway card's map: same roads? a turn-around
+  where Driftway had none?
+- its time against Driftway's minutes.
+
+Record the phone, app version and time of day. A drive's real handoff is
+only verified once someone has done this.
+

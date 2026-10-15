@@ -239,6 +239,7 @@ async def calmer_candidates(router, start: Coord, finish: Coord,
             continue
         if stops_met(g) <= stops_met(base) - MIN_GAIN:
             g.steered = True
+            g.built_by = "steered"
             out.append(g)
     return out
 
@@ -279,5 +280,6 @@ async def easier_turn_candidates(router, start: Coord, finish: Coord,
     for (base, _a), g in zip(plans, got):
         if isinstance(g, EvaluatedRoute) and stops_met(g) <= stops_met(base) - TURN_GAIN:
             g.steered = True
+            g.built_by = "turn_moved"
             out.append(g)
     return out
