@@ -140,6 +140,7 @@ export function RouteCard({
           </span>
         </p>
       )}
+      {route.tradeoff && <p className="card-caveat card-tradeoff">{route.tradeoff}</p>}
       {route.caveat && <p className="card-caveat">Note: {route.caveat}</p>}
 
       {swapNotice && <p className="card-nav-notice">{swapNotice}</p>}

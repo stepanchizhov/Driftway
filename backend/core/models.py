@@ -138,6 +138,9 @@ class RouteOption(BaseModel):
     roadworks: List[str] = []
     #: Where they come from: "street_manager", "tomtom" (the card's credits).
     roadworks_sources: List[str] = []
+    #: On an alternative a parent meets materially fewer stops on than the
+    #: first drive: what it gains and gives up, kind by kind, and the time.
+    tradeoff: Optional[str] = None
 
     # Every app that could drive this, best first. Empty for a simulated
     # route, which has nothing real to navigate. `maps_url` above remains the

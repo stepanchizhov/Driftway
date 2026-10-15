@@ -29,7 +29,7 @@ BBOX = [51.99, 12.97, 52.06, 13.04]
 # A spur north from the start to 52.03 and straight back: one hard turn-around.
 SPUR_END = Coord(lat=52.03, lng=13.0)
 # An easy place to turn 300 m beyond the spur's end, on the same road.
-LOOP = [52.0327, 13.0, "loop", 16]
+LOOP = [52.0327, 13.0, "loop", 16, 1]          # on a road open to cars
 
 
 def spur(to_lat):
@@ -75,20 +75,36 @@ class DataTests(unittest.TestCase):
         def way(i, pts):
             nodes = list(range(len(pts)))
             nodes[-1] = 1                       # back to the second point: a lollipop
-            return {"type": "way", "id": i, "nodes": nodes,
+            return {"type": "way", "id": i, "nodes": nodes, "tags": {"highway": "residential"},
                     "geometry": [{"lat": a, "lon": b} for a, b in pts]}
         small = [(52.0, 13.0), (52.001, 13.0), (52.0012, 13.0004), (52.0008, 13.0006), (52.001, 13.0)]
         block = [(52.0, 13.0), (52.001, 13.0), (52.004, 13.0), (52.004, 13.004), (52.001, 13.004), (52.001, 13.0)]
         turns = B.extract_turns({"elements": []}, {"elements": [way(1, small), way(2, block)]})
         self.assertEqual([t[2] for t in turns], ["loop"])
+        self.assertEqual(turns[0][4], 1)
+
+    def test_a_place_on_a_private_road_is_kept_but_not_counted_as_open(self):
+        self.assertTrue(B.public_for_cars({"highway": "residential"}))
+        self.assertFalse(B.public_for_cars({"highway": "residential", "access": "private"}))
+        self.assertFalse(B.public_for_cars({"highway": "residential", "motor_vehicle": "destination"}))
+        self.assertTrue(B.public_for_cars({"highway": "residential", "access": "no", "motorcar": "yes"}))
+        self.assertFalse(B.public_for_cars({"highway": "service"}))
+        tagged = {"elements": [
+            {"type": "node", "id": 7, "lat": 52.01, "lon": 13.0, "tags": {"highway": "turning_circle"}},
+            {"type": "node", "id": 8, "lat": 52.02, "lon": 13.0, "tags": {"highway": "turning_circle"}},
+            {"type": "way", "nodes": [1, 7], "tags": {"highway": "residential"}},
+            {"type": "way", "nodes": [2, 8], "tags": {"highway": "residential", "access": "private"}},
+        ]}
+        public = {t[0]: t[4] for t in B.extract_turns(tagged, {"elements": []})}
+        self.assertEqual(public, {52.01: 1, 52.02: 0})
 
     def test_tagged_places_and_a_roundabout_in_pieces(self):
         tagged = {"elements": [
             {"type": "node", "lat": 52.01, "lon": 13.0, "tags": {"highway": "turning_circle"}},
             {"type": "node", "lat": 52.02, "lon": 13.0, "tags": {"highway": "mini_roundabout"}},
-            {"type": "way", "tags": {"junction": "roundabout"},
+            {"type": "way", "tags": {"junction": "roundabout", "highway": "primary"},
              "geometry": [{"lat": 52.0300, "lon": 13.0000}, {"lat": 52.0302, "lon": 13.0003}]},
-            {"type": "way", "tags": {"junction": "roundabout"},
+            {"type": "way", "tags": {"junction": "roundabout", "highway": "primary"},
              "geometry": [{"lat": 52.0302, "lon": 13.0003}, {"lat": 52.0300, "lon": 13.0006}]},
         ]}
         kinds = sorted(t[2] for t in B.extract_turns(tagged, {"elements": []}))
@@ -116,7 +132,7 @@ class ScoringTests(_Base):
         self.assertAlmostEqual(scorer.turn_load(easy), scorer.EASY_TURN_WEIGHT)
         self.assertLess(scorer.stops_met(easy), scorer.stops_met(hard))
         req = gen.GenerateRequest(start=gen.Coord(lat=52.0, lng=13.0), target_minutes=30, tolerance_minutes=10)
-        self.assertIn("turns round once, round a loop at the end of a street", gen._caveat(easy, req.start, req))
+        self.assertIn("turns round once, round a mapped loop at the end of a street", gen._caveat(easy, req.start, req))
         self.assertIn("doubles back once", gen._caveat(hard, req.start, req))
 
 
@@ -144,6 +160,16 @@ class MovingTests(_Base):
 
 class NoPlacesTests(_Base):
     turns = []
+
+
+class NotOpenToCarsTests(_Base):
+    """A mapped place with no evidence the road is open to cars is a
+    candidate only: no discount, no waypoint moved there (15 Oct 2026)."""
+    turns = [[52.0327, 13.0, "loop", 16, 0]]
+
+    def test_it_neither_counts_nor_draws_a_waypoint(self):
+        self.assertIsNone(calming.easy_turn_at(52.0327, 13.0003))
+        self.assertIsNone(steering.easier_turn_waypoints(route(spur(SPUR_END.lat), [SPUR_END])))
 
     def test_without_an_easy_place_nearby_nothing_moves(self):
         self.assertIsNone(steering.easier_turn_waypoints(route(spur(SPUR_END.lat), [SPUR_END])))

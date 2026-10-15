@@ -318,9 +318,16 @@ def score_route(route: EvaluatedRoute, target_minutes: int, profile: str,
     )
 
 
-#: A calmer drive may land this many minutes further from the time asked
-#: for than the drive it replaces, and no more.
-CALM_SLACK_MIN = 3.0
+#: EXPERIMENT (founder and Astra brief, 15 Oct 2026): the first drive offered
+#: lands at most this many minutes further from the time asked for than the
+#: closest-to-time eligible candidate, whatever ranked it first: fewer stops
+#: (calmer_lead), fewer or easier turn-arounds (the smoothness score), or a
+#: waypoint moved to an easy place to turn. Compared on each candidate's
+#: final routed duration. Measured 13 Oct before this: moving turn-backs put
+#: three first drives 4 to 8 minutes further off. Two minutes is a starting
+#: point, not an established optimum; revise it here. It never widens the
+#: request's own tolerance window, which still decides who is eligible.
+FIRST_EXTRA_MIN = 2.0
 
 # Stops as a parent meets them, on one scale (founder, 13 Oct 2026: "a
 # turn-around is better than a red light, and especially better than a
@@ -418,11 +425,11 @@ def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
                 profile: str) -> List[EvaluatedRoute]:
     """Put a calmer drive first, if one is as good on what already counted.
 
-    `ranked` is in the order the score without bumps gives. A candidate at
-    most CALM_SLACK_MIN minutes further from the time may replace the first
-    drive if a parent meets fewer stops on it (stops_met, by at least
+    `ranked` is in the order the score without bumps gives. A candidate
+    within FIRST_EXTRA_MIN of the closest-to-time candidate may replace the
+    first drive if a parent meets fewer stops on it (stops_met, by at least
     CALM_GAIN), turn-arounds counted like a bump. Only the first place
-    changes.
+    changes. first_within_time then bounds whatever is first.
 
     Until 13 Oct 2026 a calmer drive could never add a turn-around, which
     made a turn-around worth about seven sets of lights. The founder, who
@@ -434,13 +441,60 @@ def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
     if not ranked:
         return ranked
     lead = ranked[0]
-    lead_miss = abs(lead.minutes - target_minutes)
-    eligible = [ev for ev in ranked
-                if abs(ev.minutes - target_minutes) <= lead_miss + CALM_SLACK_MIN]
+    limit = min(abs(ev.minutes - target_minutes) for ev in ranked) + FIRST_EXTRA_MIN + 1e-9
+    eligible = [ev for ev in ranked if abs(ev.minutes - target_minutes) <= limit]
+    if not eligible:
+        return ranked
     best = min(eligible, key=stops_met)
-    if best is lead or stops_met(best) > stops_met(lead) - CALM_GAIN:
+    if best is lead or (lead in eligible and stops_met(best) > stops_met(lead) - CALM_GAIN):
         return ranked
     return [best] + [ev for ev in ranked if ev is not best]
+
+
+def first_within_time(ranked: List[EvaluatedRoute], target_minutes: int) -> List[EvaluatedRoute]:
+    """The ranking, with the first drive within FIRST_EXTRA_MIN of the
+    closest-to-time candidate: if the leader is further off, the best-ranked
+    candidate within it goes first instead, and the leader stays in the list
+    (as an alternative whose card says what it trades)."""
+    if not ranked:
+        return ranked
+    limit = min(abs(ev.minutes - target_minutes) for ev in ranked) + FIRST_EXTRA_MIN + 1e-9
+    if abs(ranked[0].minutes - target_minutes) <= limit:
+        return ranked
+    first = next(ev for ev in ranked if abs(ev.minutes - target_minutes) <= limit)
+    return [first] + [ev for ev in ranked if ev is not first]
+
+
+def tradeoff_note(ev: EvaluatedRoute, lead: EvaluatedRoute, target_minutes: int) -> Optional[str]:
+    """For an alternative a parent meets materially fewer stops on than the
+    first drive: what it gains and gives up, kind by kind, so a lower total
+    cannot hide more of one kind, and how much further from the time it is."""
+    if ev is lead or stops_met(ev) > stops_met(lead) - CALM_GAIN:
+        return None
+
+    def counts(r):
+        b, lt = bumps_of(r), lights_of(r)
+        works = works_of(r)
+        return {"speed bump": b.count if b else None,
+                "set of lights": lt.total if lt else None,
+                "turn-around": turnaround_count(r),
+                "roadworks": sum(1 for w in works if w.control in roadworks.STOPPING or w.control == "roadworks")}
+
+    plural = {"speed bump": "speed bumps", "set of lights": "sets of lights",
+              "turn-around": "turn-arounds", "roadworks": "roadworks"}
+    mine, theirs = counts(ev), counts(lead)
+    parts = []
+    for kind in mine:
+        a, b = mine[kind], theirs[kind]
+        if a is None or b is None or a == b:
+            continue
+        n = abs(a - b)
+        word = kind if n == 1 else plural[kind]
+        parts.append(f"{n} {'fewer' if a < b else 'more'} {word}")
+    off = abs(ev.minutes - target_minutes) - abs(lead.minutes - target_minutes)
+    when = (f", about {round(off)} min further from your {target_minutes} min" if off >= 1
+            else "")
+    return "Calmer than the first drive: " + (", ".join(parts) or "fewer stops") + when + "."
 
 
 def describe_character(mix: RoadMix) -> str:

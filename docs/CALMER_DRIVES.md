@@ -400,3 +400,46 @@ Settings now have **Simple** and **All** (founder: settings "are getting
 more and more"). Simple hides a drive's tolerance and direction and, for
 walks, retracing, checkpoint reach and walks that need travel; each still
 shows once changed from its default, so nothing in force is out of sight.
+
+## The first drive's time bound (15 Oct 2026, EXPERIMENT)
+
+DECISION (founder and Astra, 15 Oct 2026): bound how much time a calmer
+drive may cost automatically. IMPLEMENTED (`scorer.FIRST_EXTRA_MIN`,
+`first_within_time`, `calmer_lead`): whatever ranks a drive first (fewer
+stops, fewer or easier turn-arounds, a moved turn-back), it lands at most
+**2 minutes** further from the time asked than the closest-to-time eligible
+candidate, compared on each candidate's final routed duration (after
+steering and moved waypoints, which are new evaluations). The request's own
+tolerance window still decides who is eligible; the bound never widens it.
+Two minutes is a starting point, not an established optimum.
+
+A materially calmer drive the bound keeps from first place (at least 2 less
+on the stops scale) stays among the three, with its card saying what it
+trades, kind by kind, so a lower total cannot hide more of one kind:
+"Calmer than the first drive: 18 fewer speed bumps, 2 fewer turn-arounds,
+about 4 min further from your 30 min."
+
+**Measured** on the 20 Windsor requests (cached candidates, steered drives,
+moved turn-backs; no new calls for the comparison):
+
+| First drives | Before | After |
+|---|---|---|
+| Minutes off the time: total / mean / worst | 76.7 / 3.8 / 14.5 | 50.5 / 2.5 / 10.5 |
+| Speed bumps / lights / turn-arounds | 154 / 129 / 24 | 192 / 130 / 27 |
+
+The bound changed the first drive in 6 of 20 and put 8 labelled calmer
+alternatives on offer. The worst case left (10.5) is a request where no
+candidate came closer. HYPOTHESIS: the stops weights and the 0.3 for an easy
+turn-around express ranking preferences, not a demonstrated effect on
+waking.
+
+## Turning places need a road open to cars (15 Oct 2026)
+
+A mapped roundabout, turning circle or loop is only a candidate. Rebuilt
+from OpenStreetMap on 15 Oct (data 09:00Z) with the access of the road each
+one is on: 2,781 of 3,152 are on roads open to cars (a public road type, and
+no `access`, `motor_vehicle` or `motorcar` tag saying otherwise, which is
+OpenStreetMap's default); 371 are private, destination-only or on no road
+found. Only the 2,781 earn the 0.3 discount or draw a moved waypoint. Cards
+say "at a mapped roundabout", "round a mapped loop at the end of a street":
+mapped, not checked as safe or easy on the day.

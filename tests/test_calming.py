@@ -101,7 +101,7 @@ class RankingTests(unittest.TestCase):
         """A calm drive 10 minutes off never goes first over a bumpy one on
         time. The ranking decides, not the score alone: drives are ordered
         without bumps, and calmer_lead lets bumps change only first place,
-        within CALM_SLACK_MIN of the time."""
+        within FIRST_EXTRA_MIN of the closest-to-time candidate."""
         on_time_bumpy, late_calm = route(30, 3.0), route(40, 0.0)
         ranked = sorted([late_calm, on_time_bumpy],
                         key=lambda r: scorer.score_route(r, 30, "quiet", with_bumps=False),

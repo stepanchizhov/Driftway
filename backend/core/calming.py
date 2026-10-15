@@ -99,8 +99,13 @@ class _Index:
             self.as_of.append(r.get("as_of", ""))
             for lat, lng, kind in r["points"]:
                 self.cells[(int(lat / CELL), int(lng / CELL))].append((lat, lng, kind))
-            for lat, lng, kind, radius in r.get("turns", []):
-                self.turns[(int(lat / CELL), int(lng / CELL))].append((lat, lng, kind, float(radius)))
+            for t in r.get("turns", []):
+                # [lat, lng, kind, radius, public]. Only a place on a road
+                # known to be open to cars counts (15 Oct 2026); data built
+                # before then has no such evidence and counts for nothing.
+                if len(t) >= 5 and t[4]:
+                    lat, lng, kind, radius = t[:4]
+                    self.turns[(int(lat / CELL), int(lng / CELL))].append((lat, lng, kind, float(radius)))
             if "signals" in r:
                 self.has_lights.append(box)
                 for lat, lng, kind, group in r["signals"]:

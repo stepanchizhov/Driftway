@@ -26,7 +26,11 @@ the junction once.
 
 Easy places to turn round (founder, 13 Oct 2026: a turn-around is fine,
 better still where it needs no three-point turn, like a loop round a small
-island at the end of a street). Each is [lat, lng, kind, radius in metres]:
+island at the end of a street). Each is [lat, lng, kind, radius in metres,
+public], public 1 only when the road it is on is open to cars (no access,
+motor_vehicle or motorcar tag saying otherwise: OpenStreetMap's default for a
+public road), 0 when that isn't known or it is restricted (15 Oct 2026: a
+mapped place is only a candidate; no discount without that evidence):
   roundabout       a roundabout or circular junction (all its ways joined)
   mini_roundabout  a mini-roundabout node
   turning_circle   a turning circle or turning loop node at a street's end
@@ -170,14 +174,17 @@ JOIN_ROUNDABOUT_M = 60.0
 
 def turns_query(south, west, north, east) -> str:
     box = f"{south},{west},{north},{east}"
+    # The places, then the roads the node ones are on (for their access).
     return (f"[out:json][timeout:180];("
             f'node[highway~"^(turning_circle|turning_loop|mini_roundabout)$"]({box});'
-            f'way[junction~"^(roundabout|circular)$"]({box}););out body geom;')
+            f'way[junction~"^(roundabout|circular)$"]({box}););out body geom;'
+            f'node[highway~"^(turning_circle|turning_loop|mini_roundabout)$"]({box});'
+            f"way(bn)[highway];out body;")
 
 
 def loops_query(south, west, north, east) -> str:
     box = f"{south},{west},{north},{east}"
-    return f'[out:json][timeout:180];way[highway~"^({TURN_ROADS})$"]({box});out skel geom;'
+    return f'[out:json][timeout:180];way[highway~"^({TURN_ROADS})$"]({box});out body geom;'
 
 
 def _spot(points) -> list:
@@ -188,30 +195,59 @@ def _spot(points) -> list:
     return [round(lat, 6), round(lng, 6), round(r)]
 
 
+#: Access values that keep a car out, or let it in only for a reason that
+#: isn't turning round.
+RESTRICTED = {"no", "private", "customers", "delivery", "destination", "agricultural",
+              "forestry", "permit", "military", "emergency", "discouraged"}
+_PUBLIC_ROADS = set(TURN_ROADS.split("|"))
+
+
+def public_for_cars(tags: dict) -> bool:
+    """Open to cars: a public road type, and the most specific access tag
+    (motorcar, then motor_vehicle, vehicle, access) not restricting it."""
+    if tags.get("highway") not in _PUBLIC_ROADS and "junction" not in tags:
+        return False
+    for key in ("motorcar", "motor_vehicle", "vehicle", "access"):
+        if key in tags:
+            return tags[key] not in RESTRICTED
+    return True
+
+
 def extract_turns(tagged: dict, roads: dict) -> list:
-    """[[lat, lng, kind, radius_m]] for every easy place to turn round."""
+    """[[lat, lng, kind, radius_m, public]] for every easy place to turn
+    round; public 1 only with evidence the road is open to cars."""
     out = []
     pieces = []
+    nodes = []
+    parents: dict = {}               # node id -> public (any road it's on)
     for e in tagged.get("elements", []):
         if e.get("type") == "node":
-            kind = e.get("tags", {}).get("highway")
-            kind = "turning_circle" if kind == "turning_loop" else kind
-            out.append([round(e["lat"], 6), round(e["lon"], 6), kind, 10 if kind == "turning_circle" else 8])
+            nodes.append(e)
         elif e.get("type") == "way" and e.get("geometry"):
-            pieces.append([(g["lat"], g["lon"]) for g in e["geometry"]])
+            pieces.append(([(g["lat"], g["lon"]) for g in e["geometry"]], public_for_cars(e.get("tags", {}))))
+        elif e.get("type") == "way":         # a road a node place is on
+            ok = public_for_cars(e.get("tags", {}))
+            for n in e.get("nodes") or []:
+                parents[n] = parents.get(n, False) or ok
+    for e in nodes:
+        kind = e.get("tags", {}).get("highway")
+        kind = "turning_circle" if kind == "turning_loop" else kind
+        public = 1 if parents.get(e.get("id")) else 0
+        out.append([round(e["lat"], 6), round(e["lon"], 6), kind, 10 if kind == "turning_circle" else 8, public])
     # Roundabouts come in pieces: join pieces whose centres are close.
     groups: list = []
-    for pts in pieces:
+    for pts, ok in pieces:
         c = _spot(pts)
         for g in groups:
             if _metres((c[0], c[1]), (g[0][0], g[0][1])) <= JOIN_ROUNDABOUT_M:
                 g[1].extend(pts)
+                g[2].append(ok)
                 break
         else:
-            groups.append((c, list(pts)))
-    for _c, pts in groups:
+            groups.append((c, list(pts), [ok]))
+    for _c, pts, oks in groups:
         lat, lng, r = _spot(pts)
-        out.append([lat, lng, "roundabout", r])
+        out.append([lat, lng, "roundabout", r, 1 if all(oks) else 0])
     # Road loops: a way that comes back to a node it has already passed.
     for e in roads.get("elements", []):
         nodes, geom = e.get("nodes") or [], e.get("geometry") or []
@@ -224,7 +260,7 @@ def extract_turns(tagged: dict, roads: dict) -> list:
                 round_m = sum(_metres(a, b) for a, b in zip(loop, loop[1:]))
                 if 30.0 <= round_m <= LOOP_MAX_M:
                     lat, lng, r = _spot(loop)
-                    out.append([lat, lng, "loop", r])
+                    out.append([lat, lng, "loop", r, 1 if public_for_cars(e.get("tags", {})) else 0])
                 break
             first[n] = i
     out.sort()

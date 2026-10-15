@@ -123,6 +123,8 @@ export interface RouteOption {
   roadworks?: string[];
   /** Where the roadworks come from, for the credits under them. */
   roadworks_sources?: string[];
+  /** A calmer alternative's trade-off against the first drive. */
+  tradeoff?: string | null;
 }
 
 export interface GenerateResponse {

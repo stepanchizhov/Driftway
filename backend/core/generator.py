@@ -55,6 +55,10 @@ from . import roadworks, steering
 from .scorer import (
     bumps_of,
     calmer_lead,
+    first_within_time,
+    stops_met,
+    CALM_GAIN,
+    tradeoff_note,
     lights_of,
     works_of,
     dedupe,
@@ -66,12 +70,14 @@ from .scorer import (
     easy_turns,
 )
 
-# How the card says where a turn-around is easy (calming.easy_turn_at).
+# How the card says where a turn-around is (calming.easy_turn_at). "Mapped":
+# the place is in OpenStreetMap on a road open to cars, which is not a check
+# that turning there is safe or easy on the day.
 EASY_PLACE = {
-    "roundabout": "at a roundabout",
-    "mini_roundabout": "at a mini-roundabout",
-    "turning_circle": "at a turning circle",
-    "loop": "round a loop at the end of a street",
+    "roundabout": "at a mapped roundabout",
+    "mini_roundabout": "at a mapped mini-roundabout",
+    "turning_circle": "at a mapped turning circle",
+    "loop": "round a mapped loop at the end of a street",
 }
 
 # How many candidates to build in the first pass. Kept modest because the
@@ -180,7 +186,8 @@ def _caveat(ev: EvaluatedRoute, finish: Coord, req: GenerateRequest) -> Optional
         notes.append("doubles back once")
     elif turns > 1:
         notes.append(f"doubles back {turns} times"
-                     + (f" ({min(len(easy), turns)} at an easy place to turn)" if easy else ""))
+                     + (f" ({min(len(easy), turns)} at a mapped roundabout or turning place)"
+                        if easy else ""))
     reason = rejection_reason(ev, finish)
     if reason == "overlap":
         notes.append("repeats part of the route")
@@ -297,13 +304,24 @@ def _pick_top_three(evaluated: List[EvaluatedRoute], finish: Coord,
     # Fewer mapped speed bumps, but never at the cost of a turn-around or the
     # time (scorer.calmer_lead).
     scored = calmer_lead(scored, req.target_minutes, profile)
+    # And whatever ranked first, it lands within FIRST_EXTRA_MIN of the
+    # closest-to-time candidate (scorer.first_within_time, an experiment).
+    scored = first_within_time(scored, req.target_minutes)
     # Scale "meaningfully different" to the size of the drive: 1.5 km apart is
     # a different route for a 10-minute loop and a rounding error for a 90.
     min_diff = max(0.3, 0.10 * scored[0].distance_km) if scored else 1.5
     # No backfilling. Three genuinely different routes is the aim, but padding
     # the list with a route we would not recommend just to reach three sends a
     # parent down a bad road to satisfy a number in the UI.
-    return dedupe(scored, min_diff)[:3]
+    top = dedupe(scored, min_diff)[:3]
+    # A materially calmer drive the time bound kept from first place stays on
+    # offer, last, with its card saying what it trades.
+    calmest = min(scored, key=stops_met)
+    if (top and calmest not in top
+            and stops_met(calmest) <= stops_met(top[0]) - CALM_GAIN
+            and calmest in dedupe(top[:2] + [calmest], min_diff)):
+        top = top[:2] + [calmest]
+    return top
 
 
 # A padded route can never be quicker than driving straight there, so the
@@ -320,7 +338,8 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
                   req: GenerateRequest, profile: str, simulated: bool,
                   direct: Optional[EvaluatedRoute],
                   is_direct: bool = False,
-                  preferred_nav: Optional[str] = None) -> RouteOption:
+                  preferred_nav: Optional[str] = None,
+                  lead: Optional[EvaluatedRoute] = None) -> RouteOption:
     """Turn an evaluated route into the shape the app renders."""
     # Duration accuracy sets the confidence, since that is the promise on the
     # button. Tripping a quality rule costs one step rather than forcing "low":
@@ -373,6 +392,8 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         lights_pedestrian=lights.pedestrian if lights is not None else None,
         roadworks=roadworks.describe(works),
         roadworks_sources=roadworks.sources(works),
+        tradeoff=(None if simulated or lead is None
+                  else tradeoff_note(ev, lead, req.target_minutes)),
     )
 
 
@@ -588,7 +609,7 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
 
     options = [
         _build_option(ev, start, finish, req, profile, simulated, direct,
-                      preferred_nav=req.preferred_navigation)
+                      preferred_nav=req.preferred_navigation, lead=top[0])
         for ev in top
     ]
 
