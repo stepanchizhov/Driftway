@@ -21,7 +21,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
 log = logging.getLogger("driftway")
@@ -206,8 +206,24 @@ def revoke_beta_invite(
     return {"ok": True}
 
 
+def _refresh_scottish_roadworks() -> None:
+    """Tonight's Scottish roadworks, after the retention run has answered
+    (core/srwr.py): never holds the run up, never fails it."""
+    from core import srwr
+    from core.db import SessionLocal
+    session = SessionLocal()
+    try:
+        if srwr.due(session):
+            srwr.refresh(session)
+    except Exception as e:  # noqa: BLE001 - optional enrichment
+        log.error("Scottish roadworks import failed (%s)", type(e).__name__)
+    finally:
+        session.close()
+
+
 @router.post("/admin/retention/run")
 def run_retention_now(
+    background: BackgroundTasks,
     _: None = Depends(_require_retention_trigger),
     session: Session = Depends(get_session),
 ):
@@ -236,6 +252,9 @@ def run_retention_now(
         accounts_purged=len(accounts),
         capped=capped,
     )
+    # The run comes once a day, after the register's 2 am export: Scotland's
+    # roadworks are refreshed then, in the background.
+    background.add_task(_refresh_scottish_roadworks)
     return {
         "meetups_purged": len(meetups),
         "accounts_purged": len(accounts),

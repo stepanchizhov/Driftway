@@ -361,7 +361,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         extra = round(ev.minutes - direct.minutes, 1)
     bumps = None if simulated else bumps_of(ev)
     lights = None if simulated else lights_of(ev)
-    works = [] if simulated else works_of(ev)
+    works = [] if simulated else roadworks.on_card(works_of(ev), ev.live_traffic)
 
     return RouteOption(
         id=str(uuid.uuid4())[:8],
@@ -394,7 +394,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         roadworks_sources=roadworks.sources(works),
         tradeoff=(None if simulated or lead is None
                   else tradeoff_note(ev, lead, req.target_minutes)),
-        roadworks_status=None if simulated else roadworks.status_line(works),
+        roadworks_status=None if simulated else roadworks.status_line(works, ev.geometry),
     )
 
 

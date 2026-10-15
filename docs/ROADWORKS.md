@@ -117,13 +117,36 @@ are acceptable.
   working) 221, lane closure 156, **stop/go boards 92**, priority system 12,
   convoy working 12, contraflow 8. So unlike TomTom it says how traffic is
   controlled, like Street Manager.
-- PROPOSED (next slice): a nightly import of `CurrentActivities` (the
-  scheduled job or the server), mapping traffic management onto the same
-  controls as Street Manager (lights, stop/go, convoy, priority, give and
-  take, closures), counting only "In Progress"/"Commenced" with an actual
-  start; TomTom's live reports beside it, the two compared, and the
-  register's caveat said on the card ("from Scotland's road works register,
-  updated nightly").
+- IMPLEMENTED (0.8.17, `core/srwr.py`): the daily retention run (GitHub
+  Actions, after the 2 am export) has the server download the latest file in
+  the background, when the last import is over 20 hours old; the founder can
+  import at once with `POST /api/admin/roadworks/scotland/refresh`
+  (`X-Admin-Token`). Kept: "In Progress" or "Commenced" with an actual start
+  not in the future, traffic management mapped onto Street Manager's
+  controls (portable traffic lights as temporary signals, stop/go boards,
+  give and take, priority, convoy, road closure; "not yet known" as
+  roadworks of unknown control); lane closures, narrowing, contraflows and
+  footway works are not kept. Geometry from the British National Grid WKT
+  (thinned to 200 points), else latitude and longitude. The snapshot replaces
+  the last one whole; references start "srwr:" in the same table as Street
+  Manager's.
+- **Today's file:** 2,693 kept of 22,087 (give and take 1,121, temporary
+  lights 952, closures 503, stop/go 92, priority 12, convoy 12), all inside
+  Scotland, imported in 1.3 s. Live 30-minute drives from Edinburgh Waverley
+  and Glasgow Central listed works like "Bank Street: temporary traffic
+  lights" and "Hanover Street: give and take".
+- **Cards:** credited "Scottish Road Works Register, updated nightly"
+  (OGL v3); the status line says "Scotland's road works register (updated
+  nightly)", or that it is out of date after 36 hours, only for drives that
+  reach Scotland (and Street Manager only for drives that may be in England).
+- **Learned on those drives, for every register (Street Manager too):** a
+  work's line or area must run along the drive for 30 m, as for TomTom's
+  reports (a crossed street isn't on it); a register's closure is listed
+  only on a drive planned without live traffic (a live route along it shows
+  it open there now, and closures don't change the ranking), and reads
+  "road closure registered"; works in phases are listed once.
+- OPEN: compare the register with TomTom's live reports over a few weeks,
+  then report to the SRWR Manager (the promise above).
 - PROMISE: they asked to hear how we got on. Share what we find (agreement
   with TomTom, false positives, whether it changed any drives) with the
   SRWR Manager by replying to that email thread.

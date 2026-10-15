@@ -56,6 +56,9 @@ NOT_RECIPIENTS = {
     # Roadworks (core/roadworks.py) are received from Street Manager, never
     # sent anything about a user; the registration page is named in comments.
     "www.gov.uk": "Street Manager registration page, in comments",
+    # Scotland's register (core/srwr.py): its nightly file is downloaded;
+    # nothing about anyone is sent.
+    "downloads.srwr.scot": "Scottish roadworks downloaded, nothing sent",
 }
 
 _HOST = re.compile(r"https?://([a-zA-Z0-9.-]+\.[a-z]{2,})")

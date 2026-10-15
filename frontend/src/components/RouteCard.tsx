@@ -118,6 +118,12 @@ export function RouteCard({
               Government Licence v3.0.
             </p>
           )}
+          {route.roadworks_sources?.includes("srwr") && (
+            <p className="card-bumps-note">
+              Scotland: Scottish Road Works Register, updated nightly. Contains public sector
+              information licensed under the Open Government Licence v3.0.
+            </p>
+          )}
           {route.roadworks_sources?.includes("tomtom") && (
             <p className="card-bumps-note">Traffic incidents © TomTom.</p>
           )}

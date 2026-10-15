@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.17",
+    date: "15 Oct 2026",
+    changes: [
+      "Roadworks in Scotland from Scotland's road works register, updated nightly, including where there are temporary traffic lights and stop/go boards.",
+      "Roadworks lists are tidier: a street a drive only crosses isn't listed, works in phases are listed once, and a registered closure on a road the live route uses isn't shown as closed.",
+    ],
+  },
+  {
     version: "0.8.16",
     date: "15 Oct 2026",
     changes: [

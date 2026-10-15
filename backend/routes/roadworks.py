@@ -76,6 +76,25 @@ def provider_usage(x_admin_token: Optional[str] = Header(None)):
     return usage.summary()
 
 
+@router.post("/admin/roadworks/scotland/refresh")
+def refresh_scottish_roadworks(x_admin_token: Optional[str] = Header(None),
+                               session: Session = Depends(get_session)):
+    """Founder only: import Scotland's roadworks now (core/srwr.py); normally
+    the daily retention run does it. Counts only."""
+    admin = admin_token()
+    if not admin:
+        raise HTTPException(status_code=503, detail="Admin access is not configured on this deployment.")
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, admin):
+        raise HTTPException(status_code=403, detail="Not permitted.")
+    if not storage_available():
+        raise HTTPException(status_code=503, detail="Storage unavailable.")
+    from core import srwr
+    try:
+        return srwr.refresh(session)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"The register's export couldn't be read ({type(e).__name__}).")
+
+
 @router.get("/admin/roadworks/summary")
 def roadworks_summary(x_admin_token: Optional[str] = Header(None),
                       session: Session = Depends(get_session)):

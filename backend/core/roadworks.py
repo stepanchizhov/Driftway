@@ -105,6 +105,12 @@ class Roadwork(Base):
     east: Mapped[float] = mapped_column(Float)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
+    @property
+    def source(self) -> str:
+        """Scotland's register (core/srwr.py, references "srwr:...") or
+        Street Manager."""
+        return "srwr" if (self.work_ref or "").startswith("srwr:") else "street_manager"
+
 
 # ------------------------------------------------------------ SNS messages
 
@@ -359,7 +365,10 @@ def works_along(session: Session, geometry: Sequence, at: Optional[datetime] = N
     for r in rows:
         if not running(r, naive):
             continue
-        if _on_route(r, pts):
+        # A line or area must run along the drive for ALONG_M, not just meet
+        # it where the drive crosses the street (15 Oct 2026, seen on
+        # Edinburgh drives); a single point within NEAR_M is enough.
+        if _runs_along(r, pts):
             found.append(r)
     return found
 
@@ -444,14 +453,35 @@ def sources(rows) -> List[str]:
     return sorted({getattr(r, "source", "street_manager") for r in rows})
 
 
+def on_card(rows: list, live_traffic: bool = True) -> list:
+    """The works a drive's card lists. A register's closure (Street Manager,
+    Scotland's register) is left off a drive planned with live traffic: the
+    live route goes along it, so it isn't closed there now (partial, timed or
+    the other way; seen on Edinburgh and Glasgow drives, 15 Oct 2026), and
+    closures don't change the ranking. TomTom's own closure reports are
+    current and checked for direction, and stay."""
+    return [r for r in rows
+            if not (live_traffic and r.control in CLOSURE and getattr(r, "source", "") != "tomtom")]
+
+
 def describe(rows: List[Roadwork]) -> List[str]:
-    """"Victoria Street: temporary traffic lights", one per work, stopping
-    first."""
+    """"Victoria Street: temporary traffic lights", once per street and kind
+    (works in phases are several records), stopping first."""
     rows = sorted(rows, key=lambda r: (r.control not in STOPPING, r.street))
     out = []
-    for r in rows[:5]:
+    for r in rows:
+        if len(out) >= 5:
+            break
         street = r.street.title() if r.street.isupper() else r.street
-        out.append(f"{street or 'A street on the way'}: {LABEL.get(r.control, 'roadworks')}")
+        label = LABEL.get(r.control, "roadworks")
+        if r.control in CLOSURE and getattr(r, "source", "street_manager") != "tomtom":
+            # A register's closure may be partial or only at set times; a
+            # drive routed with live traffic along it shows the road open
+            # now in that direction (15 Oct 2026).
+            label = "road closure registered"
+        line = f"{street or 'A street on the way'}: {label}"
+        if line not in out:
+            out.append(line)
     return out
 
 
@@ -478,19 +508,38 @@ class _Lookup:
         if self._last is None:
             try:
                 from sqlalchemy import func
-                self._last = self.session.execute(select(func.max(Roadwork.updated_at))).scalar() or False
+                self._last = self.session.execute(
+                    select(func.max(Roadwork.updated_at)).where(~Roadwork.work_ref.like("srwr:%"))
+                ).scalar() or False
             except Exception as e:  # noqa: BLE001 - optional enrichment
                 log.error("roadworks freshness unreadable (%s)", type(e).__name__)
                 self._last = False
         return self._last or None
 
+    def scotland_last(self) -> Optional[datetime]:
+        """When Scotland's register was last imported (core/srwr.py)."""
+        if getattr(self, "_scot", None) is None:
+            try:
+                from .srwr import last_import
+                self._scot = last_import(self.session) or False
+            except Exception as e:  # noqa: BLE001 - optional enrichment
+                log.error("Scottish roadworks freshness unreadable (%s)", type(e).__name__)
+                self._scot = False
+        return self._scot or None
+
 
 #: Street Manager sends England's permit changes every few seconds; this long
 #: without any means the feed has stopped reaching Driftway.
 STALE_AFTER = timedelta(hours=3)
+#: Scotland's register is imported nightly; older than this is out of date.
+SCOTLAND_STALE_AFTER = timedelta(hours=36)
+#: Rough latitudes: a drive with a point north of SCOTLAND_FROM may be in
+#: Scotland, one with a point south of ENGLAND_TO may be in England (or Wales;
+#: the line says "England only").
+SCOTLAND_FROM, ENGLAND_TO = 54.6, 55.82
 
 
-def status_line(found: list) -> Optional[str]:
+def status_line(found: list, geometry=None) -> Optional[str]:
     """What was checked for roadworks on this drive, and what couldn't be,
     so "none found", "not checked", "out of date" and "partly checked" read
     differently (founder and Astra brief, 15 Oct 2026)."""
@@ -498,8 +547,13 @@ def status_line(found: list) -> Optional[str]:
     if lk is None:
         return None
     checked, gaps = [], []
+    lats = [p.lat if hasattr(p, "lat") else p[0] for p in (geometry or [])]
+    in_england = not lats or min(lats) < ENGLAND_TO
+    in_scotland = bool(lats) and max(lats) > SCOTLAND_FROM
     if lk.session is None:
-        gaps.append("England's feed (Street Manager) couldn't be read")
+        gaps.append("the official roadworks registers couldn't be read")
+    elif not in_england:
+        pass
     else:
         last = lk.street_manager_last()
         if last is None:
@@ -510,6 +564,15 @@ def status_line(found: list) -> Optional[str]:
                 gaps.append(f"Street Manager (England) last heard from {int(age.total_seconds() // 3600)} h ago")
             else:
                 checked.append("Street Manager (England only)")
+    if lk.session is not None and in_scotland:
+        last = lk.scotland_last()
+        if last is None:
+            gaps.append("no data from Scotland's road works register yet")
+        elif _now() - last > SCOTLAND_STALE_AFTER:
+            gaps.append(f"Scotland's road works register last updated "
+                        f"{int((_now() - last).total_seconds() // 3600)} h ago")
+        else:
+            checked.append("Scotland's road works register (updated nightly)")
     if lk.incidents_state == "ok":
         checked.append("TomTom traffic reports, just now")
     elif lk.incidents_state == "failed":
