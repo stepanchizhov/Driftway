@@ -90,6 +90,22 @@ Roads publishes road assets on Open Data NI but no works register. An email
 to the Scottish Commissioner asking about open access is drafted for the
 founder.
 
+**Scotland's reply (15 Oct 2026)**, from the SRWR Manager at the Office of
+the Scottish Road Works Commissioner: the register's data is open data, and
+a nightly extract meant for spotting disruption, the **Disruptions Export**,
+is described on their "Scottish Road Works Register Open Data" page. Their
+own caveat: the register is good at where and when works *took place*, less
+so at what is happening now or next, because of what the law requires to
+be recorded; useful as a list of areas to avoid if some false positives
+are acceptable.
+
+- OPEN: read the export's format, licence and attribution; try it as
+  "possible works" (never as confirmed), alongside TomTom's live reports,
+  and measure how often the two agree.
+- PROMISE: they asked to hear how we got on. Share what we find (agreement
+  with TomTom, false positives, whether it changed any drives) with the
+  SRWR Manager by replying to that email thread.
+
 IMPLEMENTED (`core/incidents.py`): TomTom's traffic incidents, everywhere,
 on the drives' key.
 

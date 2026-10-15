@@ -37,6 +37,17 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.16",
+    date: "15 Oct 2026",
+    changes: [
+      "The first drive offered stays within about two minutes of the time you asked for. A calmer drive that takes longer is still offered, and its card says what it trades: fewer speed bumps, more lights, how many minutes further.",
+      "Long drives are planned much faster: an hour's drive took over two minutes to plan, now a few seconds.",
+      "Each drive says what was checked for roadworks, and what couldn't be, so \"none found\" and \"couldn't check\" no longer look the same.",
+      "Places to turn round count only on roads open to cars, and cards say \"mapped\" rather than calling them easy.",
+      "Walks say \"judged from map data\" rather than \"checked\"; a walk with too little recorded says so; an AI description says what its approval does and doesn't cover.",
+    ],
+  },
+  {
     version: "0.8.15",
     date: "14 Oct 2026",
     changes: [
