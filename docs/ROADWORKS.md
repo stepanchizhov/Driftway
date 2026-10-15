@@ -99,9 +99,31 @@ so at what is happening now or next, because of what the law requires to
 be recorded; useful as a list of areas to avoid if some false positives
 are acceptable.
 
-- OPEN: read the export's format, licence and attribution; try it as
-  "possible works" (never as confirmed), alongside TomTom's live reports,
-  and measure how often the two agree.
+- **The export, read 15 Oct 2026** (page:
+  https://roadworks.scot/publications/scottish-road-works-register-open-data;
+  specification "SRWR Disruptions Data Extract v1.1", 17 Aug 2026): OGL v3,
+  no registration. A zip of three CSVs around 2 am daily, the last 7 days
+  kept; the latest at https://downloads.srwr.scot/export/disruptions-daily/
+  (7.4 MB zipped, 25 MB unzipped). `CurrentActivities.csv`: works, events and
+  permissions overlapping today minus 7 days to plus 6 months, each with
+  `TrafficManagement`, `TrafficImpact`, `ActivityStatus`, planned and actual
+  start, latitude and longitude, and `GeometryFull` (British National Grid
+  WKT). `CompletedActivities.csv`: cleared, closed and cancelled the day
+  before. Per the spec, planned dates are uncertain under Scotland's
+  noticing rules: use the actual start for works in progress.
+- **Today's file:** 22,087 activities; 3,437 "In Progress" (also 1,627
+  "Commenced"). In progress, by traffic management: give and take 1,121,
+  portable traffic lights 955, road closure 503, road narrowing (two-way
+  working) 221, lane closure 156, **stop/go boards 92**, priority system 12,
+  convoy working 12, contraflow 8. So unlike TomTom it says how traffic is
+  controlled, like Street Manager.
+- PROPOSED (next slice): a nightly import of `CurrentActivities` (the
+  scheduled job or the server), mapping traffic management onto the same
+  controls as Street Manager (lights, stop/go, convoy, priority, give and
+  take, closures), counting only "In Progress"/"Commenced" with an actual
+  start; TomTom's live reports beside it, the two compared, and the
+  register's caveat said on the card ("from Scotland's road works register,
+  updated nightly").
 - PROMISE: they asked to hear how we got on. Share what we find (agreement
   with TomTom, false positives, whether it changed any drives) with the
   SRWR Manager by replying to that email thread.
