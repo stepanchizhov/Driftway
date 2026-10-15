@@ -90,6 +90,8 @@ export interface Walk {
   coverage: {
     surface_known_share: number;
     surface_reported_share: number;
+    /** Newest date someone walked part of it and reported it. */
+    reported_on?: string | null;
     gradient: "modelled" | "unknown";
   };
   sections: WalkSection[];

@@ -141,6 +141,9 @@ class RouteOption(BaseModel):
     #: On an alternative a parent meets materially fewer stops on than the
     #: first drive: what it gains and gives up, kind by kind, and the time.
     tradeoff: Optional[str] = None
+    #: What was checked for roadworks, and what couldn't be: "No roadworks
+    #: found on this drive. Checked: ..." or "Roadworks couldn't be checked".
+    roadworks_status: Optional[str] = None
 
     # Every app that could drive this, best first. Empty for a simulated
     # route, which has nothing real to navigate. `maps_url` above remains the

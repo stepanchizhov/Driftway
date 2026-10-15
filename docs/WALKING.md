@@ -784,3 +784,23 @@ checkpoint (it can't turn back short of one, and says so). A route of your
 own goes through your points in order, roads walked twice allowed. Never for
 a pram. Measured live with openrouteservice marked struggling: a walk via
 Windsor Castle, two variants in 1.1 s; a route of your own in 0.3 s.
+
+## What "checked" means (15 Oct 2026)
+
+Founder and Astra brief: automated judgement, approved AI wording and an
+on-foot report are different things and must read differently.
+
+- **Judged from map data:** every walk's verdict, against the parent's pram
+  or carrier. The app says "judged", not "checked".
+- **Approved wording:** an AI description reads "Written with AI from this
+  walk's map data; Driftway approved the wording. It doesn't confirm gates,
+  surfaces or access." The generating job now also refuses a description
+  that claims suitability ("safe", "easy", "suitable", "pram-friendly",
+  "step-free", "no stiles" and the like), as it already refused numbers not
+  in the walk's data.
+- **Walked and reported:** only evidence a person reported on a date; the
+  card gives the share of the way and the latest date.
+- **Too little recorded:** a walk with an unknown verdict and less than 30%
+  of its surface known (e.g. one from TomTom during an outage) reads "Too
+  little is recorded to judge this walk", not "No known problems". Its time
+  says "the climb isn't known, so none is included".

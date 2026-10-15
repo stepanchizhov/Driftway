@@ -49,6 +49,11 @@ import {
  * unknown is never shown in the colour of "fine".
  */
 
+/** Below this share of the way with a known surface, an "unknown" walk is
+ *  said to be too little recorded to judge (15 Oct 2026: a walk from TomTom,
+ *  with nothing known, read "No known problems"). */
+const THIN_EVIDENCE = 0.3;
+
 const VERDICT_LABEL: Record<Verdict, string> = {
   ok: "No known problems",
   unknown: "No known problems, but parts aren't recorded",
@@ -238,7 +243,8 @@ export function Walks({
           Walks <span className="walks-badge">Experiment</span>
         </h2>
         <p className="walks-sub">
-          Walks from where you are, checked against your pram or carrier.
+          Walks from where you are, judged against your pram or carrier from
+          map data.
           What&rsquo;s known is shown with where it comes from; what isn&rsquo;t,
           is said.
         </p>
@@ -781,7 +787,11 @@ function WalkCard({
         )}
       </header>
 
-      <p className={`walk-verdict verdict-${walk.verdict}`}>{VERDICT_LABEL[walk.verdict]}</p>
+      <p className={`walk-verdict verdict-${walk.verdict}`}>
+        {walk.verdict === "unknown" && walk.coverage.surface_known_share < THIN_EVIDENCE
+          ? "Too little is recorded to judge this walk"
+          : VERDICT_LABEL[walk.verdict]}
+      </p>
 
       <dl className="walk-stats">
         <div>
@@ -854,7 +864,8 @@ function WalkCard({
         <div className="walk-description">
           <p>{walk.description}</p>
           <p className="walk-description-note">
-            Written with AI from this walk&rsquo;s map data, and checked by Driftway.
+            Written with AI from this walk&rsquo;s map data; Driftway approved the
+            wording. It doesn&rsquo;t confirm gates, surfaces or access.
           </p>
         </div>
       )}
@@ -868,8 +879,10 @@ function WalkCard({
         Surface known for {Math.round(walk.coverage.surface_known_share * 100)}% of
         the way
         {walk.coverage.surface_reported_share > 0
-          ? `, ${Math.round(walk.coverage.surface_reported_share * 100)}% checked on foot`
-          : ", none of it checked on foot yet"}
+          ? `, ${Math.round(walk.coverage.surface_reported_share * 100)}% walked and reported by someone${
+              walk.coverage.reported_on ? ` (latest ${walk.coverage.reported_on})` : ""
+            }`
+          : ", none of it walked and reported yet"}
         . {walk.assumptions}
       </p>
 
@@ -1396,7 +1409,7 @@ function MakeWalks({
             </button>
             {hasCurated && (
               <button type="button" className="btn-quiet" onClick={onShowCurated}>
-                Show the checked walks
+                Show the curated walks
               </button>
             )}
           </div>

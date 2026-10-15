@@ -117,7 +117,7 @@ export function MyWalksSection({
       <legend>My walks</legend>
       <p className="walks-hint">
         Routes you actually walk. Draw one on the map, import a GPX file from an
-        app that recorded it, or save a walk Driftway made. Each is checked for
+        app that recorded it, or save a walk Driftway made. Each is judged for
         your {setup.profile === "pram" ? "pram" : setup.profile === "carrier" ? "carrier" : "walk"},
         time and pace when you show it.
       </p>

@@ -449,6 +449,60 @@ class _Lookup:
     def __init__(self, session: Optional[Session]):
         self.session = session
         self.incidents: list = []
+        #: TomTom's incidents: "off" (not asked: no live routing), "ok" or
+        #: "failed".
+        self.incidents_state = "off"
+        self._last: Optional[object] = None
+
+    def street_manager_last(self) -> Optional[datetime]:
+        """When the newest Street Manager work was last updated, once per
+        request; None with no data yet."""
+        if self._last is None:
+            try:
+                from sqlalchemy import func
+                self._last = self.session.execute(select(func.max(Roadwork.updated_at))).scalar() or False
+            except Exception as e:  # noqa: BLE001 - optional enrichment
+                log.error("roadworks freshness unreadable (%s)", type(e).__name__)
+                self._last = False
+        return self._last or None
+
+
+#: Street Manager sends England's permit changes every few seconds; this long
+#: without any means the feed has stopped reaching Driftway.
+STALE_AFTER = timedelta(hours=3)
+
+
+def status_line(found: list) -> Optional[str]:
+    """What was checked for roadworks on this drive, and what couldn't be,
+    so "none found", "not checked", "out of date" and "partly checked" read
+    differently (founder and Astra brief, 15 Oct 2026)."""
+    lk = _lookup.get()
+    if lk is None:
+        return None
+    checked, gaps = [], []
+    if lk.session is None:
+        gaps.append("England's feed (Street Manager) couldn't be read")
+    else:
+        last = lk.street_manager_last()
+        if last is None:
+            gaps.append("no Street Manager data has arrived yet")
+        else:
+            age = _now() - (last if last.tzinfo else last.replace(tzinfo=timezone.utc))
+            if age > STALE_AFTER:
+                gaps.append(f"Street Manager (England) last heard from {int(age.total_seconds() // 3600)} h ago")
+            else:
+                checked.append("Street Manager (England only)")
+    if lk.incidents_state == "ok":
+        checked.append("TomTom traffic reports, just now")
+    elif lk.incidents_state == "failed":
+        gaps.append("TomTom traffic reports couldn't be checked")
+    if not checked:
+        return ("Roadworks couldn't be checked just now"
+                + (f" ({'; '.join(gaps)})" if gaps else "") + ".")
+    line = ("No roadworks found on this drive. " if not found else "") + "Checked: " + ", ".join(checked) + "."
+    if gaps:
+        line += " " + "; ".join(g[0].upper() + g[1:] for g in gaps) + "."
+    return line
 
 
 _lookup: ContextVar[Optional[_Lookup]] = ContextVar("roadworks_lookup", default=None)
@@ -476,8 +530,10 @@ async def prefetch(start, finish, minutes: int) -> None:
     margin_km = min(30.0, max(8.0, minutes * 0.5))
     dlat = margin_km / 111.32
     dlng = margin_km / (111.32 * math.cos(math.radians(start.lat)))
-    lk.incidents = await incidents.fetch(min(start.lat, finish.lat) - dlat, min(start.lng, finish.lng) - dlng,
-                                         max(start.lat, finish.lat) + dlat, max(start.lng, finish.lng) + dlng)
+    got = await incidents.fetch(min(start.lat, finish.lat) - dlat, min(start.lng, finish.lng) - dlng,
+                                max(start.lat, finish.lat) + dlat, max(start.lng, finish.lng) + dlng)
+    lk.incidents = got or []
+    lk.incidents_state = "failed" if got is None else "ok"
 
 
 def works_for(geometry) -> list:

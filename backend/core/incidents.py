@@ -123,12 +123,14 @@ def area_km2(box) -> float:
 
 
 async def fetch(south: float, west: float, north: float, east: float,
-                client: Optional[httpx.AsyncClient] = None) -> List[Incident]:
-    """Current roadworks and closures in the box; empty on any failure (a
-    drive never waits on, or breaks for, this)."""
+                client: Optional[httpx.AsyncClient] = None) -> Optional[List[Incident]]:
+    """Current roadworks and closures in the box: a list, empty when TomTom
+    reports none; None when they couldn't be asked for (an area too large, a
+    refusal, a failure), so "none found" and "not checked" stay apart. A
+    drive never waits on, or breaks for, this."""
     box = _box(south, west, north, east)
     if area_km2(box) > MAX_AREA_KM2:
-        return []
+        return None
     hit = _cache.get(box)
     if hit and time.monotonic() - hit[0] < CACHE_S:
         return hit[1]
@@ -144,11 +146,11 @@ async def fetch(south: float, west: float, north: float, east: float,
             "categoryFilter": CATEGORIES, "timeValidityFilter": "present"})
         if resp.status_code != 200:
             log.warning("TomTom incidents %s", resp.status_code)
-            return []
+            return None
         found = parse(resp.json())
     except Exception as e:  # noqa: BLE001 - the type only: the URL carries the key
         log.warning("TomTom incidents failed: %s", type(e).__name__)
-        return []
+        return None
     finally:
         if own:
             await client.aclose()

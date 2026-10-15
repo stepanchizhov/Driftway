@@ -205,5 +205,21 @@ class FileWinsTests(_Base):
         self.assertNotIn("Impostor", [w["name"] for w in walks])
 
 
+
+
+class SuitabilityWordingTests(unittest.TestCase):
+    """15 Oct 2026: an approved description is wording, not a check of gates,
+    surfaces or access, so it may not claim suitability."""
+
+    def test_a_suitability_claim_is_refused(self):
+        from tools.walk_area_job import check
+        facts = {"length_km": 3.2}
+        ok = "A 3.2 km loop along the river and through a wood, returning past the church."
+        self.assertIsNone(check(ok, facts))
+        for word in ("easy", "safe", "pram-friendly", "step-free", "suitable", "no stiles"):
+            text = f"A 3.2 km loop along the river, {word} for most, returning past the church."
+            self.assertIsNotNone(check(text, facts), word)
+
+
 if __name__ == "__main__":
     unittest.main()

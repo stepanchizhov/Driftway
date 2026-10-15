@@ -177,7 +177,20 @@ def check(text: str, facts: Dict) -> Optional[str]:
     for num in re.findall(r"\d+(?:\.\d+)?", text):
         if num not in known:
             return f"the number {num} isn't in the walk's data"
+    # Suitability is the app's judgement, from evidence; a description must
+    # not claim it (15 Oct 2026: AI-approved wording is not a check of gates,
+    # surfaces or access).
+    claim = SUITABILITY.search(text)
+    if claim:
+        return f"a suitability claim ({claim.group(0)!r})"
     return None
+
+
+#: Words that would claim what the app judges separately.
+SUITABILITY = re.compile(
+    r"\b(safe(ly)?|eas(y|ily)|suitable|ideal|perfect|accessible|step[- ]free|stile[- ]free|"
+    r"(pram|buggy|pushchair|stroller|wheelchair)[- ]friendly|no (stiles|gates|steps))\b",
+    re.IGNORECASE)
 
 
 # ------------------------------------------------- Anthropic access

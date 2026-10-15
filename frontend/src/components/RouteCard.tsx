@@ -121,7 +121,12 @@ export function RouteCard({
           {route.roadworks_sources?.includes("tomtom") && (
             <p className="card-bumps-note">Traffic incidents © TomTom.</p>
           )}
+          {route.roadworks_status && <p className="card-bumps-note">{route.roadworks_status}</p>}
         </div>
+      )}
+      {(!route.roadworks || route.roadworks.length === 0) && route.roadworks_status && (
+        // None found, not checked, out of date or partly checked: said apart.
+        <p className="card-bumps">{route.roadworks_status}</p>
       )}
       {route.lights_junctions != null && (
         <p className="card-bumps">
@@ -164,7 +169,8 @@ export function RouteCard({
 /** "Traffic lights at about 5 junctions and 2 crossings mapped". Mapped,
  *  never "none": lights nobody mapped aren't counted. */
 function lightsLine(junctions: number, pedestrian: number): string {
-  if (junctions === 0 && pedestrian === 0) return "No traffic lights mapped along this drive";
+  if (junctions === 0 && pedestrian === 0)
+    return "No traffic lights mapped along this drive · there may be others nobody has mapped";
   const parts = [
     junctions ? `${junctions} junction${junctions === 1 ? "" : "s"}` : null,
     pedestrian ? `${pedestrian} pedestrian crossing${pedestrian === 1 ? "" : "s"}` : null,

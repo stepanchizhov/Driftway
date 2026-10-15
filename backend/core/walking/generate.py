@@ -234,9 +234,9 @@ def slow_message(profile: str) -> str:
             "connection.")
     if profile == "pram":
         return (base + " Pram walks need its pram-friendly routing, so there's no "
-                "stand-in for them. Your own walks and the checked walks near you "
+                "stand-in for them. Your own walks and the curated walks near you "
                 "still work; try again in a few minutes.")
-    return base + " Your own walks and the checked walks near you still work; try again in a few minutes."
+    return base + " Your own walks and the curated walks near you still work; try again in a few minutes."
 
 
 class ProviderRefused(GenerationUnavailable):

@@ -116,6 +116,14 @@ class StandInTests(_Clean):
         self.assertTrue(tt)
         self.assertTrue(all("travelMode=pedestrian" in str(r.url) for r in tt))
         self.assertTrue(all(s.gradient is None for s in routes[0].sections))
+        # The time leaves the climb out, and says so; nothing reassures.
+        from core.walking.catalogue import assess_route
+        from core.walking.profiles import CarrierSetup
+        w = assess_route(routes[0], "carrier", CarrierSetup(), 30, False)
+        self.assertIn("the climb isn't known", w["assumptions"])
+        self.assertIsNone(w["ascent_m"])
+        self.assertEqual(w["coverage"]["surface_known_share"], 0)
+        self.assertNotEqual(w["verdict"], "ok")
 
     def test_a_pram_walk_never_uses_the_stand_in(self):
         g = gen()

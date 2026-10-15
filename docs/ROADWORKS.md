@@ -140,3 +140,21 @@ our existing key), then DATEX II (one reader, many European countries,
 including Germany for Katya), then WZDx if there are users in the US.
 Traffic lights and speed bumps already work anywhere OpenStreetMap maps
 them: `tools/build_calming.py` builds any area.
+
+## Saying what was checked (15 Oct 2026)
+
+Founder and Astra brief: "none found", "not checked", "out of date" and
+"partly checked" must read differently, and this optional enrichment must
+never take a drive down. IMPLEMENTED (`roadworks.status_line`, the card's
+`roadworks_status`):
+
+- TomTom's fetch returns None when it couldn't ask (area too large, a
+  refusal, a failure) and a list, possibly empty, when it did.
+- Street Manager is "out of date" when its newest work was updated more
+  than 3 hours ago (England's permits change every few seconds), and "no
+  data yet" with none; it is always described as England only.
+- Cards: "No roadworks found on this drive. Checked: Street Manager
+  (England only), TomTom traffic reports, just now." With one source down:
+  "... TomTom traffic reports couldn't be checked." With none: "Roadworks
+  couldn't be checked just now (...)", never "none found". Simulated drives
+  say nothing.

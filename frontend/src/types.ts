@@ -125,6 +125,8 @@ export interface RouteOption {
   roadworks_sources?: string[];
   /** A calmer alternative's trade-off against the first drive. */
   tradeoff?: string | null;
+  /** What was checked for roadworks, and what couldn't be. */
+  roadworks_status?: string | null;
 }
 
 export interface GenerateResponse {

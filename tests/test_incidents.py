@@ -103,10 +103,52 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(len(seen), 1)
         self.assertIn("categoryFilter=7%2C8%2C9", str(seen[0].url))
 
-    def test_too_large_an_area_or_a_failure_gives_nothing(self):
-        self.assertEqual(asyncio.run(incidents.fetch(50.0, 10.0, 53.0, 15.0)), [])
+    def test_too_large_an_area_or_a_failure_is_not_checked_rather_than_none_found(self):
+        self.assertIsNone(asyncio.run(incidents.fetch(50.0, 10.0, 53.0, 15.0)))
         client = REAL_CLIENT(transport=httpx.MockTransport(lambda r: httpx.Response(500)))
-        self.assertEqual(asyncio.run(incidents.fetch(51.9, 12.9, 52.1, 13.1, client)), [])
+        self.assertIsNone(asyncio.run(incidents.fetch(51.9, 12.9, 52.1, 13.1, client)))
+
+
+class StatusLineTests(unittest.TestCase):
+    """None found, not checked, out of date and partly checked read apart
+    (founder and Astra brief, 15 Oct 2026)."""
+
+    def line(self, session=None, last=None, state="off", found=()):
+        import datetime as dt
+        with roadworks.lookup_for_request(session):
+            lk = roadworks._lookup.get()
+            lk.incidents_state = state
+            if session is not None:
+                lk._last = last if last is not None else False
+            return roadworks.status_line(list(found))
+
+    def test_checked_and_none_found(self):
+        import datetime as dt
+        now = dt.datetime.now(dt.timezone.utc)
+        s = self.line(session=object(), last=now, state="ok")
+        self.assertTrue(s.startswith("No roadworks found on this drive. Checked: Street Manager (England only), TomTom"))
+
+    def test_works_found_say_what_was_checked_without_none_found(self):
+        import datetime as dt
+        s = self.line(session=object(), last=dt.datetime.now(dt.timezone.utc), state="ok", found=[object()])
+        self.assertTrue(s.startswith("Checked:"))
+
+    def test_partly_checked_names_what_failed(self):
+        import datetime as dt
+        s = self.line(session=object(), last=dt.datetime.now(dt.timezone.utc), state="failed")
+        self.assertIn("Checked: Street Manager (England only).", s)
+        self.assertIn("TomTom traffic reports couldn't be checked", s)
+
+    def test_an_out_of_date_feed_is_said(self):
+        import datetime as dt
+        s = self.line(session=object(), last=dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=7), state="ok")
+        self.assertIn("Street Manager (England) last heard from 7 h ago", s)
+        self.assertNotIn("Street Manager (England only)", s)
+
+    def test_nothing_checked_is_not_none_found(self):
+        s = self.line(session=None, state="failed")
+        self.assertTrue(s.startswith("Roadworks couldn't be checked just now"))
+        self.assertNotIn("No roadworks found", s)
 
     def test_never_asked_without_live_routing(self):
         with mock.patch.dict(os.environ, {"ROUTING_PROVIDER": "mock", "TOMTOM_API_KEY": "tt"}):

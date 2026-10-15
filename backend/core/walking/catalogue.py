@@ -514,6 +514,10 @@ def assess_route(route: Route, profile: str,
     have_gradient = all(s.gradient is not None for s in legs)
     known_surface = sum(s.length_m for s in legs if s.surface is not Surface.UNKNOWN)
     reported = sum(s.length_m for s in legs if s.surface_basis() is Status.REPORTED)
+    # The newest date someone walked part of it and said so: an on-foot report
+    # is dated, unlike map data or an approved description.
+    report_dates = [e.observed_on for s in legs for e in s.evidence
+                    if e.status is Status.REPORTED and e.observed_on]
 
     if blocking:
         verdict = Verdict.BLOCKED
@@ -547,7 +551,8 @@ def assess_route(route: Route, profile: str,
         "fit": _fit(whole, requested, full, turn_m),
         "assumptions": (
             f"About {pace_kmh():g} km/h"
-            + (", plus a minute for every 10 m climbed" if have_gradient else "")
+            + (", plus a minute for every 10 m climbed" if have_gradient
+               else "; the climb isn't known, so none is included")
             + ". No stops included."
         ),
         "blocking": [f.to_dict() for f in blocking],
@@ -557,6 +562,7 @@ def assess_route(route: Route, profile: str,
         "coverage": {
             "surface_known_share": round(known_surface / distance, 2) if distance else 0,
             "surface_reported_share": round(reported / distance, 2) if distance else 0,
+            "reported_on": max(report_dates) if report_dates else None,
             "gradient": "modelled" if have_gradient else "unknown",
         },
         "markers": _markers(route),

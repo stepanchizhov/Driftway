@@ -139,7 +139,7 @@ export function SettingsScreen({ settings, update, server }: Props) {
         <h3 className="settings-about-title">About Driftway</h3>
         <p>
           Driftway is for when a little one sleeps best on the move: drives of
-          the length you choose that bring you home, walks checked against your
+          the length you choose that bring you home, walks judged against your
           pram or carrier, and a fair place to meet another parent. Each one
           says what&rsquo;s known about it and what isn&rsquo;t.
         </p>

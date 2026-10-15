@@ -78,7 +78,7 @@ export function NearbyTrails({ here, units }: { here: Coord; units: Units }) {
           ? "None of the trails mapped here passed our checks yet. Walks made from your start still work."
           : answer.status === "failed"
             ? "We couldn't build walks for your area this time; we'll try again."
-            : "Driftway has no checked walks here yet, so we've asked for some: they usually appear within a day, judged for your pram or carrier like every other walk. Meanwhile, these are the trails others have mapped."}
+            : "Driftway has no prepared walks here yet, so we've asked for some: they usually appear within a day, judged for your pram or carrier from map data like every other walk. Meanwhile, these are the trails others have mapped."}
       </p>
       {trails.length > 0 ? (
         <ul className="nearby-list">
