@@ -379,6 +379,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         delta_minutes=round(ev.minutes - req.target_minutes, 1),
         waypoints=anchors,
         geometry=downsample(ev.geometry),
+        full_geometry=ev.geometry if req.record else None,
         # A simulated route gets no navigation link at all. See the note where
         # the fallback is triggered.
         maps_url="" if simulated else google_maps_url(start, finish, anchors),

@@ -24,6 +24,8 @@ interface Props {
   tolerance: number;
   /** What wakes the child, from Settings. */
   stops?: StopPrefs;
+  /** A maintainer's drives are recorded for analysis. */
+  record?: boolean;
   onOpenPreferences: () => void;
   onRetryLocation: () => void;
 }
@@ -50,6 +52,7 @@ export function StillAsleep({
   profile,
   tolerance,
   stops,
+  record = false,
   onOpenPreferences,
   onRetryLocation,
 }: Props) {
@@ -95,6 +98,7 @@ export function StillAsleep({
         direction: "surprise",
         mode: "destination",
         stops,
+        record: record || undefined,
       });
       const best = data.routes[0];
       if (!best) {

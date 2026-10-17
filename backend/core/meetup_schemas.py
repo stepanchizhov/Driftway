@@ -196,6 +196,9 @@ class AccountPublic(BaseModel):
     display_name: Optional[str] = None
     status: str
     default_hide_exact_origin: bool
+    #: Listed as a maintainer on the server (core/drive_records.py): may
+    #: record drives for analysis.
+    maintainer: bool = False
 
 
 # --------------------------------------------------------------- serialisers

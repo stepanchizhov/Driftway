@@ -31,9 +31,18 @@ endpoint we host, under the Open Government Licence v3.0.
   `two_way_signals`, `multi_way_signals`, `stop_go_boards`,
   `convoy_workings`, `give_and_take`, `priority_working`, and
   `road_closure`, using the current traffic control when given, else the
-  planned one. Works whose control changes to something else, that stop, or
-  whose permit is cancelled are forgotten; ended works are purged a week
-  after they end (the nightly retention run).
+  planned one. Works whose control changes to something else, or whose
+  permit is cancelled, refused or revoked, are forgotten. Works that stop
+  (WORK_STOP, or a permit marked completed) leave every drive at once but
+  are kept a week as "completed" (17 Oct 2026), so a stop/go met on a drive
+  can still be looked up that evening; the nightly retention run purges ended
+  works a week after they end.
+- `GET /api/admin/roadworks/near?lat=..&lng=..&radius_m=300` (admin token,
+  10 to 2000 m): what the registers hold round a spot, nearest first, with
+  its control, status, source, dates and whether drives would meet it now.
+  For "did Driftway know about the stop/go I met?" (founder, 17 Oct 2026:
+  a stop/go on City Road, High Wycombe; not checkable afterwards, since
+  ended works were deleted at once until then).
 - Drives: candidates passing within 25 m of works running now get a
   penalty (W_WORKS 0.5 per stopping work, under the same guard as bumps and
   lights: no extra turn-arounds, within 3 minutes). Every drive card lists

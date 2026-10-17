@@ -114,6 +114,29 @@ with Driftway as in production, live TomTom, public starts only):
    (five requests), inspects them, and only then the rest of the eight.
    Expanding toward about 60 cases waits for that look.
 
+**Real drives, recorded (17 Oct 2026).** The founder asked for drives
+planned in the app to be kept for comparing with Google. Maintainers only
+(`core/drive_records.py`): an account whose email is in `MAINTAINER_EMAILS`
+on the server sees "Record my drives for analysis" in Settings, under
+Account. With it on, each drive request is stored for 30 days: the request
+(start, finish, minutes, road style, what wakes the child), per drive offered
+its minutes, km, Google Maps link, waypoints, the route (300 points), mapped
+stops, roadworks and what was checked, the trade-off note; and the provider
+calls the request used. Anyone else asking to record is ignored by the
+server, and their drives stay anonymous: the sign-in token goes with a drive
+request only while recording is on.
+
+The founder's copy: `GET /api/admin/drive-records?since=2026-10-17` with the
+admin token, saved **outside the repository** (they hold the founder's own
+places). Then
+
+    python -m tools.google_compare records $HOME\driftway-records\drives.json --limit 5
+
+compares each request's first drive with Google (question A, one request
+each), from where it was planned; results go next to the file. Since
+2e66353 the links carry no start (Google starts from the phone, so it offers
+Start), which is why the start comes from the request.
+
 **B: phone checklist** (OPEN, nobody has done it yet). For each link above,
 on Android (and an iPhone when one is at hand): open it, and note
 

@@ -2,7 +2,7 @@
 
 Reviewable answers for the Data safety form in Play Console, drawn from the
 inventory behind `frontend/public/privacy.html` (version 1.3, 10 Oct 2026;
-brought up to version 1.9, 14 Oct 2026: see the dated notes at the end).
+brought up to version 1.10, 17 Oct 2026: see the dated notes at the end).
 That inventory was checked against the code: stored tables, device storage,
 logs, and every outside host, which `tests/test_privacy_inventory.py` keeps
 honest.
@@ -89,6 +89,17 @@ but the privacy policy says so plainly.
 
 The domain went live on 10 Oct 2026: both URLs answer over HTTPS. The same
 pages remain on `driftway-front.onrender.com`.
+
+**0.8.18 (17 Oct 2026), maintainers' recorded drives:** accounts whose
+email is in the server's MAINTAINER_EMAILS (the founder; later, anyone
+maintaining Driftway) can turn on "Record my drives for analysis": each
+drive request is stored for 30 days with its start and finish, the drives
+offered and their routes. Not offered to other users, so it changes no
+answer in the form; if it is ever offered beyond the team, declare it
+(Location: precise, stored; App activity). In the export, erased with the
+account. Also fixed: an account's email is stored only when Auth0 has
+verified it, as this document already said; account creation had stored the
+sign-in's address unverified. Privacy policy 1.10.
 
 **0.8.14 (14 Oct 2026), roadworks outside England:** TomTom (already a
 processor for drives) is asked for the roadworks in a box round a drive's

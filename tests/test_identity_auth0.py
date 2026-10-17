@@ -14,6 +14,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, timedelta, timezone
 
 BACKEND = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
@@ -174,6 +175,20 @@ class AdmissionTests(unittest.TestCase):
                               headers={"Authorization": f"Bearer {_token()}"})
         self.assertEqual(me.status_code, 200)
         self.assertEqual(me.json()["id"], r.json()["id"])
+
+    def test_an_unverified_address_is_not_the_accounts(self):
+        """The account's email decides who is a maintainer: a sign-in that
+        merely claims the founder's address doesn't get it."""
+        invite = self.mint()
+        claimed = _token(sub="auth0|claims", email="founder@example.com", email_verified=False)
+        with mock.patch.dict(os.environ, {"MAINTAINER_EMAILS": "founder@example.com"}):
+            r = self.client.post(
+                "/api/auth/accept-beta-invite",
+                json={"invite_token": invite["invite_token"], "display_name": "Someone"},
+                headers={"Authorization": f"Bearer {claimed}"},
+            )
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertFalse(r.json()["maintainer"])
 
     def test_an_invitation_without_a_verified_identity_is_refused(self):
         """With a provider configured, the invite alone is not enough."""

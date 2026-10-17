@@ -242,8 +242,9 @@ def run_retention_now(
     accounts = purge_inactive_accounts(session)
     feedback = purge_anonymous_feedback(session)
     # Roadworks ended more than a week ago (Street Manager; core/roadworks.py).
-    from core import roadworks
+    from core import drive_records, roadworks
     works = roadworks.purge(session)
+    records = drive_records.purge(session)
     capped = (len(meetups) >= MAX_PER_RUN or len(accounts) >= MAX_PER_RUN
               or feedback >= MAX_PER_RUN)
     record_run(
@@ -260,6 +261,7 @@ def run_retention_now(
         "accounts_purged": len(accounts),
         "feedback_purged": feedback,
         "roadworks_purged": works,
+        "drive_records_purged": records,
         "backlog": capped,
     }
 
@@ -313,7 +315,9 @@ def accept_beta_invite(
     try:
         account = accept_invite(
             session, body.invite_token,
-            email=(identity.email if identity else body.email),
+            # Only an address the provider verified: an account's email
+            # decides who is a maintainer and which invite finds it.
+            email=((identity.email if identity.email_verified else None) if identity else body.email),
             display_name=body.display_name,
         )
         if identity is not None:
@@ -487,11 +491,13 @@ def logout(
 def _account_public(a: UserAccount) -> AccountPublic:
     # Note the absence of `email`: an account's login address is private and
     # never reaches a group-facing surface.
+    from core.drive_records import is_maintainer
     return AccountPublic(
         id=a.id,
         display_name=a.display_name,
         status=a.status,
         default_hide_exact_origin=a.default_hide_exact_origin,
+        maintainer=is_maintainer(a),
     )
 
 

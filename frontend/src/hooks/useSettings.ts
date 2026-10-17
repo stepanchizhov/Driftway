@@ -25,6 +25,10 @@ export interface Settings {
   /** Show every setting, or only the ones most parents need (founder,
    *  14 Oct 2026: "they are getting more and more of them"). */
   advanced: boolean;
+  /** A maintainer's drives are recorded for analysis (founder, 17 Oct 2026).
+   *  Offered only to accounts the server lists as maintainers; the server
+   *  ignores it for anyone else. */
+  recordDrives: boolean;
 }
 
 export const DEFAULT_STOPS: StopPrefs = {
@@ -47,6 +51,7 @@ const DEFAULTS: Settings = {
   quickDriveProfile: "quiet",
   stopPrefs: DEFAULT_STOPS,
   advanced: false,
+  recordDrives: false,
 };
 
 const KEY = "driftway.settings.v1";

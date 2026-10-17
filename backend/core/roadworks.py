@@ -224,10 +224,20 @@ def store_permit(session: Session, data: Dict) -> Optional[Roadwork]:
                or data.get("traffic_management_type_ref") or "")
     status = data.get("work_status_ref") or ""
     cancelled = (data.get("permit_status") or "").lower() in ("cancelled", "refused", "revoked") \
-        or status in ("cancelled", "completed")
+        or status == "cancelled"
     pts = parse_location(data.get("works_location_coordinates") or "")
     row = session.get(Roadwork, ref)
-    if cancelled or control not in STOPPING | CLOSURE or not pts:
+    if status == "completed" and not cancelled and row is not None:
+        # Finished works are kept, marked completed, until the weekly purge:
+        # never on a drive (running() wants in progress), but there to answer
+        # "did Driftway know about it?" afterwards (founder, 17 Oct 2026, about
+        # a stop/go seen on a drive).
+        row.status = "completed"
+        row.ends = _when(data.get("actual_end_date_time")) or _now().replace(tzinfo=None)
+        row.updated_at = _now()
+        session.commit()
+        return None
+    if cancelled or status == "completed" or control not in STOPPING | CLOSURE or not pts:
         if row is not None:
             session.delete(row)
             session.commit()
@@ -308,8 +318,12 @@ def handle_event(session: Session, payload: Dict) -> Optional[Roadwork]:
         return None
     data = payload.get("object_data") or {}
     event = (payload.get("event_type") or "").upper().replace("-", "_")
-    if event in ("WORK_STOP",) or "CANCELLED" in event or "REVOKED" in event or "REFUSED" in event:
+    if event == "WORK_STOP":
+        # Finished: kept a week as completed, off every drive.
         data = {**data, "work_status_ref": "completed"}
+    elif "CANCELLED" in event or "REVOKED" in event or "REFUSED" in event:
+        # Never happened, or no longer may: forgotten.
+        data = {**data, "permit_status": "cancelled"}
     return store_permit(session, data)
 
 
@@ -347,6 +361,31 @@ def running(r: "Roadwork", at_naive: datetime) -> bool:
     start = r.starts.replace(tzinfo=None) if r.starts else None
     end = r.ends.replace(tzinfo=None) if r.ends else None
     return not (start and start > at_naive) and not (end and end + OVERRUN < at_naive)
+
+
+def near(session: Session, lat: float, lng: float, radius_m: float = 300.0) -> List[Dict]:
+    """Every stored work within radius_m of a point, running or not, nearest
+    first: for checking a place a driver saw works (founder's lookup)."""
+    pad = radius_m / 111320.0
+    padlng = radius_m / (111320.0 * math.cos(math.radians(lat)))
+    rows = session.execute(select(Roadwork).where(
+        Roadwork.south <= lat + pad, Roadwork.north >= lat - pad,
+        Roadwork.west <= lng + padlng, Roadwork.east >= lng - padlng)).scalars()
+    out = []
+    now = _now().replace(tzinfo=None)
+    for r in rows:
+        pts = [tuple(x) for x in json.loads(r.points_json)]
+        if not pts:
+            continue
+        d = min(_metres((lat, lng), p) for p in pts)
+        if d <= radius_m:
+            out.append({"metres": round(d), "street": r.street, "town": r.town, "control": r.control,
+                        "label": LABEL.get(r.control, "roadworks"), "status": r.status,
+                        "source": r.source, "on_drives_now": running(r, now),
+                        "starts": r.starts.isoformat() if r.starts else None,
+                        "ends": r.ends.isoformat() if r.ends else None,
+                        "updated": r.updated_at.isoformat() if r.updated_at else None})
+    return sorted(out, key=lambda x: x["metres"])
 
 
 def works_along(session: Session, geometry: Sequence, at: Optional[datetime] = None) -> List[Roadwork]:

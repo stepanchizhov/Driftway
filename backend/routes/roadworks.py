@@ -76,6 +76,42 @@ def provider_usage(x_admin_token: Optional[str] = Header(None)):
     return usage.summary()
 
 
+@router.get("/admin/roadworks/near")
+def roadworks_near(lat: float, lng: float, radius_m: float = 300.0,
+                   x_admin_token: Optional[str] = Header(None), session: Session = Depends(get_session)):
+    """Founder only: the stored works near a point, running or finished in
+    the last week, with whether they count on drives now."""
+    admin = admin_token()
+    if not admin:
+        raise HTTPException(status_code=503, detail="Admin access is not configured on this deployment.")
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, admin):
+        raise HTTPException(status_code=403, detail="Not permitted.")
+    if not storage_available():
+        raise HTTPException(status_code=503, detail="Storage unavailable.")
+    return roadworks.near(session, lat, lng, min(max(radius_m, 10.0), 2000.0))
+
+
+@router.get("/admin/drive-records")
+def drive_records_list(since: Optional[str] = None, x_admin_token: Optional[str] = Header(None),
+                       session: Session = Depends(get_session)):
+    """Founder only: drives maintainers recorded for analysis
+    (core/drive_records.py), oldest first, since an ISO date if given."""
+    admin = admin_token()
+    if not admin:
+        raise HTTPException(status_code=503, detail="Admin access is not configured on this deployment.")
+    if not x_admin_token or not hmac.compare_digest(x_admin_token, admin):
+        raise HTTPException(status_code=403, detail="Not permitted.")
+    if not storage_available():
+        raise HTTPException(status_code=503, detail="Storage unavailable.")
+    from datetime import datetime
+    from core import drive_records
+    try:
+        when = datetime.fromisoformat(since) if since else None
+    except ValueError:
+        raise HTTPException(status_code=422, detail="since: an ISO date, e.g. 2026-10-17.")
+    return drive_records.all_since(session, when)
+
+
 @router.post("/admin/roadworks/scotland/refresh")
 def refresh_scottish_roadworks(x_admin_token: Optional[str] = Header(None),
                                session: Session = Depends(get_session)):

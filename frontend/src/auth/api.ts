@@ -14,6 +14,8 @@ export interface Account {
   display_name: string | null;
   status: string;
   default_hide_exact_origin: boolean;
+  /** Listed as a maintainer on the server: may record drives for analysis. */
+  maintainer?: boolean;
 }
 
 /** How the deployment's front door is set, per GET /api/health. */

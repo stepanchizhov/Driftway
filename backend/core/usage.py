@@ -122,6 +122,11 @@ class UsageMiddleware:
             return await self.app(scope, receive, send)
 
 
+def current() -> Counter:
+    """This request's calls so far (the middleware's tally), or an empty one."""
+    return _tally.get() or Counter()
+
+
 def summary() -> Dict:
     by_api: Counter = Counter()
     by_op: Dict[str, Dict[str, int]] = {}

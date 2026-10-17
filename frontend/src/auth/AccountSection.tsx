@@ -26,12 +26,18 @@ import {
  * Collapsing the two would make "signed in but not invited" look like a bug
  * rather than the expected middle state it is.
  */
-export function AccountSection() {
-  if (!authConfigured) return null;
-  return <AccountPanel />;
+interface Recording {
+  /** A maintainer's drives recorded for analysis (Settings, founder only). */
+  recordDrives?: boolean;
+  onRecordDrives?: (on: boolean) => void;
 }
 
-function AccountPanel() {
+export function AccountSection(props: Recording) {
+  if (!authConfigured) return null;
+  return <AccountPanel {...props} />;
+}
+
+function AccountPanel({ recordDrives = false, onRecordDrives }: Recording) {
   const { isAuthenticated, isLoading, user, signIn, signOut } =
     useDriftwayAuth();
 
@@ -102,6 +108,8 @@ function AccountPanel() {
         <SignedIn
           account={account}
           email={user?.email}
+          recordDrives={recordDrives}
+          onRecordDrives={onRecordDrives}
           onSignOut={signOut}
           onErased={() => {
             setAccount(null);
@@ -212,6 +220,8 @@ function Admission({
 function SignedIn({
   account,
   email,
+  recordDrives,
+  onRecordDrives,
   onSignOut,
   onErased,
 }: {
@@ -219,7 +229,7 @@ function SignedIn({
   email?: string;
   onSignOut: () => void;
   onErased: () => void;
-}) {
+} & Recording) {
   const [busy, setBusy] = useState<null | "export" | "erase">(null);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -246,6 +256,26 @@ function SignedIn({
         Signed in{account.display_name ? ` as ${account.display_name}` : ""}
         {email ? ` (${email})` : ""}.
       </p>
+
+      {account.maintainer && onRecordDrives && (
+        <>
+          <label className="walks-check">
+            <input
+              type="checkbox"
+              checked={recordDrives}
+              onChange={(e) => onRecordDrives(e.target.checked)}
+            />
+            Record my drives for analysis
+          </label>
+          <p className="set-hint">
+            For Driftway&rsquo;s maintainers only. Each drive you plan is kept
+            on the server for 30 days with what Driftway offered, including
+            its start and finish, so it can be compared with Google&rsquo;s
+            routes. It&rsquo;s in your data download and goes if you delete
+            your account.
+          </p>
+        </>
+      )}
 
       <button
         className="btn-quiet"

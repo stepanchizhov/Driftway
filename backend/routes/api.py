@@ -77,6 +77,9 @@ from core.search import SearchUnavailable, get_search
 
 log = logging.getLogger("driftway")
 
+# Registers the drive_records table before the tables are created at startup.
+from core import drive_records as _drive_records  # noqa: E402,F401
+
 router = APIRouter()
 
 
@@ -113,12 +116,14 @@ async def generate(
     account-owned writes, and deliberately so - this endpoint owns nothing.
     """
     account_id = None
+    account = None
     if storage_available():
         try:
             account = current_account(request, session, driftway_staging_session)
             account_id = account.id if account else None
         except CredentialsRejected:
             account_id = None
+            account = None
 
     try:
         check_generate(request, account_id)
@@ -138,8 +143,19 @@ async def generate(
     routing = get_router()
     # Roadworks that stop traffic, from Street Manager, if the database is up.
     from core import roadworks
+    from core import drive_records, usage
     with roadworks.lookup_for_request(session if storage_available() else None):
         result = await generate_routes(req, routing)
+    calls = usage.current()            # this request's provider calls (core/usage.py)
+    if req.record and result.routes and storage_available():
+        # A maintainer's drive, kept for analysis (core/drive_records.py);
+        # anyone else's request to record is ignored.
+        try:
+            drive_records.record(session, account, req, result, calls)
+        except Exception as e:  # noqa: BLE001 - recording never costs a drive
+            log.error("drive record not stored (%s)", type(e).__name__)
+    for r in result.routes:
+        r.full_geometry = None
     if not result.routes:
         # Not an error exactly, but the client should know nothing usable came back.
         raise HTTPException(

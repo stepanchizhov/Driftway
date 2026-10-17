@@ -118,11 +118,21 @@ class PermitTests(unittest.TestCase):
         self.assertIsNone(self.rw.store_permit(self.s, permit(current_traffic_management_type_ref="lane_closure")))
         self.assertIsNone(self.s.get(self.rw.Roadwork, "TSR1"))
 
-    def test_finished_or_cancelled_works_are_forgotten(self):
+    def test_finished_works_leave_drives_but_stay_a_week_and_cancelled_ones_go(self):
         self.rw.store_permit(self.s, permit())
         self.rw.handle_event(self.s, {"object_type": "PERMIT", "event_type": "WORK_STOP",
                                         "object_data": permit()})
-        self.assertIsNone(self.s.get(self.rw.Roadwork, "TSR1"))
+        row = self.s.get(self.rw.Roadwork, "TSR1")
+        self.assertEqual(row.status, "completed")              # kept, to check afterwards
+        street = self.rw.parse_location(VICTORIA_ST)
+        self.assertEqual(self.rw.works_along(self.s, [street[0], street[1]]), [])
+        found = self.rw.near(self.s, street[0][0], street[0][1], 100)
+        self.assertEqual([(w["control"], w["status"], w["on_drives_now"]) for w in found],
+                         [("two_way_signals", "completed", False)])
+        self.rw.store_permit(self.s, permit(work_reference_number="TSR9"))
+        self.rw.handle_event(self.s, {"object_type": "PERMIT", "event_type": "PERMIT_CANCELLED",
+                                        "object_data": permit(work_reference_number="TSR9")})
+        self.assertIsNone(self.s.get(self.rw.Roadwork, "TSR9"))
 
     def test_a_drive_down_the_street_finds_them_only_while_they_run(self):
         self.rw.store_permit(self.s, permit())
@@ -187,6 +197,23 @@ class PermitTests(unittest.TestCase):
         self.assertIn("works_location_coordinates", s["fields"])
         self.assertEqual(s["kept"]["by_control"], {"two_way_signals": 1})
         self.assertEqual(s["example_stopping_permit"]["street_name"], "VICTORIA STREET")
+
+
+    def test_the_founder_looks_up_a_spot(self):
+        from unittest import mock
+        self.rw.store_permit(self.s, permit())
+        lat, lng = self.rw.parse_location(VICTORIA_ST)[0]
+        with mock.patch.dict(os.environ, {"ADMIN_API_TOKEN": "founder"}):
+            self.assertEqual(self.client.get("/api/admin/roadworks/near",
+                                             params={"lat": lat, "lng": lng}).status_code, 403)
+            r = self.client.get("/api/admin/roadworks/near", params={"lat": lat, "lng": lng, "radius_m": 100},
+                                headers={"X-Admin-Token": "founder"})
+            far = self.client.get("/api/admin/roadworks/near", params={"lat": 52.0, "lng": 13.0},
+                                  headers={"X-Admin-Token": "founder"})
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertEqual([(w["street"], w["control"], w["on_drives_now"]) for w in r.json()],
+                         [("VICTORIA STREET", "two_way_signals", True)])   # as the register sends it
+        self.assertEqual(far.json(), [])
 
 
 class RankingTests(unittest.TestCase):

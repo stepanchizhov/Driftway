@@ -39,6 +39,24 @@ def encode(points):
 
 
 class GeometryTests(unittest.TestCase):
+    def test_recorded_drives_become_cases_from_where_they_were_planned(self):
+        link = "https://www.google.com/maps/dir/?api=1&destination=52.0,13.0&waypoints=52.004,13.0|52.004,13.004"
+        rec = {"created_at": "2026-10-17T09:12:00", "request": {"start": {"lat": 52.0, "lng": 13.0},
+               "finish": None, "target_minutes": 30},
+               "drives": [{"minutes": 31.0, "km": 20.1, "google_maps_url": link, "route": CASE["geometry"]},
+                          {"minutes": 29.0, "km": 19.0, "google_maps_url": link, "route": CASE["geometry"]}]}
+        empty = {"created_at": "2026-10-17T10:00:00", "request": {"start": {"lat": 52.0, "lng": 13.0}},
+                 "drives": []}
+        cases = GC.cases_from_records([rec, empty])
+        self.assertEqual(len(cases), 1)                       # the first drive of each request
+        c = cases[0]
+        self.assertEqual(c["start"], [52.0, 13.0])
+        self.assertIsNone(c["finish"])
+        self.assertEqual(c["waypoints"], [[52.004, 13.0], [52.004, 13.004]])
+        body = GC.request_body(c)
+        self.assertEqual(body["destination"], body["origin"])  # a loop
+        self.assertEqual(len(body["intermediates"]), 2)
+
     def test_googles_documented_polyline_decodes(self):
         pts = GC.decode_polyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
         self.assertEqual(pts, [(38.5, -120.2), (40.7, -120.95), (43.252, -126.453)])

@@ -64,6 +64,9 @@ export interface GenerateRequest {
   preferred_navigation?: string | null;
   /** What wakes the child; servers before 0.8.15 ignore it. */
   stops?: StopPrefs;
+  /** A maintainer's drive, recorded for analysis (honoured for maintainers
+   *  only, on the server). */
+  record?: boolean;
 }
 
 export interface RoadMix {

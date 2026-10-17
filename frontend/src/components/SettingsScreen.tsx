@@ -71,7 +71,10 @@ export function SettingsScreen({ settings, update, server }: Props) {
           rather than the drive - and because the data controls inside it are
           the ones someone arrives looking for. Renders nothing when no
           sign-in provider is configured. */}
-      <AccountSection />
+      <AccountSection
+        recordDrives={settings.recordDrives}
+        onRecordDrives={(on) => update({ recordDrives: on })}
+      />
 
       <div className="settings-shown">
       <ChipGroup

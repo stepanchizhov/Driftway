@@ -19,6 +19,13 @@ internal shaping points.
     python -m tools.google_compare prepare             # live TomTom: builds the cases
     python -m tools.google_compare run --limit 5       # live Google: needs the key
     python -m tools.google_compare report              # offline: the table again
+    python -m tools.google_compare records FILE --limit 5   # recorded drives
+
+`records` takes drives a maintainer recorded (core/drive_records.py; the
+founder's copy of GET /api/admin/drive-records, kept outside the repository)
+and compares each one's first drive the same way, from where it was planned.
+Its results go next to FILE, never into the repository: they hold the
+maintainer's own places.
 
 `prepare` plans each case with Driftway as it runs in production (TomTom,
 steering, moved turn-backs, the 2-minute bound) and writes
@@ -235,10 +242,37 @@ def _link(option) -> str:
 
 def _link_waypoints(option) -> List[List[float]]:
     """The waypoints in the drive's Google Maps link, in order."""
+    return _url_waypoints(_link(option))
+
+
+def _url_waypoints(url: str) -> List[List[float]]:
     from urllib.parse import parse_qs, urlparse
-    q = parse_qs(urlparse(_link(option)).query)
-    raw = (q.get("waypoints") or [""])[0]
+    raw = (parse_qs(urlparse(url).query).get("waypoints") or [""])[0]
     return [[float(x) for x in w.split(",")] for w in raw.split("|") if w]
+
+
+def cases_from_records(records: List[Dict]) -> List[Dict]:
+    """Recorded drives as cases: each request's first drive, with what its
+    Google Maps link handed Google, from where the drive was planned (the
+    link itself carries no start: Google starts from the phone)."""
+    out = []
+    for rec in records:
+        req = rec.get("request") or {}
+        start, finish = req.get("start"), req.get("finish")
+        drives = rec.get("drives") or []
+        if not start or not drives or len(drives[0].get("route") or []) < 2:
+            continue
+        d = drives[0]
+        waypoints = _url_waypoints(d.get("google_maps_url") or "")
+        out.append({
+            "id": f"{(rec.get('created_at') or '')[:16]} {req.get('target_minutes', '')}min",
+            "start": [start["lat"], start["lng"]],
+            "finish": [finish["lat"], finish["lng"]] if finish else None,
+            "waypoints": waypoints, "geometry": d["route"],
+            "minutes_routed": d.get("minutes"), "km": d.get("km"), "built_by": "recorded",
+            "stops": stops_on([tuple(p) for p in d["route"]], waypoints),
+        })
+    return out
 
 
 async def run(cases: List[Dict], limit: int) -> List[Dict]:
@@ -265,14 +299,16 @@ def report(results: List[Dict]) -> None:
     print(f"{'case':28} {'built':10} wp  ours/google min   km          overlap  bumps     lights    turns")
     for r in results:
         o, g = r["ours_stops"], r["google_stops"]
-        print(f"{r['id']:28} {r['built_by']:10} {r['waypoints']:2}  {r['ours_minutes']:5}/{r['google_minutes']:<5}  "
-              f"{r['ours_km']:5}/{r['google_km']:<5}  {r['overlap_ours_on_google']:.2f}     "
-              f"{o['bumps']}/{g['bumps']:<6} {o['lights']}/{g['lights']:<6} {o['turn_arounds']}/{g['turn_arounds']}")
+        # Bumps and lights are None outside the prepared areas.
+        print(f"{r['id']:28} {r['built_by']:10} {r['waypoints']:2}  {r['ours_minutes']!s:>5}/{r['google_minutes']:<5}  "
+              f"{r['ours_km']!s:>5}/{r['google_km']:<5}  {r['overlap_ours_on_google']:.2f}     "
+              f"{o['bumps']}/{g['bumps']!s:<6} {o['lights']}/{g['lights']!s:<6} {o['turn_arounds']}/{g['turn_arounds']}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("command", choices=["prepare", "run", "report"])
+    ap.add_argument("command", choices=["prepare", "run", "report", "records"])
+    ap.add_argument("file", nargs="?", help="records: the recorded drives, a JSON file outside the repository")
     ap.add_argument("--limit", type=int, default=5, help="Google requests at most (run)")
     ap.add_argument("--only", default="", help="prepare: these case ids only, kept with the others")
     a = ap.parse_args()
@@ -287,6 +323,19 @@ def main() -> None:
         cases = sorted(kept + fresh, key=lambda c: order.index(c["id"]) if c["id"] in order else 99)
         cases_path.write_text(json.dumps(cases, indent=1), encoding="utf-8")
         print(f"{len(cases)} cases written to {cases_path.relative_to(ROOT)}")
+    elif a.command == "records":
+        if not a.file:
+            raise SystemExit("records: give the recorded drives' file, e.g. $HOME\\driftway-records\\drives.json")
+        src = Path(a.file).resolve()
+        if ROOT.parent in src.parents:
+            raise SystemExit("records: keep recorded drives outside the repository (they hold your own places).")
+        cases = cases_from_records(json.loads(src.read_text(encoding="utf-8")))
+        print(f"{len(cases)} recorded drives; asking Google about {min(len(cases), a.limit)}")
+        results = asyncio.run(run(cases, a.limit))
+        out = src.with_name(src.stem + ".google.json")
+        out.write_text(json.dumps(results, indent=1), encoding="utf-8")
+        report(results)
+        print(f"Results in {out}")
     elif a.command == "run":
         cases = json.loads(cases_path.read_text(encoding="utf-8"))
         results = asyncio.run(run(cases, a.limit))

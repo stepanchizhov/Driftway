@@ -72,6 +72,10 @@ class GenerateRequest(BaseModel):
     preferred_navigation: Optional[str] = None
     #: What wakes the child; without it, the usual weights.
     stops: Optional[StopPrefs] = None
+    #: A maintainer asks for this drive to be recorded for analysis
+    #: (core/drive_records.py). Honoured only for maintainers, checked on the
+    #: server.
+    record: bool = False
 
 
 class RoadMix(BaseModel):
@@ -144,6 +148,9 @@ class RouteOption(BaseModel):
     #: What was checked for roadworks, and what couldn't be: "No roadworks
     #: found on this drive. Checked: ..." or "Roadworks couldn't be checked".
     roadworks_status: Optional[str] = None
+    #: The full route, filled only while a recorded drive is stored and
+    #: removed before the answer leaves the server.
+    full_geometry: Optional[List[Coord]] = None
 
     # Every app that could drive this, best first. Empty for a simulated
     # route, which has nothing real to navigate. `maps_url` above remains the

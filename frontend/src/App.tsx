@@ -313,6 +313,7 @@ export default function App() {
         mode,
         preferred_navigation: settings.preferredNavigation,
         stops: settings.stopPrefs,
+        record: settings.recordDrives || undefined,
       });
       openScreen({
         name: "results",
@@ -438,6 +439,7 @@ export default function App() {
           profile={settings.quickDriveProfile}
           tolerance={tolerance}
           stops={settings.stopPrefs}
+          record={settings.recordDrives}
           onOpenPreferences={() => openScreen({ name: "settings" })}
           onRetryLocation={locate}
         />

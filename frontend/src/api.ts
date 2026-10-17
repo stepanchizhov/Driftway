@@ -58,7 +58,10 @@ export async function generateRoutes(
 ): Promise<GenerateResponse> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/api/generate`, {
+    // Anonymous, as drives always were, except a maintainer's recorded
+    // drive: the server needs to know whose it is.
+    const send = req.record ? authFetch : fetch;
+    res = await send(`${API_BASE}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(req),

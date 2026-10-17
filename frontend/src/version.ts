@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.18",
+    date: "17 Oct 2026",
+    changes: [
+      "Opening a drive in Google Maps or Apple Maps once you're on the way now starts from where the phone is, so Google Maps offers Start instead of only a preview.",
+      "For Driftway's maintainers only: their own drives can be recorded for 30 days, to compare them with Google's routes. Nobody else's drives are recorded (privacy policy 1.10).",
+    ],
+  },
+  {
     version: "0.8.17",
     date: "15 Oct 2026",
     changes: [

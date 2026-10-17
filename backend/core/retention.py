@@ -158,8 +158,11 @@ def export_account(session: Session, user_id: str) -> Dict:
         select(AppFeedback).where(AppFeedback.owner == user_id)
     ).scalars().all()
 
+    from .drive_records import export_for
     return {
         "exported_at": _now_naive().isoformat(),
+        # Drives recorded for analysis, for a maintainer who turned it on.
+        "drive_records": export_for(session, user_id),
         "account": {
             "id": account.id,
             "display_name": account.display_name,
@@ -332,6 +335,9 @@ def erase_account(session: Session, user_id: str) -> Dict[str, int]:
     ).scalars():
         invite.accepted_by_user_id = None
         invite.bound_email = None
+
+    from .drive_records import erase_for
+    removed["drive_records"] = erase_for(session, user_id)
 
     session.delete(account)
     session.commit()
