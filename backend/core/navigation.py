@@ -111,9 +111,14 @@ def provider_by_id(provider_id: Optional[str]) -> NavProvider:
 # --------------------------------------------------------------------- URLs
 
 def _google_url(start: Coord, finish: Coord, waypoints: List[Coord]) -> str:
+    # No origin (founder, 17 Oct 2026: a passenger planned a drive on the move,
+    # and Google Maps only previewed it, with no Start). Google's
+    # documentation: given an origin "not close to the user's current
+    # location", it "launches a route preview"; without one it "defaults to
+    # ... device location", where Start is offered. So the drive starts from
+    # wherever the phone is when the link is opened.
     base = "https://www.google.com/maps/dir/?api=1"
-    url = f"{base}&origin={start.lat:.6f},{start.lng:.6f}"
-    url += f"&destination={finish.lat:.6f},{finish.lng:.6f}"
+    url = f"{base}&destination={finish.lat:.6f},{finish.lng:.6f}"
     if waypoints:
         capped = waypoints[:GOOGLE_MAPS.max_waypoints]
         url += "&waypoints=" + "|".join(
@@ -130,10 +135,9 @@ def _waze_url(_start: Coord, finish: Coord, _waypoints: List[Coord]) -> str:
 
 
 def _apple_url(start: Coord, finish: Coord, _waypoints: List[Coord]) -> str:
-    return (
-        f"https://maps.apple.com/?saddr={start.lat:.6f},{start.lng:.6f}"
-        f"&daddr={finish.lat:.6f},{finish.lng:.6f}&dirflg=d"
-    )
+    # No saddr, for the same reason as Google's origin: Apple Maps then starts
+    # from where the phone is.
+    return f"https://maps.apple.com/?daddr={finish.lat:.6f},{finish.lng:.6f}&dirflg=d"
 
 
 _URL_BUILDERS = {

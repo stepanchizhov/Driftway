@@ -123,9 +123,13 @@ class PlainDestinationTests(unittest.TestCase):
         options = _by_id(build_options(START, FINISH, [], is_loop=False))
         self.assertIn("waze.com/ul?ll=", options["waze"].url)
         self.assertIn("navigate=yes", options["waze"].url)
-        self.assertIn("maps.apple.com/?saddr=", options["apple_maps"].url)
+        self.assertIn("maps.apple.com/?daddr=", options["apple_maps"].url)
         self.assertIn("dirflg=d", options["apple_maps"].url)
         self.assertIn("google.com/maps/dir/?api=1", options["google_maps"].url)
+        # Both start where the phone is (17 Oct 2026: an origin elsewhere made
+        # Google Maps preview the drive with no Start).
+        self.assertNotIn("saddr=", options["apple_maps"].url)
+        self.assertNotIn("origin=", options["google_maps"].url)
 
     def test_apple_maps_is_marked_ios_only(self):
         options = _by_id(build_options(START, FINISH, [], is_loop=False))

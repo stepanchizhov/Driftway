@@ -282,7 +282,9 @@ class NavigationExportTests(unittest.TestCase):
         ]
         url = google_maps_url(POOL, FAR, anchors)
 
-        self.assertIn(f"origin={POOL.lat:.6f},{POOL.lng:.6f}", url)
+        # No origin: the drive starts where the phone is when the link opens
+        # (founder, 17 Oct 2026: with one, Google only previewed it).
+        self.assertNotIn("origin=", url)
         self.assertIn(f"destination={FAR.lat:.6f},{FAR.lng:.6f}", url)
         waypoints = url.split("waypoints=")[1].split("&")[0]
         self.assertEqual(

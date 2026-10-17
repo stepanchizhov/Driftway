@@ -127,8 +127,14 @@ def snap_to_route(anchors: List[Coord], geometry: List[Coord]) -> List[Coord]:
 def google_maps_url(start: Coord, finish: Coord, anchors: List[Coord]) -> str:
     """Build a Google Maps directions URL. Mobile supports up to 3 waypoints,
     so we cap anchors at 3 (our shapes already respect this)."""
+    # No origin (founder, 17 Oct 2026: a passenger planned a drive on the move,
+    # and Google Maps only previewed it, with no Start). Google's
+    # documentation: given an origin "not close to the user's current
+    # location", it "launches a route preview"; without one it "defaults to
+    # ... device location", where Start is offered. So the drive starts from
+    # wherever the phone is when the link is opened.
     base = "https://www.google.com/maps/dir/?api=1"
-    origin = f"&origin={start.lat:.6f},{start.lng:.6f}"
+    origin = ""
     dest = f"&destination={finish.lat:.6f},{finish.lng:.6f}"
     wp = ""
     if anchors:
