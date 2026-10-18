@@ -28,3 +28,7 @@ tools/tour/frames/
 tools/tour/stills/
 tools/tour/*.mp4
 tools/tour/*.jpg
+
+# Full-size originals of media (the tour video at 1080x1920): kept on this
+# computer, not pushed. The site uses smaller copies in frontend/public/media/.
+media-originals/
