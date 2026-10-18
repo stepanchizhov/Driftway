@@ -64,6 +64,9 @@ export interface GenerateRequest {
   preferred_navigation?: string | null;
   /** What wakes the child; servers before 0.8.15 ignore it. */
   stops?: StopPrefs;
+  /** target_minutes is the time until the parent must arrive: no drive
+   *  takes longer (servers before 0.8.19 ignore it). */
+  arrive_by?: boolean;
   /** The start was picked, not the phone's location: navigation links then
    *  start there (servers before 0.8.18 ignore it). */
   start_chosen?: boolean;

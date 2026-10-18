@@ -2,6 +2,7 @@ import type { Coord, NavigationOption, RouteOption } from "../types";
 import type { Units } from "../hooks/useSettings";
 import { formatDistance } from "../lib/units";
 import { LoopMark } from "./LoopMark";
+import { clock, leaveBy } from "../lib/arrival";
 
 interface Props {
   route: RouteOption;
@@ -18,6 +19,9 @@ interface Props {
   /** The parent's chosen navigation app, honoured only when it can carry
    *  the route intact. */
   preferredNavigation?: string;
+  /** Planned to arrive by this time (ms): the card says when to leave. */
+  arriveAt?: number;
+  now?: Date;
 }
 
 function deltaLabel(delta: number): { text: string; tone: string } {
@@ -30,10 +34,16 @@ function deltaLabel(delta: number): { text: string; tone: string } {
 export function RouteCard({
   route, start, rank, onStart, started, onSave, saved,
   units = "km", destination = false, preferredNavigation = "google_maps",
+  arriveAt, now,
 }: Props) {
   const minutes = Math.round(route.predicted_minutes);
   const distance = formatDistance(route.distance_km, units);
   const delta = deltaLabel(route.delta_minutes);
+  // By an arrival time: when to set off, or, once that has passed, when it
+  // would arrive if started now.
+  const nowMs = (now ?? new Date()).getTime();
+  const leave = arriveAt != null ? leaveBy(new Date(arriveAt), route.predicted_minutes) : null;
+  const late = leave != null && leave.getTime() < nowMs - 30000;
   // A simulated route is a demo of what the app would do. It has no real
   // geometry, so there is nothing to hand to a navigation app.
   const navigable = !route.simulated && !!route.maps_url;
@@ -66,10 +76,18 @@ export function RouteCard({
             <span className="card-min-unit">min</span>
           </div>
           <div className="card-meta">
+            {leave != null &&
+              (late ? (
+                <span className="tag tag-warn">
+                  arrives about {clock(new Date(nowMs + route.predicted_minutes * 60000))}
+                </span>
+              ) : (
+                <span className="tag tag-ok">leave by {clock(leave)}</span>
+              ))}
             {route.is_direct ? (
               <span className="tag tag-neutral">quickest way</span>
             ) : (
-              <span className={`tag tag-${delta.tone}`}>{delta.text}</span>
+              leave == null && <span className={`tag tag-${delta.tone}`}>{delta.text}</span>
             )}
             {extra != null && extra > 0 && (
               <span className="tag tag-neutral">+{extra} min vs direct</span>

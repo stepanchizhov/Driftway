@@ -48,6 +48,27 @@ the direct route:
 > "That drive takes about 25 minutes even by the quickest route, so 10 minutes
 > is not possible. Here is the direct way."
 
+### Arrive by a time (0.8.19, 18 Oct 2026)
+
+Founder, after a drive to swimming lessons: "Sometimes it's easier than
+calculating which time period fits your ride ... we need to be there at
+10.55." In Plan a drive, **Plan by** offers *How long* or *Arrive by* (*Back
+by* on a round trip) with a time. The app sends the minutes from the moment
+it plans until then, with `arrive_by: true`; a time that has passed, is under
+5 minutes away or more than 4 hours away is refused on the phone.
+
+On the server (`generator.arrive_margin`, `_aimed_early`): a drive aims
+`margin` early (8% of the time, 2 to 5 minutes) within `margin` either side, so
+the window ends at the time there is, and **no drive longer than it is ever
+offered**. A drive that would arrive more than the window early says so in its
+caveat. When no longer drive fits, the direct way is offered, saying why ("leaves
+no time for a longer drive", or "longer than the 20 minutes there are").
+
+Each card says **leave by** (the time minus the drive), or, once that has
+passed, when it would arrive if started now. "Want a bit longer?" isn't
+offered (longer would be late). Each visit starts by length; the last arrival
+time is remembered, since lessons recur.
+
 ---
 
 ## 2. Address and place search

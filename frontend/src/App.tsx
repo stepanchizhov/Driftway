@@ -9,6 +9,8 @@ import type {
   RouteOption,
 } from "./types";
 import { generateRoutes, saveFavourite } from "./api";
+import { arrivalDate, clock, minutesUntil, suggestedArrival } from "./lib/arrival";
+import { HelpScreen } from "./components/HelpScreen";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useSettings } from "./hooks/useSettings";
 import { usePlaces } from "./hooks/usePlaces";
@@ -86,9 +88,12 @@ type Screen =
       profile: RoadProfile;
       fromLabel: string;
       toLabel: string;
+      /** Planned to arrive by this time (ms), rather than by length. */
+      arriveAt?: number;
     }
   | { name: "favourites" }
-  | { name: "settings" };
+  | { name: "settings" }
+  | { name: "help" };
 
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60, 90];
 
@@ -148,7 +153,21 @@ export default function App() {
       window.history.pushState({ driftway: "tab" }, "", urlFor(next));
     }
   }
-  const [screen, setScreenState] = useState<Screen>({ name: "plan" });
+  // A link to /#help (the welcome page for testers) opens Help.
+  const [screen, setScreenState] = useState<Screen>(() =>
+    window.location.hash === "#help" ? { name: "help" } : { name: "plan" },
+  );
+  useEffect(() => {
+    if (window.location.hash !== "#help") return;
+    // Help above Still asleep, so Back (and the Back button) shows the app.
+    window.history.replaceState(null, "", urlFor(START_TAB));
+    window.history.pushState({ driftway: "screen" }, "", urlFor(START_TAB));
+  }, []);
+  /** Help from Settings: one level above it, so Back returns to Settings. */
+  function openHelp() {
+    setScreenState({ name: "help" });
+    window.history.pushState({ driftway: "screen" }, "", urlFor(tab));
+  }
   /** Show Saved, Settings or results: one Back closes them again. */
   function openScreen(next: Screen) {
     setScreenState(next);
@@ -167,10 +186,16 @@ export default function App() {
       const kind = (e.state as NavState)?.driftway;
       if (kind !== "screen") {
         setScreenState((prev) =>
-          prev.name === "favourites" || prev.name === "settings" || prev.name === "results"
+          prev.name === "favourites" ||
+          prev.name === "settings" ||
+          prev.name === "help" ||
+          prev.name === "results"
             ? { name: "plan" }
             : prev,
         );
+      } else {
+        // Back from Help opened in Settings.
+        setScreenState((prev) => (prev.name === "help" ? { name: "settings" } : prev));
       }
       if (kind === undefined) {
         // Back at the bottom: Still asleep, whatever the first entry was.
@@ -189,6 +214,23 @@ export default function App() {
   const [profile, setProfile] = useState<RoadProfile>(settings.lastProfile);
   const [tolerance, setTolerance] = useState<number>(settings.lastTolerance);
   const [direction, setDirection] = useState<Direction>("surprise");
+  // By length, or by when to arrive (founder, 18 Oct 2026: "sometimes it's
+  // easier than calculating which time period fits"). Each visit starts by
+  // length; the last arrival time is remembered.
+  const [planBy, setPlanBy] = useState<"length" | "arrival">("length");
+  const [arrival, setArrival] = useState<string>(
+    () => settings.lastArrival || suggestedArrival(new Date()),
+  );
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (planBy !== "arrival") return;
+    setNow(new Date());
+    const t = window.setInterval(() => setNow(new Date()), 15000);
+    return () => window.clearInterval(t);
+  }, [planBy]);
+  const until = minutesUntil(arrival, now);
+  const arrivalAt = arrivalDate(arrival, now);
+  const arrivalLabel = arrivalAt ? clock(arrivalAt) : "";
   const [error, setError] = useState<string | null>(null);
   // Which route the user has launched in Google Maps (drives the inline
   // feedback prompt). Null means none started yet.
@@ -263,7 +305,9 @@ export default function App() {
   const start: Coord | null = startEndpoint?.coord ?? null;
 
   const canGenerate =
-    !!start && (mode === "loop" || !!toEndpoint);
+    !!start &&
+    (mode === "loop" || !!toEndpoint) &&
+    (planBy === "length" || until.problem === null);
 
   // Any change to the inputs makes the routes on screen wrong. Drop them
   // rather than leave a stale card whose Google Maps link goes to the old
@@ -275,6 +319,8 @@ export default function App() {
   }, [
     mode,
     duration,
+    planBy,
+    arrival,
     profile,
     tolerance,
     direction,
@@ -284,7 +330,7 @@ export default function App() {
     toEndpoint?.coord.lng,
   ]);
 
-  async function runGenerate(targetMinutes: number) {
+  async function runGenerate(targetMinutes: number, arriveAt?: Date) {
     if (!start) return;
     // A round trip finishes where it started, full stop. A saved Home must
     // never silently become the finish - that bug sent parents on a one-way
@@ -301,6 +347,7 @@ export default function App() {
       lastDuration: duration,
       lastProfile: profile,
       lastTolerance: tolerance,
+      ...(arriveAt ? { lastArrival: arrival } : {}),
     });
     try {
       const data = await generateRoutes({
@@ -313,6 +360,7 @@ export default function App() {
         mode,
         preferred_navigation: settings.preferredNavigation,
         stops: settings.stopPrefs,
+        arrive_by: arriveAt ? true : undefined,
         // From the phone's own location the links carry no start, so Google
         // Maps starts from wherever the phone is by then (founder, 17-18 Oct).
         start_chosen: startEndpoint?.source !== "current" || undefined,
@@ -328,6 +376,7 @@ export default function App() {
           mode === "loop"
             ? (startEndpoint?.label ?? "Your location")
             : (toEndpoint?.label ?? "your destination"),
+        arriveAt: arriveAt?.getTime(),
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
@@ -336,7 +385,19 @@ export default function App() {
   }
 
   function onGenerate() {
-    void runGenerate(duration);
+    if (planBy === "length") {
+      void runGenerate(duration);
+      return;
+    }
+    // The minutes from this moment, not from when the screen last ticked.
+    const fresh = new Date();
+    const left = minutesUntil(arrival, fresh);
+    const at = arrivalDate(arrival, fresh);
+    if (left.problem || !at) {
+      setError(left.problem);
+      return;
+    }
+    void runGenerate(left.minutes, at);
   }
 
   // Pre-launch variants (Option C): regenerate a longer companion before
@@ -389,7 +450,7 @@ export default function App() {
   }
 
   const isSecondary =
-    screen.name === "favourites" || screen.name === "settings";
+    screen.name === "favourites" || screen.name === "settings" || screen.name === "help";
 
   return (
     <div className={`app${isSecondary ? "" : " app-tabbed"}`}>
@@ -504,24 +565,64 @@ export default function App() {
           )}
           {mode === "destination" && (
             <p className="mode-note">
-              The time below is the whole journey, not extra time on top.
+              {planBy === "length"
+                ? "The time below is the whole journey, not extra time on top."
+                : "Drives get you to your destination by the time below."}
             </p>
           )}
 
+          <ChipGroup
+            legend="Plan by"
+            columns={2}
+            options={[
+              { value: "length" as const, label: "How long" },
+              {
+                value: "arrival" as const,
+                label: mode === "loop" ? "Back by" : "Arrive by",
+                sub: "a time",
+              },
+            ]}
+            value={planBy}
+            onChange={setPlanBy}
+          />
+
           <div className="duration-hero">
             <div className="duration-ring">
-              <span className="duration-num">{duration}</span>
-              <span className="duration-unit">minutes</span>
+              <span className="duration-num">
+                {planBy === "length" ? duration : until.problem ? "–" : until.minutes}
+              </span>
+              <span className="duration-unit">
+                {planBy === "length" ? "minutes" : `min until ${arrivalLabel}`}
+              </span>
             </div>
           </div>
 
-          <ChipGroup
-            legend="How long"
-            columns={5}
-            options={DURATIONS.map((d) => ({ value: d, label: String(d) }))}
-            value={DURATIONS.includes(duration) ? duration : 0}
-            onChange={(d) => setDuration(d)}
-          />
+          {planBy === "length" ? (
+            <ChipGroup
+              legend="How long"
+              columns={5}
+              options={DURATIONS.map((d) => ({ value: d, label: String(d) }))}
+              value={DURATIONS.includes(duration) ? duration : 0}
+              onChange={(d) => setDuration(d)}
+            />
+          ) : (
+            <div className="arrive">
+              <label className="account-field arrive-field">
+                <span>{mode === "loop" ? "Back by" : "Arrive by"}</span>
+                <input
+                  type="time"
+                  value={arrival}
+                  onChange={(e) => setArrival(e.target.value)}
+                />
+              </label>
+              <p className={until.problem ? "error" : "mode-note"} role="status">
+                {until.problem ??
+                  (mode === "loop"
+                    ? "Every loop is back by then, a few minutes early, if you leave now. Each one says when to leave by."
+                    : "Every drive arrives by then, a few minutes early, if you leave now. Each one says when to leave by.")}
+              </p>
+            </div>
+          )}
 
           <ChipGroup
             legend="Road style"
@@ -575,14 +676,18 @@ export default function App() {
       {tab === "plan" && screen.name === "loading" && (
         <main className="loading">
           <div className="loading-ring" />
-          <p>Shaping {duration}-minute loops…</p>
+          <p>
+            {planBy === "arrival"
+              ? `Shaping drives that ${mode === "loop" ? "are back" : "arrive"} by ${arrivalLabel}…`
+              : `Shaping ${duration}-minute loops…`}
+          </p>
         </main>
       )}
 
       {tab === "plan" && screen.name === "results" && (
         <main className="results">
           <p className="results-head">
-            {resultsHeadline(screen.data, screen.fromLabel, screen.toLabel)}
+            {resultsHeadline(screen.data, screen.fromLabel, screen.toLabel, screen.arriveAt)}
           </p>
           {screen.data.mode === "destination" &&
             screen.data.direct_minutes != null && (
@@ -614,6 +719,8 @@ export default function App() {
                 units={settings.units}
                 destination={screen.data.mode === "destination"}
                 preferredNavigation={settings.preferredNavigation}
+                arriveAt={screen.arriveAt}
+                now={now}
               />
               {startedId === r.id && (
                 <Feedback
@@ -624,17 +731,21 @@ export default function App() {
               )}
             </div>
           ))}
-          <div className="extend" hidden={screen.data.routes.every((r) => r.is_direct)}>
-            <span className="extend-label">Want a bit longer?</span>
-            <div className="extend-btns">
-              <button className="extend-btn" onClick={() => onExtendPlan(15)}>
-                +15 min
-              </button>
-              <button className="extend-btn" onClick={() => onExtendPlan(30)}>
-                +30 min
-              </button>
+          {/* Not with an arrival time (longer would be late), nor for the
+              direct way (there is nothing to lengthen). */}
+          {screen.arriveAt == null && !screen.data.routes.every((r) => r.is_direct) && (
+            <div className="extend">
+              <span className="extend-label">Want a bit longer?</span>
+              <div className="extend-btns">
+                <button className="extend-btn" onClick={() => onExtendPlan(15)}>
+                  +15 min
+                </button>
+                <button className="extend-btn" onClick={() => onExtendPlan(30)}>
+                  +30 min
+                </button>
+              </div>
             </div>
-          </div>
+          )}
           <p className="results-foot">
             {startedId
               ? "Started in Google Maps. You can still compare the other loops above."
@@ -655,7 +766,15 @@ export default function App() {
       )}
 
       {screen.name === "settings" && (
-        <SettingsScreen settings={settings} update={update} server={features.server} />
+        <SettingsScreen
+          settings={settings}
+          update={update}
+          server={features.server}
+          onOpenHelp={openHelp}
+        />
+      )}
+      {screen.name === "help" && (
+        <HelpScreen meetHalfway={features.meetHalfway} walking={features.walking} />
       )}
 
       {tab === "walk" && !isSecondary && (
@@ -751,12 +870,21 @@ function resultsHeadline(
   data: GenerateResponse,
   fromLabel: string,
   toLabel: string,
+  arriveAt?: number,
 ): string {
   const mins = data.target_minutes;
+  // Mid-sentence, "Your location" is "your location".
+  const loopFrom = fromLabel === "Your location" ? "your location" : fromLabel;
+  if (arriveAt != null) {
+    const by = clock(new Date(arriveAt));
+    return data.mode === "destination"
+      ? `${fromLabel} to ${toLabel}, arriving by ${by}`
+      : `Loops from ${loopFrom}, back by ${by}`;
+  }
   if (data.mode === "destination") {
     return `${fromLabel} to ${toLabel}, about ${mins} minutes in total`;
   }
-  return `Loops from ${fromLabel} for about ${mins} minutes`;
+  return `Loops from ${loopFrom} for about ${mins} minutes`;
 }
 
 // --- location status row -------------------------------------------------

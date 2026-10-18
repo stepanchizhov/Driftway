@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Driftway tour stage</title>
+<style>
+  @font-face { font-family: "Space Grotesk"; font-weight: 500; src: url("../../frontend/public/fonts/space-grotesk-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 600; src: url("../../frontend/public/fonts/space-grotesk-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Hanken Grotesk"; font-weight: 400; src: url("../../frontend/public/fonts/hanken-grotesk-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Hanken Grotesk"; font-weight: 600; src: url("../../frontend/public/fonts/hanken-grotesk-latin-600-normal.woff2") format("woff2"); }
+  :root { --ground:#161c36; --surface:#1f2747; --surface-2:#28315a; --line:#36406e; --ink:#edeffa; --dim:#9aa3cc; --accent:#f2b179; }
+  html, body { margin: 0; background: var(--ground); }
+  #stage { position: relative; width: 540px; height: 960px; overflow: hidden; background: var(--ground);
+           background-image: radial-gradient(ellipse 80% 45% at 50% 0%, rgba(242,177,121,0.12), transparent 70%); }
+  .abs { position: absolute; }
+  /* the loop ring behind the phone, with its amber tick */
+  #ring { left: 50%; top: 600px; width: 760px; height: 760px; margin: -380px 0 0 -380px; border-radius: 50%;
+          border: 1.5px solid rgba(54,64,110,0.55); }
+  #tick { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 14px rgba(242,177,121,0.9); }
+  /* captions */
+  .cap { left: 40px; right: 40px; top: 58px; text-align: center; }
+  .eyebrow { font: 500 13px/1 "Space Grotesk"; letter-spacing: 0.17em; text-transform: uppercase; color: var(--accent); margin: 0 0 12px; }
+  .head { font: 600 31px/1.12 "Space Grotesk"; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 10px; text-wrap: balance; }
+  .sub { font: 400 16.5px/1.45 "Hanken Grotesk"; color: var(--dim); margin: 0 auto; max-width: 430px; text-wrap: balance; }
+  /* the phone */
+  #phone { left: 111px; top: 262px; width: 318px; height: 667px; border-radius: 42px; background: #0a0e20;
+           border: 1.5px solid #3a4475; box-shadow: 0 40px 80px -24px rgba(0,0,0,0.75), inset 0 0 0 4px #0d1229; }
+  #screen { left: 9px; top: 9px; width: 300px; height: 649px; border-radius: 33px; overflow: hidden; background: var(--ground); }
+  .layer { position: absolute; inset: 0; }
+  .layer img.shot { position: absolute; left: 0; top: 0; width: 300px; }
+  .layer img.tab { position: absolute; left: 0; bottom: 0; width: 300px; }
+  .tap { width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; border: 3px solid var(--accent);
+         background: rgba(242,177,121,0.28); box-sizing: border-box; }
+  .pulse { border: 3px solid var(--accent); border-radius: 12px; box-sizing: border-box; box-shadow: 0 0 18px rgba(242,177,121,0.6); }
+  #toast { left: 50%; bottom: 96px; transform: translateX(-50%); white-space: nowrap; padding: 12px 18px; border-radius: 999px;
+           background: #f6f3ee; color: #1b1a24; font: 600 15px/1 "Space Grotesk"; box-shadow: 0 12px 30px -8px rgba(0,0,0,0.6);
+           display: flex; align-items: center; gap: 9px; }
+  #toast svg { width: 18px; height: 18px; }
+  .pop { border-radius: 18px; box-shadow: 0 30px 60px -18px rgba(0,0,0,0.85), 0 0 0 1.5px rgba(242,177,121,0.65);
+         background-repeat: no-repeat; }
+  /* title and end */
+  .wordmark { font: 600 74px/1 "Space Grotesk"; letter-spacing: -0.035em; color: var(--ink); }
+  .wordmark span { color: var(--accent); }
+  #title, #end { left: 0; right: 0; text-align: center; }
+  #title { top: 330px; }
+  #title .line, #end .line { font: 400 20px/1.4 "Hanken Grotesk"; color: var(--dim); margin: 20px auto 0; max-width: 380px; }
+  #end { top: 300px; }
+  #end .open { display: inline-block; margin-top: 34px; padding: 18px 34px; border-radius: 20px; background: var(--accent);
+               color: #1b1a24; font: 600 22px/1 "Space Grotesk"; box-shadow: 0 14px 34px -10px rgba(242,177,121,0.6); }
+  #end .url { margin-top: 18px; font: 500 15px/1 "Space Grotesk"; color: var(--dim); letter-spacing: 0.02em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="ring" class="abs"></div>
+  <div id="tick" class="abs"></div>
+  <div id="caps"></div>
+  <div id="phone" class="abs"><div id="screen" class="abs"></div></div>
+  <div id="toast" class="abs"><svg viewBox="0 0 24 24" fill="#d0443a"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>Opening Google Maps…</div>
+  <div id="pops"></div>
+  <div id="title" class="abs">
+    <div class="wordmark">drift<span>way</span></div>
+    <p class="line">Drives and walks for little ones who sleep on the move.</p>
+  </div>
+  <div id="end" class="abs">
+    <div class="wordmark">drift<span>way</span></div>
+    <p class="line">The drive the nap needs. Home, or there, in time.</p>
+    <div class="open">Open Driftway</div>
+    <div class="url">driftway.stepan.chizhov.com</div>
+  </div>
+</div>
+<script>
+// ------------------------------------------------------------- the story
+const K = 300 / 390;            // app px -> screen px
+const VIEW_H = 844;             // the app's viewport height
+const B = () => window.BOXES;   // tap targets, from the capture
+
+const CAPS = [
+  { t0: 3.0, t1: 9.4, eyebrow: "Still asleep", head: "Arrived, but they’re still asleep?", sub: "Pick where to and how much longer. Driftway finds a longer way there and opens it in Google Maps." },
+  { t0: 9.4, t1: 17.4, eyebrow: "Plan a drive", head: "A drive as long as the nap", sub: "A round trip home, or the long way somewhere. Three drives to choose from." },
+  { t0: 17.4, t1: 24.4, eyebrow: "Arrive by", head: "Due at the pool by 10:55?", sub: "Give the time. Every drive gets you there in time, and says when to leave." },
+  { t0: 24.4, t1: 30.0, eyebrow: "On every drive", head: "Know what’s on the way", sub: "Speed bumps, traffic lights and today’s roadworks, counted for each drive." },
+  { t0: 30.0, t1: 35.4, eyebrow: "Every child is different", head: "Tell it what wakes yours", sub: "Drives avoid what wakes them, and care less about what doesn’t." },
+  { t0: 35.4, t1: 42.4, eyebrow: "Walk", head: "Walks that suit your pram", sub: "Or a carrier, or just you: steps, gates and surfaces checked, and what isn’t known, said." },
+  { t0: 42.4, t1: 46.8, eyebrow: "Meet up", head: "Meet another parent halfway", sub: "A fair place for you both. Neither of you sees where the other sets off from." },
+  { t0: 46.8, t1: 49.6, eyebrow: "Tell us", head: "Noticed something?", sub: "Tap Feedback, at the top of every screen." },
+];
+
+// Screens: src, tab bar, when shown, scroll keyframes [t, app px].
+const LAYERS = [
+  { src: "v-sa-a", tab: "sa", t0: 2.5, t1: 5.15, scroll: [[0, 0]] },
+  { src: "v-sa-b", tab: "sa", t0: 5.15, t1: 9.4, fade: 0.12, scroll: [[0, 0]] },
+  { src: "v-plan-a", tab: "plan", t0: 9.4, t1: 11.45, scroll: [[10.1, 0], [10.9, 418]] },
+  { src: "v-plan-b", tab: "plan", t0: 11.45, t1: 12.6, fade: 0.12, scroll: [[0, 418]] },
+  { src: "v-plan-loading", tab: "plan", t0: 12.6, t1: 13.6, fade: 0.15, scroll: [[0, 0]] },
+  { src: "v-plan-results", tab: "plan", t0: 13.6, t1: 17.4, scroll: [[14.6, 0], [17.0, 760]] },
+  { src: "v-arr-b", tab: "plan", t0: 17.4, t1: 18.95, scroll: [[17.9, 0], [18.6, 330]] },
+  { src: "v-arr-c", tab: "plan", t0: 18.95, t1: 21.25, fade: 0.12, scroll: [[0, 330], [19.9, 330], [20.6, 520]] },
+  { src: "v-arr-results", tab: "plan", t0: 21.25, t1: 24.4, scroll: [[0, 0]] },
+  { src: "v-plan-results", tab: "plan", t0: 24.4, t1: 30.0, scroll: [[0, 0]] },
+  { src: "v-wakes-a", tab: null, t0: 30.0, t1: 31.75, scroll: [[30.3, 0], [31.0, 330]] },
+  { src: "v-wakes-a2", tab: null, t0: 31.75, t1: 32.75, fade: 0.12, scroll: [[0, 330]] },
+  { src: "v-wakes-b", tab: null, t0: 32.75, t1: 35.4, fade: 0.12, scroll: [[0, 330]] },
+  { src: "v-walk-b", tab: "walk", t0: 35.4, t1: 38.9, scroll: [[36.0, 0], [38.6, "WALK1"]] },
+  { src: "v-walk-c", tab: "walk", t0: 38.9, t1: 42.4, scroll: [[0, "WALKMAP"], [42.2, "WALKMAP2"]] },
+  { src: "v-meet-a", tab: "meet", t0: 42.4, t1: 49.6, scroll: [[43.2, 0], [45.6, 180], [46.6, 0]] },
+];
+const TAPS = [
+  { t: 5.0, layer: 0, box: "sa-45" },
+  { t: 6.45, layer: 1, box: "sa-find" },
+  { t: 11.3, layer: 2, box: "plan-45" },
+  { t: 12.35, layer: 3, box: "plan-go" },
+  { t: 18.8, layer: 6, box: "arr-by" },
+  { t: 20.95, layer: 7, box: "arr-go" },
+  { t: 31.6, layer: 10, box: "wakes-bumps" },
+  { t: 32.6, layer: 11, box: "wakes-lights" },
+];
+const TOASTS = [{ t0: 6.75, t1: 9.1 }];
+const PULSES = [{ t0: 47.2, t1: 49.4, layer: 15, box: "feedback" }];
+// Close-ups lifted out of the phone: crop in app px of a shot.
+const POPS = [
+  { t0: 21.9, t1: 24.2, src: "v-arr-results", crop: () => ({ x: 18, y: B()["arr-leave"].y - 72, w: 354, h: 103 }), z: 1.32, top: 480 },
+  { t0: 25.1, t1: 29.7, src: "v-plan-results", crop: () => ({ x: 18, y: B().card1.y + 132, w: 354, h: 196 }), z: 1.3, top: 450 },
+];
+
+// ------------------------------------------------------------- machinery
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const out3 = (x) => 1 - Math.pow(1 - x, 3);
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const $ = (s) => document.querySelector(s);
+
+let SIZES = {};
+function resolve(v) {
+  if (typeof v === "number") return v;
+  const bx = B();
+  if (v === "WALK1") return Math.max(0, bx.walk1b.y - 150);
+  if (v === "WALKMAP") return Math.max(0, bx["walk1-map"].y - 260);
+  if (v === "WALKMAP2") return Math.max(0, bx["walk1-map"].y - 200);
+  return 0;
+}
+function scrollAt(L, t) {
+  const ks = L.scroll.map(([kt, y]) => [kt, resolve(y)]);
+  const maxY = Math.max(0, (SIZES[L.src] || VIEW_H) - VIEW_H);
+  let y = ks[0][1];
+  for (let i = 0; i < ks.length - 1; i++) {
+    const [ta, ya] = ks[i], [tb, yb] = ks[i + 1];
+    if (t >= tb) y = yb;
+    else if (t > ta) { y = ya + (yb - ya) * ease(prog(t, ta, tb)); break; }
+    else break;
+  }
+  if (t >= ks[ks.length - 1][0]) y = ks[ks.length - 1][1];
+  return clamp(y, 0, maxY);
+}
+function opacityOf(L, t) {
+  const f = L.fade ?? 0.3;
+  return Math.min(prog(t, L.t0, L.t0 + f), 1 - prog(t, L.t1, L.t1 + 0.3));
+}
+
+function build() {
+  const screen = $("#screen");
+  LAYERS.forEach((L, i) => {
+    const d = document.createElement("div");
+    d.className = "layer"; d.id = `L${i}`;
+    d.innerHTML = `<img class="shot" src="shots/${L.src}.png">` + (L.tab ? `<img class="tab" src="shots/tab-${L.tab}.png">` : "");
+    screen.appendChild(d);
+  });
+  TAPS.forEach((_, i) => { const d = document.createElement("div"); d.className = "abs tap"; d.id = `T${i}`; screen.appendChild(d); });
+  PULSES.forEach((_, i) => { const d = document.createElement("div"); d.className = "abs pulse"; d.id = `P${i}`; screen.appendChild(d); });
+  CAPS.forEach((c, i) => {
+    const d = document.createElement("div"); d.className = "abs cap"; d.id = `C${i}`;
+    d.innerHTML = `<p class="eyebrow">${c.eyebrow}</p><p class="head">${c.head}</p><p class="sub">${c.sub}</p>`;
+    $("#caps").appendChild(d);
+  });
+  POPS.forEach((p, i) => { const d = document.createElement("div"); d.className = "abs pop"; d.id = `O${i}`; $("#pops").appendChild(d); });
+}
+
+window.render = function (t) {
+  // ring tick orbits slowly
+  const a = (t * 9 - 90) * Math.PI / 180;
+  $("#tick").style.left = `${270 + 380 * Math.cos(a) - 4.5}px`;
+  $("#tick").style.top = `${600 + 380 * Math.sin(a) - 4.5}px`;
+
+  // title, then the phone rises in; at the end it sinks away
+  const titleIn = out3(prog(t, 0.15, 0.9)), titleOut = prog(t, 2.55, 3.0);
+  $("#title").style.opacity = Math.min(titleIn, 1 - titleOut);
+  $("#title").style.transform = `translateY(${(1 - titleIn) * 18 - titleOut * 30}px)`;
+  const phoneIn = out3(prog(t, 2.45, 3.2)), phoneOut = ease(prog(t, 49.5, 50.2));
+  $("#phone").style.opacity = Math.min(phoneIn, 1 - phoneOut);
+  $("#phone").style.transform = `translateY(${(1 - phoneIn) * 120 + phoneOut * 140}px)`;
+  const endIn = out3(prog(t, 50.0, 50.8));
+  $("#end").style.opacity = endIn;
+  $("#end").style.transform = `translateY(${(1 - endIn) * 20}px)`;
+
+  CAPS.forEach((c, i) => {
+    const inn = out3(prog(t, c.t0 + 0.05, c.t0 + 0.5)), out = prog(t, c.t1 - 0.3, c.t1);
+    const el = $(`#C${i}`);
+    el.style.opacity = Math.min(inn, 1 - out);
+    el.style.transform = `translateY(${(1 - inn) * 16 - out * 10}px)`;
+  });
+
+  LAYERS.forEach((L, i) => {
+    const el = $(`#L${i}`);
+    const o = t < L.t0 - 0.01 || t > L.t1 + 0.31 ? 0 : opacityOf(L, t);
+    el.style.opacity = o;
+    el.style.visibility = o > 0 ? "visible" : "hidden";
+    el.querySelector("img.shot").style.transform = `translateY(${-scrollAt(L, t) * K}px)`;
+  });
+
+  TAPS.forEach((tp, i) => {
+    const el = $(`#T${i}`), L = LAYERS[tp.layer], bx = B()[tp.box];
+    const p = prog(t, tp.t, tp.t + 0.6);
+    const on = t >= tp.t - 0.15 && t <= tp.t + 0.6;
+    el.style.display = on ? "block" : "none";
+    if (!on || !bx) return;
+    const pre = prog(t, tp.t - 0.15, tp.t);           // finger arriving
+    const s = t < tp.t ? 0.55 + 0.25 * pre : 0.8 + 0.6 * out3(p);
+    el.style.left = `${(bx.x + bx.w / 2) * K}px`;
+    el.style.top = `${(bx.y + bx.h / 2 - scrollAt(L, tp.t)) * K}px`;
+    el.style.opacity = t < tp.t ? pre : 1 - p;
+    el.style.transform = `scale(${s})`;
+  });
+
+  TOASTS.forEach((ts) => {
+    const inn = out3(prog(t, ts.t0, ts.t0 + 0.35)), out = prog(t, ts.t1 - 0.3, ts.t1);
+    const el = $("#toast");
+    el.style.opacity = Math.min(inn, 1 - out);
+    el.style.transform = `translateX(-50%) translateY(${(1 - inn) * 16}px)`;
+  });
+
+  PULSES.forEach((ps, i) => {
+    const el = $(`#P${i}`), L = LAYERS[ps.layer], bx = B()[ps.box];
+    const on = t >= ps.t0 && t <= ps.t1;
+    el.style.display = on && bx ? "block" : "none";
+    if (!on || !bx) return;
+    const beat = 0.5 + 0.5 * Math.sin((t - ps.t0) * Math.PI * 2 / 0.9);
+    const pad = 4 + 3 * beat;
+    el.style.left = `${bx.x * K - pad}px`;
+    el.style.top = `${(bx.y - scrollAt(L, t)) * K - pad}px`;
+    el.style.width = `${bx.w * K + 2 * pad}px`;
+    el.style.height = `${bx.h * K + 2 * pad}px`;
+    el.style.opacity = Math.min(prog(t, ps.t0, ps.t0 + 0.3), 1 - prog(t, ps.t1 - 0.3, ps.t1));
+  });
+
+  POPS.forEach((pp, i) => {
+    const el = $(`#O${i}`);
+    const c = pp.crop(), z = pp.z;
+    const inn = out3(prog(t, pp.t0, pp.t0 + 0.45)), out = prog(t, pp.t1 - 0.3, pp.t1);
+    const o = Math.min(inn, 1 - out);
+    el.style.display = o > 0 ? "block" : "none";
+    if (o <= 0) return;
+    const w = c.w * K * z, h = c.h * K * z;
+    el.style.width = `${w}px`; el.style.height = `${h}px`;
+    el.style.left = `${270 - w / 2}px`;
+    el.style.top = `${pp.top}px`;
+    el.style.backgroundImage = `url(shots/${pp.src}.png)`;
+    el.style.backgroundSize = `${390 * K * z}px auto`;
+    el.style.backgroundPosition = `${-c.x * K * z}px ${-c.y * K * z}px`;
+    el.style.opacity = o;
+    el.style.transform = `scale(${0.92 + 0.08 * inn})`;
+  });
+};
+
+window.DURATION = 53.0;
+window.setup = async function (boxes, sizes) {
+  window.BOXES = boxes; SIZES = sizes;
+  build();
+  await document.fonts.ready;
+  await Promise.all([...document.images].map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })));
+  // background images used by the close-ups
+  await Promise.all(POPS.map((p) => new Promise((r) => { const im = new Image(); im.onload = im.onerror = r; im.src = `shots/${p.src}.png`; })));
+  window.render(0);
+  return true;
+};
+</script>
+</body>
+</html>

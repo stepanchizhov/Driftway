@@ -27,6 +27,9 @@ self.addEventListener("fetch", (e) => {
   // Never cache API calls — always go to the network.
   if (request.url.includes("/api/")) return;
   if (request.method !== "GET") return;
+  // Video (the welcome page's tour) is fetched in ranges, which can't be
+  // cached; the browser streams it.
+  if (request.headers.has("range") || new URL(request.url).pathname.startsWith("/media/")) return;
 
   e.respondWith(
     fetch(request)

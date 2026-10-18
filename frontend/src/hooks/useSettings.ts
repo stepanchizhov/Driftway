@@ -29,6 +29,8 @@ export interface Settings {
    *  Offered only to accounts the server lists as maintainers; the server
    *  ignores it for anyone else. */
   recordDrives: boolean;
+  /** The last "Arrive by" time, "HH:MM": lessons and the like recur. */
+  lastArrival: string;
 }
 
 export const DEFAULT_STOPS: StopPrefs = {
@@ -52,6 +54,7 @@ const DEFAULTS: Settings = {
   stopPrefs: DEFAULT_STOPS,
   advanced: false,
   recordDrives: false,
+  lastArrival: "",
 };
 
 const KEY = "driftway.settings.v1";

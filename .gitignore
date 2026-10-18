@@ -19,3 +19,12 @@ backend/data/walks/specs/private/
 # Founder drop-folder for raw recordings (GPS tracks, photos). Never committed:
 # a track starts near someone's home.
 feedback/
+
+# The tour video's working files (tools/tour/README.md): screenshots, frames.
+tools/tour/node_modules/
+tools/tour/package*.json
+tools/tour/shots/
+tools/tour/frames/
+tools/tour/stills/
+tools/tour/*.mp4
+tools/tour/*.jpg

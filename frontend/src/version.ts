@@ -37,6 +37,16 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.19",
+    date: "18 Oct 2026",
+    changes: [
+      "Plan a drive by when you need to be there: tap Arrive by (Back by on a round trip) and give a time. Every drive gets you there by then, a few minutes early, and says when to leave.",
+      "Help, at the top of Settings, explains each part of Driftway.",
+      "Our server's logs no longer hold the points of your drives, walks and searches as they're sent to the map services.",
+      "\"Want a bit longer?\" is no longer offered when there's nothing to lengthen.",
+    ],
+  },
+  {
     version: "0.8.18",
     date: "17 Oct 2026",
     changes: [

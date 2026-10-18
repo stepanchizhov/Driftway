@@ -72,6 +72,10 @@ class GenerateRequest(BaseModel):
     preferred_navigation: Optional[str] = None
     #: What wakes the child; without it, the usual weights.
     stops: Optional[StopPrefs] = None
+    #: target_minutes is the time until the parent must arrive, or be back
+    #: from a loop: no drive offered takes longer, and they aim a few minutes
+    #: early (founder, 18 Oct 2026: "we need to be there at 10.55").
+    arrive_by: bool = False
     #: The start was picked (an address, Home, a saved place, a point on the
     #: map), not the phone's own location: the navigation links then start
     #: there. Otherwise they carry no start, and the app starts from wherever

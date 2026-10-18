@@ -155,6 +155,26 @@ async def _evaluate_all(router: Router, start: Coord, finish: Coord,
     return out
 
 
+def arrive_margin(minutes: int) -> int:
+    """How early a drive with an arrival time aims: a few minutes for parking
+    and the traffic an estimate can't see, more on longer drives."""
+    return max(2, min(5, round(minutes * 0.08)))
+
+
+def _aimed_early(req: GenerateRequest) -> GenerateRequest:
+    """An arrival-time request as the generator plans it: aimed `margin`
+    early, within `margin` either side, so the window ends at the time there
+    is and the usual machinery keeps to it."""
+    m = arrive_margin(req.target_minutes)
+    return req.model_copy(update={"target_minutes": req.target_minutes - m, "tolerance_minutes": m})
+
+
+def _latest(req: GenerateRequest) -> Optional[float]:
+    """The longest drive that still arrives in time, for an (aimed) arrival-
+    time request; None for a request by length."""
+    return req.target_minutes + req.tolerance_minutes if req.arrive_by else None
+
+
 def _miss(route: EvaluatedRoute, target_minutes: int) -> float:
     """How far this route is from the requested duration, in minutes."""
     return abs(route.minutes - target_minutes)
@@ -179,7 +199,10 @@ def _caveat(ev: EvaluatedRoute, finish: Coord, req: GenerateRequest) -> Optional
     told rather than left to notice on the road.
     """
     notes: List[str] = []
-    if _miss(ev, req.target_minutes) > req.tolerance_minutes:
+    latest = _latest(req)
+    if latest is not None and latest - ev.minutes > 2 * req.tolerance_minutes:
+        notes.append(f"about {ev.minutes:.0f} min, so you'd arrive about {latest - ev.minutes:.0f} min early")
+    elif latest is None and _miss(ev, req.target_minutes) > req.tolerance_minutes:
         notes.append(
             f"about {ev.minutes:.0f} min, outside your "
             f"{req.target_minutes} +/- {req.tolerance_minutes} min window"
@@ -428,6 +451,10 @@ def _notice(options: List[RouteOption], req: GenerateRequest,
                 "Google Maps.")
     if not options:
         noun = "loop" if mode is RouteMode.LOOP else "route"
+        latest = _latest(req)
+        if latest is not None:
+            return (f"No suitable {noun} found that fits the {latest:.0f} minutes "
+                    f"there are. Try a later time or another road style.")
         return (f"No suitable {noun} found for about {req.target_minutes} "
                 f"minutes on these roads. Try a different duration, a wider "
                 f"tolerance, or another road style.")
@@ -441,6 +468,7 @@ def _notice(options: List[RouteOption], req: GenerateRequest,
 def _direct_only_response(req: GenerateRequest, start: Coord, finish: Coord,
                           direct: EvaluatedRoute, provider: str
                           ) -> GenerateResponse:
+    latest = _latest(req)
     """Answer for a target at or below the direct drive.
 
     You cannot reach somewhere more quickly than the quickest route, so there
@@ -459,8 +487,20 @@ def _direct_only_response(req: GenerateRequest, start: Coord, finish: Coord,
         mode=RouteMode.DESTINATION,
         direct_minutes=round(direct.minutes, 1),
         simulated=False,
-        notice=_floor_notice(req.target_minutes, direct.minutes),
+        notice=(_floor_notice(req.target_minutes, direct.minutes) if latest is None
+                else _arrival_notice(latest, direct.minutes)),
     )
+
+
+def _arrival_notice(latest: float, direct_minutes: float) -> str:
+    """Why an arrival-time request gets the direct way: no time to spare, or
+    not even enough for that."""
+    rounded = round(direct_minutes)
+    if direct_minutes <= latest:
+        return (f"The quickest way takes about {rounded} minutes, which leaves "
+                f"no time for a longer drive. Here is the direct way.")
+    return (f"Even the quickest way takes about {rounded} minutes, longer than "
+            f"the {latest:.0f} minutes there are. Here is the direct way.")
 
 
 def _floor_notice(target: int, direct_minutes: float) -> str:
@@ -500,7 +540,11 @@ async def generate_routes(req: GenerateRequest, router: Router) -> GenerateRespo
     parent has said (scorer.stop_preferences)."""
     from . import scorer
     with scorer.stop_preferences(req.stops):
-        return await _generate_routes(req, router)
+        if not req.arrive_by:
+            return await _generate_routes(req, router)
+        res = await _generate_routes(_aimed_early(req), router)
+        res.target_minutes = req.target_minutes      # the time there is, as asked
+        return res
 
 
 async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResponse:
@@ -562,10 +606,18 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
     # 4. refine toward the target duration
     evaluated = await _refine(router, start, finish, profile, evaluated, req, is_loop)
 
+    latest = _latest(req)
+
+    def pick(evs: List[EvaluatedRoute]) -> List[EvaluatedRoute]:
+        # With an arrival time, nothing that would arrive late, ever.
+        if latest is not None:
+            evs = [ev for ev in evs if ev.minutes <= latest]
+        return _pick_top_three(evs, finish, req, profile)
+
     # 5-7. validate, score, dedupe, take the best three. Selection weighs
     # validation and duration together rather than filtering on validation
     # first - see _pick_top_three.
-    top = _pick_top_three(evaluated, finish, req, profile)
+    top = pick(evaluated)
 
     # 4b. Calmer on purpose: for the leading drives, try going round their
     # busiest stretch of lights, bumps and roadworks, as plain waypoints,
@@ -580,13 +632,13 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
                                                    req.target_minutes, rescale)
         if steered:
             evaluated = evaluated + steered
-            top = _pick_top_three(evaluated, finish, req, profile)
+            top = pick(evaluated)
         # And turn round at an easy place where the drive has to turn round.
         turned = await steering.easier_turn_candidates(router, start, finish, top, profile)
         if turned:
             steered = steered + turned
             evaluated = evaluated + turned
-            top = _pick_top_three(evaluated, finish, req, profile)
+            top = pick(evaluated)
 
     # Diagnostic breadcrumbs - visible in the Render logs. If routes come back
     # empty or off-target, this tells you *where* in the pipeline they went.
@@ -615,6 +667,10 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
         req.tolerance_minutes,
         profile,
     )
+
+    if not top and latest is not None and direct is not None and not simulated:
+        # Every longer drive would arrive late: the direct way, said so.
+        return _direct_only_response(req, start, finish, direct, provider_name)
 
     options = [
         _build_option(ev, start, finish, req, profile, simulated, direct,

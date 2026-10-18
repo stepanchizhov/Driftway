@@ -10,6 +10,7 @@ interface Props {
   update: (patch: Partial<Settings>) => void;
   /** The server's release and build, once it has answered. */
   server: { version: string; build: string } | null;
+  onOpenHelp?: () => void;
 }
 
 const PROFILE_OPTS: { value: RoadProfile; label: string }[] = [
@@ -40,7 +41,7 @@ const NAV_APPS = [
   { id: "apple_maps", label: "Apple Maps" },
 ];
 
-export function SettingsScreen({ settings, update, server }: Props) {
+export function SettingsScreen({ settings, update, server, onOpenHelp }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const history = useRef<HTMLDetailsElement | null>(null);
   // Builds are compared, not versions: two builds of one release differ too.
@@ -66,6 +67,13 @@ export function SettingsScreen({ settings, update, server }: Props) {
           What&rsquo;s new?
         </a>
       </p>
+
+      {onOpenHelp && (
+        <button className="help-link" onClick={onOpenHelp}>
+          <span>Help: how Driftway works</span>
+          <span aria-hidden="true">›</span>
+        </button>
+      )}
 
       {/* First, because it is the only block here that is about the person
           rather than the drive - and because the data controls inside it are

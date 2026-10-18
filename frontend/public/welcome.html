@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Welcome to Driftway</title>
+<meta name="description" content="Drives and walks for little ones who sleep on the move: what Driftway does, a one-minute tour, and how to start.">
+<meta name="theme-color" content="#161c36">
+<style>
+  /* Driftway's own typefaces, served with the app (SIL Open Font License,
+     see /fonts/OFL-*.txt). */
+  @font-face { font-family: "Space Grotesk"; font-weight: 500; font-display: swap;
+               src: url("/fonts/space-grotesk-latin-500-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Space Grotesk"; font-weight: 600; font-display: swap;
+               src: url("/fonts/space-grotesk-latin-600-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Hanken Grotesk"; font-weight: 400; font-display: swap;
+               src: url("/fonts/hanken-grotesk-latin-400-normal.woff2") format("woff2"); }
+  @font-face { font-family: "Hanken Grotesk"; font-weight: 600; font-display: swap;
+               src: url("/fonts/hanken-grotesk-latin-600-normal.woff2") format("woff2"); }
+
+  /* The app's night-drive palette: deep indigo, dashboard amber. */
+  :root {
+    --ground: #161c36; --surface: #1f2747; --surface-2: #28315a; --line: #36406e;
+    --ink: #edeffa; --dim: #9aa3cc; --accent: #f2b179; --accent-press: #e59a5b;
+    --on-accent: #1b1a24; --ok: #8fd3a6;
+    --display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font: 17px/1.6 var(--body);
+    background-image: radial-gradient(ellipse 90% 50% at 50% -10%, rgba(242,177,121,0.10), transparent 70%);
+    background-repeat: no-repeat;
+  }
+  .page { max-width: 1040px; margin: 0 auto; padding: 0 20px;
+          padding-top: max(20px, env(safe-area-inset-top)); padding-bottom: max(48px, env(safe-area-inset-bottom)); }
+  a { color: var(--accent); }
+
+  .wordmark { font: 600 26px/1 var(--display); letter-spacing: -0.02em; text-decoration: none; color: var(--ink); }
+  .wordmark span { color: var(--accent); }
+  header.top { display: flex; justify-content: space-between; align-items: center; padding: 6px 0 28px; }
+  header.top a.small { font-size: 15px; color: var(--dim); text-decoration: none; }
+
+  /* Hero */
+  .hero { display: grid; gap: 36px; align-items: center; }
+  .eyebrow { font: 500 13px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 0 0 14px; }
+  h1 { font: 600 clamp(32px, 7vw, 50px)/1.08 var(--display); letter-spacing: -0.025em; margin: 0 0 18px; text-wrap: balance; }
+  .lede { color: var(--dim); font-size: 18px; margin: 0 0 26px; max-width: 34em; }
+
+  .open {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    min-height: 64px; padding: 0 28px; border-radius: 20px;
+    background: var(--accent); color: var(--on-accent); text-decoration: none;
+    font: 600 21px/1 var(--display); letter-spacing: -0.01em;
+    box-shadow: 0 10px 30px -10px rgba(242,177,121,0.55);
+    transition: background-color .15s ease, transform .15s ease;
+  }
+  .open:hover { background: var(--accent-press); }
+  .open:active { transform: translateY(1px); }
+  .open svg { width: 22px; height: 22px; flex: none; }
+  .open-note { color: var(--dim); font-size: 14px; margin: 10px 0 0; text-align: center; }
+
+  /* The tour, in a phone-shaped frame */
+  .tour { justify-self: center; width: min(100%, 320px); text-align: center; }
+  .phone {
+    position: relative; border-radius: 34px; padding: 10px; background: #0d1126;
+    border: 1px solid var(--line); box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
+  }
+  .phone video { display: block; width: 100%; aspect-ratio: 9 / 16; border-radius: 25px; background: var(--ground); }
+  .tour figcaption { color: var(--dim); font-size: 14px; margin-top: 12px; }
+
+  section { margin-top: 64px; }
+  h2 { font: 600 26px/1.2 var(--display); letter-spacing: -0.015em; margin: 0 0 18px; text-wrap: balance; }
+
+  /* What's inside: one row per tab, the tab's own name */
+  .parts { display: grid; gap: 12px; padding: 0; margin: 0; list-style: none; }
+  .part { display: grid; grid-template-columns: 44px 1fr; gap: 14px; align-items: start;
+          background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+  .part svg { width: 44px; height: 44px; }
+  .part h3 { font: 600 18px/1.3 var(--display); margin: 2px 0 4px; }
+  .part p { margin: 0; color: var(--dim); font-size: 16px; }
+
+  /* First five minutes */
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+  .steps li { counter-increment: step; display: grid; grid-template-columns: 36px 1fr; gap: 14px; }
+  .steps li::before {
+    content: counter(step); width: 36px; height: 36px; border-radius: 50%;
+    border: 1.5px solid var(--accent); color: var(--accent);
+    display: grid; place-items: center; font: 600 16px/1 var(--display);
+  }
+  .steps p { margin: 4px 0 0; }
+  .steps .aside { color: var(--dim); font-size: 15px; }
+
+  .help { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
+  .help p { margin: 0 0 16px; }
+  .help .row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+  .btn-quiet { display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; border-radius: 14px;
+               border: 1px solid var(--accent); color: var(--accent); text-decoration: none; font: 600 17px/1 var(--display); }
+
+  .safety { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; color: var(--dim); font-size: 15px; }
+  .safety strong { color: var(--ink); }
+
+  .again { margin-top: 56px; }
+  footer { margin-top: 40px; color: var(--dim); font-size: 14px; border-top: 1px solid var(--line); padding-top: 18px; }
+  footer a { color: var(--dim); }
+
+  .narrow { max-width: 640px; }
+
+  @media (min-width: 880px) {
+    .hero { grid-template-columns: 1.15fr 0.85fr; gap: 56px; }
+    .hero .open { display: inline-flex; }
+    .open-note { text-align: left; }
+    section.narrow, .again { margin-left: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .open { transition: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <a class="wordmark" href="/">drift<span>way</span></a>
+    <a class="small" href="/#help">Help</a>
+  </header>
+
+  <div class="hero">
+    <div>
+      <p class="eyebrow">Welcome</p>
+      <h1>Drives and walks for little ones who sleep on the move.</h1>
+      <p class="lede">
+        Driftway plans a drive of the length you need, or one that gets you
+        there by a set time, and brings you home. It finds walks for a pram
+        or a carrier from where you are, and a fair place to meet another
+        parent.
+      </p>
+      <a class="open" href="/">
+        Open Driftway
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <p class="open-note">Works in your phone&rsquo;s browser. No account needed.</p>
+    </div>
+
+    <figure class="tour">
+      <div class="phone">
+        <video src="/media/driftway-tour.mp4" poster="/media/driftway-tour.jpg"
+               controls playsinline preload="none"
+               aria-label="A one-minute tour of Driftway"></video>
+      </div>
+      <figcaption>A one-minute tour · no sound</figcaption>
+    </figure>
+  </div>
+
+  <section class="narrow" aria-labelledby="inside">
+    <h2 id="inside">What&rsquo;s inside</h2>
+    <ul class="parts">
+      <li class="part">
+        <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="#36406e" stroke-width="1.5"/><path d="M27 13a10 10 0 1 0 4 12 8 8 0 0 1-4-12z" fill="#f2b179"/></svg>
+        <div><h3>Still asleep</h3><p>Arrived, but the nap isn&rsquo;t over? One tap finds a longer way there and opens it in Google Maps.</p></div>
+      </li>
+      <li class="part">
+        <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="#36406e" stroke-width="1.5"/><path d="M14 27c0-8 4-13 9-13s7 4 7 8-3 9-8 9-8-1-8-4z" fill="none" stroke="#f2b179" stroke-width="2.2" stroke-linecap="round"/><circle cx="14" cy="27" r="2.6" fill="#E8556B"/></svg>
+        <div><h3>Plan a drive</h3><p>A round trip, or the long way somewhere. Say how long, or when you need to arrive, and choose from up to three drives.</p></div>
+      </li>
+      <li class="part">
+        <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="#36406e" stroke-width="1.5"/><path d="M13 30c5-2 6-9 11-10s6-6 8-7" fill="none" stroke="#8fd3a6" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="1 4.5"/><circle cx="13" cy="30" r="2.6" fill="#f2b179"/></svg>
+        <div><h3>Walk</h3><p>Walks for a pram, a carrier or just you, with steps, gates and surfaces checked against the map, and what isn&rsquo;t known said.</p></div>
+      </li>
+      <li class="part">
+        <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="#36406e" stroke-width="1.5"/><circle cx="13" cy="26" r="3" fill="#9aa3cc"/><circle cx="31" cy="26" r="3" fill="#9aa3cc"/><path d="M16 26q6-9 12 0" fill="none" stroke="#f2b179" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="19.5" r="2.6" fill="#f2b179"/></svg>
+        <div><h3>Meet up</h3><p>A fair place to meet another parent. Neither of you sees where the other sets off from.</p></div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="narrow" aria-labelledby="first">
+    <h2 id="first">Your first five minutes</h2>
+    <ol class="steps">
+      <li><p>Open Driftway and allow location when asked. <span class="aside">It&rsquo;s used only while you&rsquo;re using the app, never in the background.</span></p></li>
+      <li><p>Save Home: tap <strong>★ Saved</strong> and add it. <span class="aside">It stays on your phone.</span></p></li>
+      <li><p>In <strong>Settings</strong>, say what wakes your little one: speed bumps, traffic lights, turning round, roadworks.</p></li>
+      <li><p>Try a drive before you need one, then tap <strong>Feedback</strong> and tell us what you noticed.</p></li>
+      <li><p class="aside">To keep it on your home screen: in Chrome, open the menu and choose <em>Add to Home screen</em>. On an iPhone, in Safari, tap Share, then <em>Add to Home Screen</em>.</p></li>
+    </ol>
+  </section>
+
+  <section class="narrow" aria-labelledby="more">
+    <h2 id="more">Want to know more?</h2>
+    <div class="help">
+      <p>Help in the app explains each part: how drives are chosen, what a drive&rsquo;s card tells you, walks, and your privacy. It&rsquo;s at the top of Settings.</p>
+      <div class="row">
+        <a class="btn-quiet" href="/#help">Open Help</a>
+        <a href="/beta.html">Notes for testers</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="narrow">
+    <p class="safety"><strong>Safety first.</strong> Set up a drive before you set off, and don&rsquo;t use your phone while driving. Car seats are designed for travel, not routine sleep: take breaks on longer drives. Driftway doesn&rsquo;t replace advice from a health professional.</p>
+  </section>
+
+  <div class="again narrow">
+    <a class="open" href="/">
+      Open Driftway
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+  </div>
+
+  <footer class="narrow">
+    <a href="/privacy.html">Privacy policy</a> · <a href="/delete-account.html">Deleting your account</a> · Driftway is run by iBookBinding Ltd
+  </footer>
+</div>
+</body>
+</html>
