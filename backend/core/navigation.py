@@ -110,15 +110,16 @@ def provider_by_id(provider_id: Optional[str]) -> NavProvider:
 
 # --------------------------------------------------------------------- URLs
 
-def _google_url(start: Coord, finish: Coord, waypoints: List[Coord]) -> str:
-    # No origin (founder, 17 Oct 2026: a passenger planned a drive on the move,
-    # and Google Maps only previewed it, with no Start). Google's
-    # documentation: given an origin "not close to the user's current
-    # location", it "launches a route preview"; without one it "defaults to
-    # ... device location", where Start is offered. So the drive starts from
-    # wherever the phone is when the link is opened.
+def _google_url(start: Coord, finish: Coord, waypoints: List[Coord], with_origin: bool) -> str:
+    # The origin only for a start that was picked (founder, 18 Oct 2026).
+    # From the phone's own location there is none (17 Oct 2026: a passenger
+    # planned a drive on the move, and Google Maps only previewed it, with no
+    # Start). Google's documentation: given an origin "not close to the
+    # user's current location", it "launches a route preview"; without one it
+    # "defaults to ... device location", where Start is offered.
     base = "https://www.google.com/maps/dir/?api=1"
-    url = f"{base}&destination={finish.lat:.6f},{finish.lng:.6f}"
+    url = base + (f"&origin={start.lat:.6f},{start.lng:.6f}" if with_origin else "")
+    url += f"&destination={finish.lat:.6f},{finish.lng:.6f}"
     if waypoints:
         capped = waypoints[:GOOGLE_MAPS.max_waypoints]
         url += "&waypoints=" + "|".join(
@@ -127,17 +128,18 @@ def _google_url(start: Coord, finish: Coord, waypoints: List[Coord]) -> str:
     return url + "&travelmode=driving"
 
 
-def _waze_url(_start: Coord, finish: Coord, _waypoints: List[Coord]) -> str:
+def _waze_url(_start: Coord, finish: Coord, _waypoints: List[Coord], _with_origin: bool) -> str:
     return (
         f"https://waze.com/ul?ll={finish.lat:.6f}%2C{finish.lng:.6f}"
         f"&navigate=yes"
     )
 
 
-def _apple_url(start: Coord, finish: Coord, _waypoints: List[Coord]) -> str:
-    # No saddr, for the same reason as Google's origin: Apple Maps then starts
-    # from where the phone is.
-    return f"https://maps.apple.com/?daddr={finish.lat:.6f},{finish.lng:.6f}&dirflg=d"
+def _apple_url(start: Coord, finish: Coord, _waypoints: List[Coord], with_origin: bool) -> str:
+    # saddr as Google's origin: only for a picked start; without it Apple Maps
+    # starts from where the phone is.
+    saddr = f"saddr={start.lat:.6f},{start.lng:.6f}&" if with_origin else ""
+    return f"https://maps.apple.com/?{saddr}daddr={finish.lat:.6f},{finish.lng:.6f}&dirflg=d"
 
 
 _URL_BUILDERS = {
@@ -157,6 +159,7 @@ def build_options(
     is_loop: bool,
     simulated: bool = False,
     preferred_id: Optional[str] = None,
+    with_origin: bool = False,
 ) -> List[NavigationOption]:
     """Every way this particular route could actually be driven.
 
@@ -198,7 +201,7 @@ def build_options(
         options.append(NavigationOption(
             provider_id=provider.id,
             label=provider.label,
-            url=_URL_BUILDERS[provider.id](start, finish, waypoints),
+            url=_URL_BUILDERS[provider.id](start, finish, waypoints, with_origin),
             keeps_waypoints=preserves,
             dropped_waypoints=dropped,
             platforms=sorted(provider.platforms),

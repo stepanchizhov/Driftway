@@ -64,6 +64,9 @@ export interface GenerateRequest {
   preferred_navigation?: string | null;
   /** What wakes the child; servers before 0.8.15 ignore it. */
   stops?: StopPrefs;
+  /** The start was picked, not the phone's location: navigation links then
+   *  start there (servers before 0.8.18 ignore it). */
+  start_chosen?: boolean;
   /** A maintainer's drive, recorded for analysis (honoured for maintainers
    *  only, on the server). */
   record?: boolean;

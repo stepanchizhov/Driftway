@@ -313,6 +313,9 @@ export default function App() {
         mode,
         preferred_navigation: settings.preferredNavigation,
         stops: settings.stopPrefs,
+        // From the phone's own location the links carry no start, so Google
+        // Maps starts from wherever the phone is by then (founder, 17-18 Oct).
+        start_chosen: startEndpoint?.source !== "current" || undefined,
         record: settings.recordDrives || undefined,
       });
       openScreen({

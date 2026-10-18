@@ -133,9 +133,10 @@ places). Then
     python -m tools.google_compare records $HOME\driftway-records\drives.json --limit 5
 
 compares each request's first drive with Google (question A, one request
-each), from where it was planned; results go next to the file. Since
-2e66353 the links carry no start (Google starts from the phone, so it offers
-Start), which is why the start comes from the request.
+each), from where it was planned; results go next to the file. Since 0.8.18
+a drive planned from the phone's location has links with no start (Google
+starts from the phone, so it offers Start; a picked start is still
+carried), which is why the start comes from the request.
 
 **B: phone checklist** (OPEN, nobody has done it yet). For each link above,
 on Android (and an iPhone when one is at hand): open it, and note

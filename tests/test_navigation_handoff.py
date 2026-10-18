@@ -126,10 +126,15 @@ class PlainDestinationTests(unittest.TestCase):
         self.assertIn("maps.apple.com/?daddr=", options["apple_maps"].url)
         self.assertIn("dirflg=d", options["apple_maps"].url)
         self.assertIn("google.com/maps/dir/?api=1", options["google_maps"].url)
-        # Both start where the phone is (17 Oct 2026: an origin elsewhere made
-        # Google Maps preview the drive with no Start).
+        # Without a picked start both start where the phone is (17 Oct 2026:
+        # an origin elsewhere made Google Maps preview the drive with no Start).
         self.assertNotIn("saddr=", options["apple_maps"].url)
         self.assertNotIn("origin=", options["google_maps"].url)
+
+    def test_a_picked_start_is_carried(self):
+        options = _by_id(build_options(START, FINISH, [], is_loop=False, with_origin=True))
+        self.assertIn(f"origin={START.lat:.6f},{START.lng:.6f}", options["google_maps"].url)
+        self.assertIn(f"saddr={START.lat:.6f},{START.lng:.6f}&daddr=", options["apple_maps"].url)
 
     def test_apple_maps_is_marked_ios_only(self):
         options = _by_id(build_options(START, FINISH, [], is_loop=False))

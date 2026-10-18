@@ -40,7 +40,7 @@ export const RELEASES: Release[] = [
     version: "0.8.18",
     date: "17 Oct 2026",
     changes: [
-      "Opening a drive in Google Maps or Apple Maps once you're on the way now starts from where the phone is, so Google Maps offers Start instead of only a preview.",
+      "A drive planned from your location opens in Google Maps or Apple Maps from wherever the phone is by then, so Google Maps offers Start even when it was planned on the move. A drive from a place you picked still starts there.",
       "For Driftway's maintainers only: their own drives can be recorded for 30 days, to compare them with Google's routes. Nobody else's drives are recorded (privacy policy 1.10).",
     ],
   },

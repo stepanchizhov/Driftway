@@ -72,6 +72,11 @@ class GenerateRequest(BaseModel):
     preferred_navigation: Optional[str] = None
     #: What wakes the child; without it, the usual weights.
     stops: Optional[StopPrefs] = None
+    #: The start was picked (an address, Home, a saved place, a point on the
+    #: map), not the phone's own location: the navigation links then start
+    #: there. Otherwise they carry no start, and the app starts from wherever
+    #: the phone is (founder, 18 Oct 2026).
+    start_chosen: bool = False
     #: A maintainer asks for this drive to be recorded for analysis
     #: (core/drive_records.py). Honoured only for maintainers, checked on the
     #: server.

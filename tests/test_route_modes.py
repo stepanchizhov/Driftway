@@ -255,6 +255,23 @@ class SimulatedRouteTests(unittest.TestCase):
         res = asyncio.run(generate_routes(_req(POOL, POOL, 30), DeadRouter()))
         self.assertIn("simulated", res.notice.lower())
 
+    def test_a_picked_start_is_where_the_links_start(self):
+        """From the phone's location the links carry no start (Google Maps
+        then offers Start); from a start that was picked, they carry it
+        (founder, 18 Oct 2026)."""
+        here = asyncio.run(generate_routes(_req(POOL, POOL, 30), ScaledRouter()))
+        req = _req(POOL, POOL, 30)
+        req.start_chosen = True
+        picked = asyncio.run(generate_routes(req, ScaledRouter()))
+        origin = f"origin={POOL.lat:.6f},{POOL.lng:.6f}"
+        for route in here.routes:
+            self.assertNotIn("origin=", route.maps_url)
+            self.assertTrue(all("origin=" not in n.url and "saddr=" not in n.url for n in route.navigation))
+        for route in picked.routes:
+            self.assertIn(origin, route.maps_url)
+            urls = {n.provider_id: n.url for n in route.navigation}
+            self.assertIn(origin, urls["google_maps"])   # a loop: Apple Maps isn't offered
+
     def test_live_routes_keep_their_navigation_link(self):
         res = asyncio.run(generate_routes(_req(POOL, POOL, 30), ScaledRouter()))
         self.assertFalse(res.simulated)
@@ -282,8 +299,9 @@ class NavigationExportTests(unittest.TestCase):
         ]
         url = google_maps_url(POOL, FAR, anchors)
 
-        # No origin: the drive starts where the phone is when the link opens
-        # (founder, 17 Oct 2026: with one, Google only previewed it).
+        # No origin unless the start was picked: the drive starts where the
+        # phone is when the link opens (founder, 17 Oct 2026: with one, Google
+        # only previewed it).
         self.assertNotIn("origin=", url)
         self.assertIn(f"destination={FAR.lat:.6f},{FAR.lng:.6f}", url)
         waypoints = url.split("waypoints=")[1].split("&")[0]

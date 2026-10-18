@@ -124,17 +124,17 @@ def snap_to_route(anchors: List[Coord], geometry: List[Coord]) -> List[Coord]:
     return [nearest_point_on_path(a, geometry) for a in anchors]
 
 
-def google_maps_url(start: Coord, finish: Coord, anchors: List[Coord]) -> str:
+def google_maps_url(start: Coord, finish: Coord, anchors: List[Coord], with_origin: bool = False) -> str:
     """Build a Google Maps directions URL. Mobile supports up to 3 waypoints,
     so we cap anchors at 3 (our shapes already respect this)."""
-    # No origin (founder, 17 Oct 2026: a passenger planned a drive on the move,
-    # and Google Maps only previewed it, with no Start). Google's
-    # documentation: given an origin "not close to the user's current
-    # location", it "launches a route preview"; without one it "defaults to
-    # ... device location", where Start is offered. So the drive starts from
-    # wherever the phone is when the link is opened.
+    # The origin only for a start that was picked (founder, 18 Oct 2026).
+    # From the phone's own location there is none (17 Oct 2026: a passenger
+    # planned a drive on the move, and Google Maps only previewed it, with no
+    # Start). Google's documentation: given an origin "not close to the
+    # user's current location", it "launches a route preview"; without one it
+    # "defaults to ... device location", where Start is offered.
     base = "https://www.google.com/maps/dir/?api=1"
-    origin = ""
+    origin = f"&origin={start.lat:.6f},{start.lng:.6f}" if with_origin else ""
     dest = f"&destination={finish.lat:.6f},{finish.lng:.6f}"
     wp = ""
     if anchors:
@@ -382,13 +382,14 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         full_geometry=ev.geometry if req.record else None,
         # A simulated route gets no navigation link at all. See the note where
         # the fallback is triggered.
-        maps_url="" if simulated else google_maps_url(start, finish, anchors),
+        maps_url="" if simulated else google_maps_url(start, finish, anchors, req.start_chosen),
         confidence=confidence,
         navigation=build_options(
             start, finish, anchors,
             is_loop=haversine_km(start, finish) < 0.1,
             simulated=simulated,
             preferred_id=preferred_nav,
+            with_origin=req.start_chosen,
         ),
         extra_minutes=extra,
         is_direct=is_direct,

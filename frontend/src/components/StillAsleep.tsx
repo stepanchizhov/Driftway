@@ -98,6 +98,8 @@ export function StillAsleep({
         direction: "surprise",
         mode: "destination",
         stops,
+        // Typed in because the phone couldn't say: a picked start.
+        start_chosen: (!located && typed !== null) || undefined,
         record: record || undefined,
       });
       const best = data.routes[0];
