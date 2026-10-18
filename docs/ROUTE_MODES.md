@@ -48,6 +48,32 @@ the direct route:
 > "That drive takes about 25 minutes even by the quickest route, so 10 minutes
 > is not possible. Here is the direct way."
 
+### Ferries (0.8.20, 18 Oct 2026)
+
+Testers drive from Woking to the Isle of Wight. A drive Driftway shapes (a
+loop, the long way, a steered or moved drive) never takes a ferry: TomTom
+`avoid=ferries`, openrouteservice `avoid_features: ferries`, whenever there
+are waypoints. The direct way may, and says so (`sectionType=ferry`; ORS
+`extra_info: waytype`, 9). When it does, a direct way on land is asked for
+(on the island, round instead of over the Cowes chain ferry) and planning
+goes on from it; when there is none, the quickest way is offered with:
+
+> "This journey includes a ferry. Ferries sail at set times, so Driftway
+> can't make this drive longer or time it to arrive. Plan your drive to the
+> ferry terminal, and from the port when you land. Here is the quickest way."
+
+Its card adds "includes a ferry crossing: check sailing and check-in times
+with the ferry company". A TomTom 400 (no route) is no longer asked again:
+the answer doesn't change.
+
+Checked live 18 Oct 2026: TomTom's `avoid=ferries` is a preference. Woking
+to Newport direct is 103 min with a ferry; "avoiding" ferries it still
+returns one (127 min), there being no other way. So the route's own ferry
+flag decides, never the request: a ferry-free direct way must come back
+without one, and any shaped drive that comes back on a ferry is dropped.
+East Cowes to Cowes: 13 min over the chain ferry, 23 min round by road; the
+road is used.
+
 ### Arrive by a time (0.8.19, 18 Oct 2026)
 
 Founder, after a drive to swimming lessons: "Sometimes it's easier than

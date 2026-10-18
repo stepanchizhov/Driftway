@@ -75,7 +75,8 @@ class OrsRouterTests(_Base):
         self.assertFalse(ev.has_uturn)
         body = json.loads(seen[0].read())
         self.assertEqual(body["coordinates"][1], [-0.64, 51.50])        # [lng, lat]
-        self.assertEqual(body["options"]["avoid_features"], ["highways"])
+        # Quieter roads; and a shaped drive never takes a ferry.
+        self.assertEqual(body["options"]["avoid_features"], ["highways", "ferries"])
         self.assertIn("/openrouteservice/v2/directions/driving-car/geojson", str(seen[0].url))
 
     def test_a_u_turn_instruction_counts_as_turning_round(self):

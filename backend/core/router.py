@@ -63,6 +63,9 @@ class EvaluatedRoute:
     steered: bool = False
     #: Which: "steered" round a busy stretch, or "turn_moved" to an easy place.
     built_by: str = ""
+    #: Crosses water on a ferry (founder, 18 Oct 2026: testers driving to the
+    #: Isle of Wight). Only a direct way may: see core/generator.py.
+    ferry: bool = False
 
 
 class Router(Protocol):
@@ -240,6 +243,11 @@ class TomTomRouter:
     async def evaluate(self, start, finish, anchors, profile):
         return await self._calculate(start, finish, anchors, profile)
 
+    async def evaluate_without_ferries(self, start, finish, anchors, profile):
+        """The same route, never on a ferry: a direct way that needed one
+        may have another (core/generator.py)."""
+        return await self._calculate(start, finish, anchors, profile, ferries=False)
+
     async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
         """The same route, kept out of the given boxes (south, west, north,
         east): TomTom's avoidAreas, which only its POST form accepts. Used to
@@ -251,7 +259,7 @@ class TomTomRouter:
             for s, w, n, e in boxes[:10]]}}
         return await self._calculate(start, finish, anchors, profile, body=body)
 
-    async def _calculate(self, start, finish, anchors, profile, body=None):
+    async def _calculate(self, start, finish, anchors, profile, body=None, ferries=None):
         # Build the "lat,lng:lat,lng:..." locations string.
         pts = [start, *anchors, finish]
         locs = ":".join(f"{p.lat:.6f},{p.lng:.6f}" for p in pts)
@@ -275,12 +283,21 @@ class TomTomRouter:
             # hilliness) was measured too and added signals without fewer
             # turn-arounds, so it is not used. See docs/DRIVING.md.
             "avoid": ["alreadyUsedRoads"],
+            # Where a ferry is on the route, so a crossing is never mistaken
+            # for driving time.
+            "sectionType": "ferry",
         }
         # Nudge the engine toward / away from motorways by profile.
         if profile == "quiet":
             params["avoid"] = ["alreadyUsedRoads", "motorways"]
         elif profile == "motorway":
             params["routeType"] = "fastest"
+        # A drive Driftway shapes (a loop, the long way) never takes a ferry:
+        # ferries sail at set times. Only the plain direct way may.
+        if ferries is None:
+            ferries = not anchors
+        if not ferries:
+            params["avoid"] = params["avoid"] + ["ferries"]
 
         data = None
         failure = None          # why TomTom itself failed, if it did
@@ -328,10 +345,11 @@ class TomTomRouter:
                 continue
             if resp.status_code >= 400:
                 # About this request (no route between these points), not
-                # about TomTom: not a reason to stand it down.
+                # about TomTom: not a reason to stand it down, and asking again
+                # gets the same answer.
                 log.warning("TomTom %s: %.200s", resp.status_code, _no_numbers(resp.text))
                 failure = None
-                continue
+                break
             try:
                 data = resp.json()
                 break
@@ -365,6 +383,7 @@ class TomTomRouter:
             has_uturn=_has_uturn(routes[0]),
             uturn_points=_uturn_points(routes[0]),
             raw=summary,
+            ferry=any(s.get("sectionType") == "FERRY" for s in routes[0].get("sections") or []),
         )
 
 
@@ -435,6 +454,9 @@ class TomTomRouter:
 #: openrouteservice instruction type for a U-turn (documented list:
 #: giscience.github.io/openrouteservice/api-reference/endpoints/directions/instruction-types).
 _ORS_UTURN = 9
+#: openrouteservice way type for a ferry, in extra_info "waytype" (documented
+#: list: giscience.github.io/openrouteservice/api-reference/endpoints/directions/extra-info).
+_ORS_FERRY = 9
 #: How far an anchor may be from a road. Anchors are generated points and can
 #: land in a field; checked live 10 Oct 2026 with 1000 m.
 _ORS_SNAP_M = 1000
@@ -459,23 +481,36 @@ class ORSRouter:
     async def evaluate(self, start, finish, anchors, profile):
         return await self._directions(start, finish, anchors, profile)
 
+    async def evaluate_without_ferries(self, start, finish, anchors, profile):
+        return await self._directions(start, finish, anchors, profile, ferries=False)
+
     async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
         """The same route, kept out of the boxes (south, west, north, east)."""
         polygons = [[[[w, s], [e, s], [e, n], [w, n], [w, s]]] for s, w, n, e in boxes]
         return await self._directions(start, finish, anchors, profile,
                                       avoid={"type": "MultiPolygon", "coordinates": polygons})
 
-    async def _directions(self, start, finish, anchors, profile, avoid=None):
+    async def _directions(self, start, finish, anchors, profile, avoid=None, ferries=None):
         from core import ors
         pts = [start, *anchors, finish]
         body = {
             "coordinates": [[p.lng, p.lat] for p in pts],
             "radiuses": [_ORS_SNAP_M] * len(pts),
             "instructions": True,
+            # Way types along the route: 9 is a ferry.
+            "extra_info": ["waytype"],
         }
         options = {}
+        features = []
         if profile == "quiet":
-            options["avoid_features"] = ["highways"]
+            features.append("highways")
+        # As with TomTom: only the plain direct way may take a ferry.
+        if ferries is None:
+            ferries = not anchors
+        if not ferries:
+            features.append("ferries")
+        if features:
+            options["avoid_features"] = features
         if avoid:
             options["avoid_polygons"] = avoid
         if options:
@@ -511,6 +546,8 @@ class ORSRouter:
             uturn_points=_ors_uturn_points(feats[0], steps),
             raw=summary,
             live_traffic=False,
+            ferry=any(w.get("value") == _ORS_FERRY
+                      for w in ((props.get("extras") or {}).get("waytypes") or {}).get("summary") or []),
         )
 
     async def travel_matrix(self, origins, destinations, profile):
@@ -562,6 +599,13 @@ class FailoverRouter:
             if route is not None or tomtom_available():
                 return route
         return await self.backup.evaluate(start, finish, anchors, profile)
+
+    async def evaluate_without_ferries(self, start, finish, anchors, profile):
+        if tomtom_available():
+            route = await self.primary.evaluate_without_ferries(start, finish, anchors, profile)
+            if route is not None or tomtom_available():
+                return route
+        return await self.backup.evaluate_without_ferries(start, finish, anchors, profile)
 
     async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
         if tomtom_available():

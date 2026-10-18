@@ -49,6 +49,12 @@ export function HelpScreen({ meetHalfway, walking }: Props) {
           minutes early, and says when to leave.
         </p>
         <p>You get up to three drives to choose from.</p>
+        <p>
+          <strong>Going by ferry?</strong> Ferries sail at set times, so plan
+          the drive to the ferry terminal, with <strong>Arrive by</strong> your
+          check-in time, and plan again from the port when you land. Drives
+          Driftway lengthens never take a ferry.
+        </p>
       </Section>
 
       <Section title="Reading a drive">
@@ -116,6 +122,10 @@ export function HelpScreen({ meetHalfway, walking }: Props) {
           <strong>★ Saved</strong> keeps Home and your other places on this
           phone, for one tap in Still asleep and in searches, and the drives
           you&rsquo;ve starred.
+        </p>
+        <p>
+          Away from home? Save where you&rsquo;re staying as a place, and Still
+          asleep offers it with one tap.
         </p>
       </Section>
 

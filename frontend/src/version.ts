@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.20",
+    date: "18 Oct 2026",
+    changes: [
+      "Speed bumps and traffic lights are now counted from Woking down to the Solent and across the Isle of Wight, as well as around Windsor.",
+      "Ferries: drives Driftway lengthens never take one. Asked for a drive across the water, it offers the quickest way and suggests planning to the ferry terminal, since ferries sail at set times.",
+    ],
+  },
+  {
     version: "0.8.19",
     date: "18 Oct 2026",
     changes: [

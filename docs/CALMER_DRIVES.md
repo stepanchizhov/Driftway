@@ -205,6 +205,16 @@ IMPLEMENTED.
   only; ODbL, attributed). `windsor.json`: 3,437 points, 51.33 to 51.62 N,
   0.88 to 0.40 W, data as of 2026-10-11T21:14Z. Refresh monthly; another
   area is one more run. Nothing is fetched while serving a drive.
+- **From Woking to the Solent and the Isle of Wight (0.8.20, 18 Oct 2026,**
+  for testers driving there): eight more regions in tiles about Windsor's
+  size, 50.56 to 51.33 N and 1.62 to 0.40 W, adjacent so a drive crossing
+  them counts as covered (the open sea off Selsey left out):
+  `woking-guildford`, `basingstoke-alton`, `test-valley`,
+  `haslemere-petersfield`, `east-hampshire`, `southampton-winchester`,
+  `portsmouth-east-wight`, `lymington-west-wight`. 3,239 bumps and 4,948
+  lights in all, data as of 2026-10-18. Mapping is thinner than around
+  Windsor (Windsor alone: 3,437 bumps). All nine load in 0.6 s and hold
+  about 12 MB.
 - **Count:** `core/calming.py` counts mapped bumps within 12 m of a drive,
   each once, or gives no count when under 80% of the drive is inside
   prepared data. A simulated drive gets no count.

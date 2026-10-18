@@ -417,7 +417,8 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         extra_minutes=extra,
         is_direct=is_direct,
         simulated=simulated,
-        caveat=_with_traffic_note(ev, _caveat(ev, finish, req) if not is_direct else None),
+        caveat=_with_traffic_note(ev, _caveat(ev, finish, req) if not is_direct
+                                  else (FERRY_CAVEAT if ev.ferry else None)),
         speed_bumps=bumps.count if bumps is not None else None,
         lights_junctions=lights.junctions if lights is not None else None,
         lights_pedestrian=lights.pedestrian if lights is not None else None,
@@ -468,12 +469,13 @@ def _notice(options: List[RouteOption], req: GenerateRequest,
 def _direct_only_response(req: GenerateRequest, start: Coord, finish: Coord,
                           direct: EvaluatedRoute, provider: str
                           ) -> GenerateResponse:
-    latest = _latest(req)
     """Answer for a target at or below the direct drive.
 
     You cannot reach somewhere more quickly than the quickest route, so there
-    is nothing to pad. Say the real number and offer that route.
+    is nothing to pad. Say the real number and offer that route. Also the
+    answer when the only way there is on a ferry.
     """
+    latest = _latest(req)
     option = _build_option(direct, start, finish, req, req.road_profile.value,
                            simulated=False, direct=direct, is_direct=True,
                            preferred_nav=req.preferred_navigation)
@@ -487,7 +489,8 @@ def _direct_only_response(req: GenerateRequest, start: Coord, finish: Coord,
         mode=RouteMode.DESTINATION,
         direct_minutes=round(direct.minutes, 1),
         simulated=False,
-        notice=(_floor_notice(req.target_minutes, direct.minutes) if latest is None
+        notice=(FERRY_NOTICE if direct.ferry
+                else _floor_notice(req.target_minutes, direct.minutes) if latest is None
                 else _arrival_notice(latest, direct.minutes)),
     )
 
@@ -521,6 +524,31 @@ def _floor_notice(target: int, direct_minutes: float) -> str:
         f"That drive takes about {rounded} minutes even by the quickest route, "
         f"so {target} minutes is not possible. Here is the direct way."
     )
+
+
+#: Said when the quickest way needs a ferry and there is no other (founder,
+#: 18 Oct 2026: testers driving from Woking to the Isle of Wight).
+FERRY_NOTICE = ("This journey includes a ferry. Ferries sail at set times, so "
+                "Driftway can't make this drive longer or time it to arrive. Plan "
+                "your drive to the ferry terminal, and from the port when you "
+                "land. Here is the quickest way.")
+FERRY_CAVEAT = "includes a ferry crossing: check sailing and check-in times with the ferry company"
+
+
+async def _direct_without_ferries(router: Router, start: Coord, finish: Coord,
+                                  profile: str) -> Optional[EvaluatedRoute]:
+    """The quickest way that stays on land, if the router can ask for one
+    and there is one (on the Isle of Wight, round instead of over the Cowes
+    chain ferry); None from the mainland to the island."""
+    ask = getattr(router, "evaluate_without_ferries", None)
+    if ask is None:
+        return None
+    try:
+        route = await ask(start, finish, [], profile)
+    except Exception as e:  # noqa: BLE001 - no other way is an answer too
+        log.warning("ferry-free direct route failed: %s", type(e).__name__)
+        return None
+    return route if isinstance(route, EvaluatedRoute) and not route.ferry else None
 
 
 async def _direct_route(router: Router, start: Coord, finish: Coord,
@@ -565,6 +593,15 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
     direct: Optional[EvaluatedRoute] = None
     if not is_loop:
         direct = await _direct_route(router, start, finish, profile)
+        if direct is not None and direct.ferry:
+            # The quickest way crosses water. Ferries sail at set times, so a
+            # drive can't be lengthened or timed round one: a way on land if
+            # there is one, otherwise the quickest way, saying so. The drives
+            # Driftway shapes never take a ferry (core/router.py).
+            dry = await _direct_without_ferries(router, start, finish, profile)
+            if dry is None:
+                return _direct_only_response(req, start, finish, direct, router.name)
+            direct = dry
         if direct is not None and req.target_minutes <= direct.minutes + DIRECT_FLOOR_SLACK_MIN:
             # Impossible as asked. You cannot drive somewhere more quickly than
             # the quickest route, so say so and hand back that route rather
@@ -609,6 +646,10 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
     latest = _latest(req)
 
     def pick(evs: List[EvaluatedRoute]) -> List[EvaluatedRoute]:
+        # Never a drive on a ferry: asked to avoid them, TomTom still takes
+        # one where there is no other way (checked live 18 Oct 2026, Woking
+        # to Newport), say to a waypoint across the water.
+        evs = [ev for ev in evs if not ev.ferry]
         # With an arrival time, nothing that would arrive late, ever.
         if latest is not None:
             evs = [ev for ev in evs if ev.minutes <= latest]
@@ -668,8 +709,10 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
         profile,
     )
 
-    if not top and latest is not None and direct is not None and not simulated:
-        # Every longer drive would arrive late: the direct way, said so.
+    if (not top and direct is not None and not simulated
+            and (latest is not None or (evaluated and all(ev.ferry for ev in evaluated)))):
+        # Every longer drive would arrive late, or cross on a ferry: the
+        # direct way, said so.
         return _direct_only_response(req, start, finish, direct, provider_name)
 
     options = [

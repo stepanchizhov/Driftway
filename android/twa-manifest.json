@@ -20,7 +20,7 @@
     "path": "C:\\Users\\stepa\\.driftway\\driftway-localtest.jks",
     "alias": "driftway-localtest"
   },
-  "appVersionName": "0.8.19",
+  "appVersionName": "0.8.20",
   "appVersionCode": 3,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
@@ -47,5 +47,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "0.8.19"
+  "appVersion": "0.8.20"
 }
