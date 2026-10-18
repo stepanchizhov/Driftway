@@ -37,6 +37,12 @@ class AccessLogTests(unittest.TestCase):
                          "/api/meetups/results/…")
         self.assertEqual(self.f.clean("/api/health"), "/api/health")
 
+    def test_outside_requests_are_not_logged_with_their_urls(self):
+        """Found 18 Oct 2026: the HTTP client logged TomTom's key and every
+        drive's points at INFO."""
+        for name in ("httpx", "httpcore"):
+            self.assertFalse(logging.getLogger(name).isEnabledFor(logging.INFO), name)
+
     def test_the_filter_rewrites_uvicorns_record(self):
         rec = logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1,
                                 '%s - "%s %s HTTP/%s" %d',

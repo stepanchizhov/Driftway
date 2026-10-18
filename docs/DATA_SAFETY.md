@@ -90,6 +90,14 @@ but the privacy policy says so plainly.
 The domain went live on 10 Oct 2026: both URLs answer over HTTPS. The same
 pages remain on `driftway-front.onrender.com`.
 
+**0.8.19 (18 Oct 2026), logs:** found while making the tour video: the
+HTTP client logged every outside request's full address at INFO, so the
+hosting provider's logs held the points of drives, walks and searches sent to
+TomTom and openrouteservice (and TomTom's key, sent in the address). It now
+logs warnings only (`main.py`; `tests/test_beta_readiness.py`). The policy's
+"these records never include ... positions" is true again from this release;
+Render keeps logs for a limited time, so the older lines age out.
+
 **0.8.18 (17 Oct 2026), maintainers' recorded drives:** accounts whose
 email is in the server's MAINTAINER_EMAILS (the founder; later, anyone
 maintaining Driftway) can turn on "Record my drives for analysis": each

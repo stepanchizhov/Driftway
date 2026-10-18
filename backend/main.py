@@ -82,6 +82,13 @@ class _AccessLogPrivacy(logging.Filter):
 
 logging.getLogger("uvicorn.access").addFilter(_AccessLogPrivacy())
 
+# The HTTP client logs every outside request's full URL at INFO. Found 18 Oct
+# 2026: that put TomTom's API key (sent in the query string) and the points
+# of every drive, walk and search into the hosting provider's logs. Warnings
+# and errors only; the code logs what it needs itself, without either.
+for _client_log in ("httpx", "httpcore"):
+    logging.getLogger(_client_log).setLevel(logging.WARNING)
+
 # Create tables on startup (SQLite locally, Postgres on Render).
 init_db()
 
