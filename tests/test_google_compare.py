@@ -106,5 +106,43 @@ class RequestTests(unittest.TestCase):
         self.assertNotIn("encodedPolyline", json.dumps(results))    # Google's line isn't kept
 
 
+class PinTests(unittest.TestCase):
+    """Since 0.8.21 links carry pins (core/handoff.py): Google is asked about
+    both links, so the results say whether the pins help."""
+
+    def test_a_pinned_case_is_asked_with_and_without_its_pins(self):
+        pinned = {**CASE, "anchors": [[52.004, 13.0]]}
+        plain = {**CASE, "id": "plain", "anchors": CASE["waypoints"]}
+        got = GC.variants([pinned, plain])
+        self.assertEqual([(v["id"], v["link"], len(v["waypoints"])) for v in got],
+                         [("synthetic", "pinned", 2), ("synthetic", "anchors", 1), ("plain", "link", 2)])
+
+    def test_pins_are_added_to_cases_prepared_before_them(self):
+        from core.models import Coord
+
+        old = {k: v for k, v in CASE.items()}
+        old["geometry"] = [[52.0, 13.0]] + [[52.0 + i * 0.002, 13.0] for i in range(1, 30)] +                           [[52.058, 13.0 + i * 0.002] for i in range(1, 30)] + [[52.0, 13.004]]
+
+        class Guess:
+            def __init__(self, geometry):
+                self.geometry = geometry
+
+        class Router:
+            # Straight along the south with the case's own points; along the
+            # drive once a pin holds it there.
+            async def evaluate_as_navigation(self, start, finish, points, profile="mixed"):
+                if len(points) > len(CASE["waypoints"]):
+                    return Guess([Coord(lat=p[0], lng=p[1]) for p in old["geometry"]])
+                return Guess([Coord(lat=52.0, lng=13.0), Coord(lat=52.0, lng=13.004)])
+        with mock.patch("dotenv.load_dotenv", lambda *a, **k: None),                 mock.patch("core.router.get_router", lambda: Router()):
+            out = asyncio.run(GC.pin_cases([old]))
+        self.assertEqual(out[0]["anchors"], CASE["waypoints"])
+        self.assertGreater(len(out[0]["waypoints"]), len(CASE["waypoints"]))
+        self.assertIn("origin=52.000000,13.000000", out[0]["google_maps_url"])
+        with mock.patch("dotenv.load_dotenv", lambda *a, **k: None),                 mock.patch("core.router.get_router", lambda: Router()):
+            again = asyncio.run(GC.pin_cases(out))              # from the anchors again: the same
+        self.assertEqual(again, out)
+
+
 if __name__ == "__main__":
     unittest.main()

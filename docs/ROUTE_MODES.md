@@ -238,8 +238,15 @@ after; its minutes):
 | the same, second drive | 2 -> 3 | 48% -> 100% | 19 -> 25 / 25 |
 
 The stand-in is TomTom's, not Google's: how close Google comes is for the
-comparison (docs/GOOGLE_COMPARISON.md) and the phone. A loop that already has
-three anchors has no spare point.
+comparison (docs/GOOGLE_COMPARISON.md) and the phone.
+
+**A full link that still strays** (a loop's three turning points leave no
+spare one): when the stand-in follows under 90% of the drive, each point is
+tried swapped for a pin where it strays most, once, and a swap is kept only
+if it follows better. Up to three more calls, only for such drives. On the
+prepared comparison cases (22 Oct 2026, night traffic): Holyport 45-minute
+Quieter loop 79% -> 92%, Dedworth 30-minute loop 68% -> 72%; Windsor to
+Maidenhead (pins added) 75% -> 100%. The other five already follow 96-100%.
 
 ---
 

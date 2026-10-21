@@ -147,6 +147,13 @@ and a 71-minute Quieter drive west of London Google drove in 52 on the M4 and
 M25 (21 Oct, one point). Prepared cases and recorded drives made after
 0.8.21 carry the pins, so run A on them to see whether Google follows.
 
+The eight prepared cases were pinned on 22 Oct 2026 (`python -m
+tools.google_compare pin`, live TomTom, keeping each case's `anchors`):
+three changed (Dedworth, Holyport, Windsor to Maidenhead). `run` asks Google
+about both links of a changed case, "pinned" and "anchors", so `--limit 11`
+covers every case: 8 links plus the 3 anchor-only ones. The report has a
+`link` column.
+
 **B: phone checklist** (OPEN, nobody has done it yet). For each link above,
 on Android (and an iPhone when one is at hand): open it, and note
 

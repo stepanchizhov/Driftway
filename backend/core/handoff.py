@@ -37,6 +37,9 @@ OFF_ROUTE_M = 400.0
 #: Divergence this close to the start or finish isn't worth a pin: it is the
 #: way out of the street.
 END_SKIP_M = 600.0
+#: A full link whose stand-in follows less of the drive than this tries
+#: swapping one of its points for a pin.
+SWAP_BELOW = 0.9
 #: Points of Driftway's route looked at, at most.
 SAMPLES = 400
 _CELL = 0.002          # degrees: about 220 m north-south, 140 m east-west here
@@ -104,24 +107,43 @@ async def link_points(router, start: Coord, finish: Coord, route: Sequence[Coord
     # Each set of points is scored by how much of the drive the stand-in
     # follows through them; the best is kept, so a pin that moves the
     # trouble elsewhere (seen live 22 Oct 2026) isn't used.
-    best, best_share = points, -1.0
-    while True:
+    best, best_share, best_guess = points, -1.0, None
+
+    async def stand_in(pts):
         try:
-            guess = await ask(start, finish, points)
+            guess = await ask(start, finish, pts)
         except Exception as e:  # noqa: BLE001 - a link without pins still works
             log.warning("navigation stand-in failed: %s", type(e).__name__)
-            break
-        if guess is None or not guess.geometry:
+            return None
+        return guess if guess is not None and guess.geometry else None
+
+    while True:
+        guess = await stand_in(points)
+        if guess is None:
             break
         share = followed(route, guess.geometry)
         if share > best_share + 0.02:
-            best, best_share = points, share
+            best, best_share, best_guess = points, share, guess
         if len(points) >= LINK_MAX:
             break
         i, off = farthest_off(route, guess.geometry)
         if i < 0 or off < OFF_ROUTE_M:
             break
         points = in_route_order(points + [route[i]], route)
+
+    # Full, and still straying (a loop's three turning points leave no spare
+    # one): swap each point in turn for a pin where it strays most, once.
+    if best_guess is not None and len(best) >= LINK_MAX and best_share < SWAP_BELOW:
+        i, off = farthest_off(route, best_guess.geometry)
+        if i >= 0 and off >= OFF_ROUTE_M:
+            for j in range(len(best)):
+                swap = in_route_order([p for k, p in enumerate(best) if k != j] + [route[i]], route)
+                guess = await stand_in(swap)
+                if guess is None:
+                    continue
+                share = followed(route, guess.geometry)
+                if share > best_share + 0.02:
+                    best, best_share = swap, share
     return best
 
 

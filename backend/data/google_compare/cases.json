@@ -1632,7 +1632,21 @@
    "bumps": 6,
    "lights": 6,
    "turn_arounds": 1
-  }
+  },
+  "anchors": [
+   [
+    51.49532,
+    -0.61025
+   ],
+   [
+    51.4919,
+    -0.58787
+   ],
+   [
+    51.47795,
+    -0.594408
+   ]
+  ]
  },
  {
   "id": "dedworth-30-mixed",
@@ -1645,19 +1659,19 @@
   "prepared_on": "2026-10-15",
   "waypoints": [
    [
-    51.48361,
-    -0.62305
-   ],
-   [
     51.45909,
     -0.64722
+   ],
+   [
+    51.46868,
+    -0.69589
    ],
    [
     51.491018,
     -0.676861
    ]
   ],
-  "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=51.481500,-0.644000&destination=51.481500,-0.644000&waypoints=51.483610,-0.623050|51.459090,-0.647220|51.491018,-0.676861&travelmode=driving",
+  "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=51.481500,-0.644000&destination=51.481500,-0.644000&waypoints=51.459090,-0.647220|51.468680,-0.695890|51.491018,-0.676861&travelmode=driving",
   "minutes_routed": 30.6,
   "km": 17.8,
   "built_by": "steered",
@@ -3275,7 +3289,21 @@
    "bumps": 13,
    "lights": 3,
    "turn_arounds": 2
-  }
+  },
+  "anchors": [
+   [
+    51.48361,
+    -0.62305
+   ],
+   [
+    51.45909,
+    -0.64722
+   ],
+   [
+    51.491018,
+    -0.676861
+   ]
+  ]
  },
  {
   "id": "eton-wick-30-quiet",
@@ -3826,7 +3854,17 @@
    "bumps": 5,
    "lights": 1,
    "turn_arounds": 1
-  }
+  },
+  "anchors": [
+   [
+    51.499272,
+    -0.639117
+   ],
+   [
+    51.49536,
+    -0.6334
+   ]
+  ]
  },
  {
   "id": "englefield-green-30-mixed",
@@ -4877,7 +4915,21 @@
    "bumps": 0,
    "lights": 1,
    "turn_arounds": 2
-  }
+  },
+  "anchors": [
+   [
+    51.4238,
+    -0.58645
+   ],
+   [
+    51.438181,
+    -0.592862
+   ],
+   [
+    51.44304,
+    -0.57121
+   ]
+  ]
  },
  {
   "id": "holyport-45-quiet",
@@ -4898,11 +4950,11 @@
     -0.70439
    ],
    [
-    51.50017,
-    -0.68999
+    51.47858,
+    -0.69957
    ]
   ],
-  "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=51.496000,-0.704000&destination=51.496000,-0.704000&waypoints=51.499680,-0.718359|51.509310,-0.704390|51.500170,-0.689990&travelmode=driving",
+  "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=51.496000,-0.704000&destination=51.496000,-0.704000&waypoints=51.499680,-0.718359|51.509310,-0.704390|51.478580,-0.699570&travelmode=driving",
   "minutes_routed": 44.5,
   "km": 26.4,
   "built_by": "plain",
@@ -7720,7 +7772,21 @@
    "bumps": 9,
    "lights": 9,
    "turn_arounds": 1
-  }
+  },
+  "anchors": [
+   [
+    51.49968,
+    -0.718359
+   ],
+   [
+    51.50931,
+    -0.70439
+   ],
+   [
+    51.50017,
+    -0.68999
+   ]
+  ]
  },
  {
   "id": "windsor-central-30-quiet",
@@ -9567,7 +9633,21 @@
    "bumps": 7,
    "lights": 5,
    "turn_arounds": 0
-  }
+  },
+  "anchors": [
+   [
+    51.482252,
+    -0.568842
+   ],
+   [
+    51.47436,
+    -0.57979
+   ],
+   [
+    51.461671,
+    -0.583201
+   ]
+  ]
  },
  {
   "id": "great-park-30-mixed",
@@ -10314,7 +10394,21 @@
    "bumps": 1,
    "lights": 1,
    "turn_arounds": 1
-  }
+  },
+  "anchors": [
+   [
+    51.436303,
+    -0.597154
+   ],
+   [
+    51.43696,
+    -0.63255
+   ],
+   [
+    51.44688,
+    -0.64036
+   ]
+  ]
  },
  {
   "id": "windsor-to-maidenhead-35",
@@ -10331,11 +10425,19 @@
   "prepared_on": "2026-10-15",
   "waypoints": [
    [
+    51.45441,
+    -0.68784
+   ],
+   [
     51.428452,
     -0.73312
+   ],
+   [
+    51.44359,
+    -0.75303
    ]
   ],
-  "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=51.483400,-0.610500&destination=51.518800,-0.722500&waypoints=51.428452,-0.733120&travelmode=driving",
+  "google_maps_url": "https://www.google.com/maps/dir/?api=1&origin=51.483400,-0.610500&destination=51.518800,-0.722500&waypoints=51.454410,-0.687840|51.428452,-0.733120|51.443590,-0.753030&travelmode=driving",
   "minutes_routed": 34.9,
   "km": 25.5,
   "built_by": "plain",
@@ -12865,6 +12967,12 @@
    "bumps": 3,
    "lights": 8,
    "turn_arounds": 0
-  }
+  },
+  "anchors": [
+   [
+    51.428452,
+    -0.73312
+   ]
+  ]
  }
 ]

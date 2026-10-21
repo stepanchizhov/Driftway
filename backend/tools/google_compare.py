@@ -20,12 +20,18 @@ internal shaping points.
     python -m tools.google_compare run --limit 5       # live Google: needs the key
     python -m tools.google_compare report              # offline: the table again
     python -m tools.google_compare records FILE --limit 5   # recorded drives
+    python -m tools.google_compare pin                 # live TomTom: pins for prepared cases
 
 `records` takes drives a maintainer recorded (core/drive_records.py; the
 founder's copy of GET /api/admin/drive-records, kept outside the repository)
 and compares each one's first drive the same way, from where it was planned.
 Its results go next to FILE, never into the repository: they hold the
 maintainer's own places.
+
+Since 0.8.21 a drive's link carries pins as well as its anchors
+(core/handoff.py). `pin` adds them to cases prepared before that, keeping
+the anchors; `run` then asks Google about both links of a case, "pinned" and
+"anchors", so the results say whether the pins make Google follow.
 
 `prepare` plans each case with Driftway as it runs in production (TomTom,
 steering, moved turn-backs, the 2-minute bound) and writes
@@ -176,7 +182,7 @@ def compare(case: Dict, google: Dict) -> Dict:
     g_stops = stops_on(line, case["waypoints"])
     return {
         "id": case["id"], "built_by": case.get("built_by") or "plain",
-        "waypoints": len(case["waypoints"]),
+        "link": case.get("link", "link"), "waypoints": len(case["waypoints"]),
         "ours_minutes": case["minutes_routed"], "google_minutes": round(g_minutes, 1),
         "ours_km": case["km"], "google_km": round(google.get("distanceMeters", 0) / 1000.0, 1),
         "overlap_ours_on_google": round(overlap(ours, line), 2),
@@ -224,6 +230,7 @@ async def prepare(cases: List[Dict]) -> List[Dict]:
         out.append({
             **c, "prepared_on": date.today().isoformat(),
             "waypoints": waypoints, "google_maps_url": _link(r),
+            "anchors": [[round(a.lat, 6), round(a.lng, 6)] for a in r.waypoints],
             "minutes_routed": round(ev.minutes, 1), "km": round(ev.distance_km, 1),
             "built_by": getattr(ev, "built_by", "") or "plain",
             "geometry": [[round(p.lat, 6), round(p.lng, 6)] for p in ev.geometry],
@@ -269,9 +276,50 @@ def cases_from_records(records: List[Dict]) -> List[Dict]:
             "start": [start["lat"], start["lng"]],
             "finish": [finish["lat"], finish["lng"]] if finish else None,
             "waypoints": waypoints, "geometry": d["route"],
+            "anchors": d.get("waypoints") or waypoints,
             "minutes_routed": d.get("minutes"), "km": d.get("km"), "built_by": "recorded",
             "stops": stops_on([tuple(p) for p in d["route"]], waypoints),
         })
+    return out
+
+
+def variants(cases: List[Dict]) -> List[Dict]:
+    """Each case's link as it is ("pinned" when it carries pins), and its
+    anchors alone when they differ: the two Google is asked about."""
+    out = []
+    for c in cases:
+        anchors = c.get("anchors")
+        if anchors is None or anchors == c["waypoints"]:
+            out.append({**c, "link": "link"})
+        else:
+            out.append({**c, "link": "pinned"})
+            out.append({**c, "link": "anchors", "waypoints": anchors})
+    return out
+
+
+async def pin_cases(cases: List[Dict]) -> List[Dict]:
+    """Pins for cases prepared before 0.8.21 (core/handoff.py), live: one to
+    three routing calls each. The case's old points are kept as its anchors."""
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+    from core import handoff
+    from core.generator import google_maps_url
+    from core.models import Coord
+    from core.router import get_router
+    router = get_router()
+    out = []
+    for c in cases:
+        # From the anchors each time, so a better rule re-pins old cases.
+        start = Coord(lat=c["start"][0], lng=c["start"][1])
+        finish = Coord(lat=c["finish"][0], lng=c["finish"][1]) if c.get("finish") else start
+        route = [Coord(lat=p[0], lng=p[1]) for p in c["geometry"]]
+        kept = c.get("anchors", c["waypoints"])
+        anchors = [Coord(lat=w[0], lng=w[1]) for w in kept]
+        points = await handoff.link_points(router, start, finish, route, anchors)
+        out.append({**c, "anchors": kept,
+                    "waypoints": [[round(p.lat, 6), round(p.lng, 6)] for p in points],
+                    "google_maps_url": google_maps_url(start, finish, points, with_origin=True)})
+        print(f"  {c['id']}: {len(anchors)} -> {len(points)} points")
     return out
 
 
@@ -284,7 +332,7 @@ async def run(cases: List[Dict], limit: int) -> List[Dict]:
         raise SystemExit("GOOGLE_ROUTES_API_KEY is not set in backend/.env: see docs/GOOGLE_COMPARISON.md.")
     out = []
     async with httpx.AsyncClient(timeout=20.0) as client:
-        for c in cases[:limit]:
+        for c in variants(cases)[:limit]:
             try:
                 g = await ask_google(client, c, key)
             except httpx.HTTPError as e:
@@ -296,18 +344,19 @@ async def run(cases: List[Dict], limit: int) -> List[Dict]:
 
 
 def report(results: List[Dict]) -> None:
-    print(f"{'case':28} {'built':10} wp  ours/google min   km          overlap  bumps     lights    turns")
+    print(f"{'case':28} {'built':10} {'link':8} wp  ours/google min   km          overlap  bumps     lights    turns")
     for r in results:
         o, g = r["ours_stops"], r["google_stops"]
         # Bumps and lights are None outside the prepared areas.
-        print(f"{r['id']:28} {r['built_by']:10} {r['waypoints']:2}  {r['ours_minutes']!s:>5}/{r['google_minutes']:<5}  "
+        print(f"{r['id']:28} {r['built_by']:10} {r.get('link', 'link'):8} {r['waypoints']:2}  "
+              f"{r['ours_minutes']!s:>5}/{r['google_minutes']:<5}  "
               f"{r['ours_km']!s:>5}/{r['google_km']:<5}  {r['overlap_ours_on_google']:.2f}     "
               f"{o['bumps']}/{g['bumps']!s:<6} {o['lights']}/{g['lights']!s:<6} {o['turn_arounds']}/{g['turn_arounds']}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("command", choices=["prepare", "run", "report", "records"])
+    ap.add_argument("command", choices=["prepare", "run", "report", "records", "pin"])
     ap.add_argument("file", nargs="?", help="records: the recorded drives, a JSON file outside the repository")
     ap.add_argument("--limit", type=int, default=5, help="Google requests at most (run)")
     ap.add_argument("--only", default="", help="prepare: these case ids only, kept with the others")
@@ -336,6 +385,10 @@ def main() -> None:
         out.write_text(json.dumps(results, indent=1), encoding="utf-8")
         report(results)
         print(f"Results in {out}")
+    elif a.command == "pin":
+        cases = asyncio.run(pin_cases(json.loads(cases_path.read_text(encoding="utf-8"))))
+        cases_path.write_text(json.dumps(cases, indent=1), encoding="utf-8")
+        print(f"{len(cases)} cases in {cases_path.relative_to(ROOT)}")
     elif a.command == "run":
         cases = json.loads(cases_path.read_text(encoding="utf-8"))
         results = asyncio.run(run(cases, a.limit))

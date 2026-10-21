@@ -79,6 +79,31 @@ class BestSetTests(unittest.TestCase):
         self.assertEqual(len(points), 1)
 
 
+class SwapTests(unittest.TestCase):
+    def test_a_full_link_that_strays_swaps_a_point_for_a_pin(self):
+        a = Coord(lat=51.40, lng=-0.80)
+        # A loop: out east along the south, a long bow north, back west.
+        route = straight([a, Coord(lat=51.40, lng=-0.60)], n=60) + bulging(
+            [Coord(lat=51.40, lng=-0.60), Coord(lat=51.40, lng=-0.40)], km=3.0, n=120) +             straight([Coord(lat=51.40, lng=-0.40), Coord(lat=51.37, lng=-0.60), a], n=60)
+        anchors = [Coord(lat=51.40, lng=-0.70), Coord(lat=51.40, lng=-0.60), Coord(lat=51.37, lng=-0.60)]
+
+        class Guess:
+            def __init__(self, geometry):
+                self.geometry = geometry
+
+        class Router:
+            # Straight across the bow, unless a point holds it on the bow.
+            async def evaluate_as_navigation(self, start, finish, points, profile="mixed"):
+                on_bow = any(p.lat > 51.41 for p in points)
+                return Guess(route if on_bow else straight([a, Coord(lat=51.40, lng=-0.40),
+                                                            Coord(lat=51.37, lng=-0.60), a], n=120))
+
+        points = asyncio.run(handoff.link_points(Router(), a, a, route, anchors))
+        self.assertEqual(len(points), handoff.LINK_MAX)
+        self.assertTrue(any(p.lat > 51.41 for p in points))          # a pin on the bow
+        self.assertNotEqual(points, anchors)
+
+
 class _Router(ScaledRouter):
     """Driftway's drives bow out between their points; the navigation
     stand-in goes straight through whatever points it's given."""
