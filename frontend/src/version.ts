@@ -42,6 +42,7 @@ export const RELEASES: Release[] = [
     changes: [
       "Google Maps keeps closer to the drive Driftway planned: each drive's link now uses every point it can carry, placed where Google would otherwise take its own faster way, such as a motorway on a quieter drive.",
       "Driftway's maintainers who sign in with Google are recognised as such.",
+      "While drives are found, an amber dot circles the ring. It slips out of sight now and then, and always comes back.",
     ],
   },
   {

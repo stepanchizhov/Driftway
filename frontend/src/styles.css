@@ -400,17 +400,53 @@ body {
   min-height: 60dvh;
   color: var(--ink-dim);
 }
-.loading-ring {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 2px solid var(--line);
-  border-top-color: var(--accent);
-  animation: spin 0.9s linear infinite;
+/* The orbiting dot (components/Orbit.tsx): the duration ring's amber tick,
+   going round. It slips out of sight for a moment at the bottom of each
+   lap, and comes back. */
+.orbit {
+  position: relative;
 }
-@keyframes spin {
+.orbit-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: radial-gradient(circle at 50% 40%, rgba(242, 177, 121, 0.07), transparent 65%);
+}
+.orbit-arm {
+  position: absolute;
+  inset: 0;
+  animation: orbit 2.8s linear infinite;
+}
+.orbit-dot {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(242, 177, 121, 0.8);
+  animation: orbit-away 2.8s linear infinite;
+}
+@keyframes orbit {
   to {
     transform: rotate(360deg);
+  }
+}
+@keyframes orbit-away {
+  0%,
+  40% {
+    opacity: 1;
+  }
+  46%,
+  54% {
+    opacity: 0;
+  }
+  60%,
+  100% {
+    opacity: 1;
   }
 }
 
@@ -801,8 +837,12 @@ body {
 /* --- motion preference ------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .loading-ring {
-    animation-duration: 2.5s;
+  /* Slow, and always in sight. */
+  .orbit-arm {
+    animation-duration: 12s;
+  }
+  .orbit-dot {
+    animation: none;
   }
   * {
     transition: none !important;

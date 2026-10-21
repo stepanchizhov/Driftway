@@ -11,6 +11,7 @@ import type {
 import { generateRoutes, saveFavourite } from "./api";
 import { arrivalDate, clock, minutesUntil, suggestedArrival } from "./lib/arrival";
 import { HelpScreen } from "./components/HelpScreen";
+import { Orbit } from "./components/Orbit";
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useSettings } from "./hooks/useSettings";
 import { usePlaces } from "./hooks/usePlaces";
@@ -675,11 +676,11 @@ export default function App() {
 
       {tab === "plan" && screen.name === "loading" && (
         <main className="loading">
-          <div className="loading-ring" />
+          <Orbit />
           <p>
             {planBy === "arrival"
               ? `Shaping drives that ${mode === "loop" ? "are back" : "arrive"} by ${arrivalLabel}…`
-              : `Shaping ${duration}-minute loops…`}
+              : `Shaping ${duration}-minute ${mode === "loop" ? "loops" : "drives"}…`}
           </p>
         </main>
       )}
