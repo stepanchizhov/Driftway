@@ -332,10 +332,13 @@ def _pick_top_three(evaluated: List[EvaluatedRoute], finish: Coord,
     )
     # Fewer mapped speed bumps, but never at the cost of a turn-around or the
     # time (scorer.calmer_lead).
-    scored = calmer_lead(scored, req.target_minutes, profile)
+    # With an arrival time, any drive in the window arrives in time.
+    window = ((req.target_minutes - req.tolerance_minutes, req.target_minutes + req.tolerance_minutes)
+              if req.arrive_by else None)
+    scored = calmer_lead(scored, req.target_minutes, profile, window)
     # And whatever ranked first, it lands within FIRST_EXTRA_MIN of the
     # closest-to-time candidate (scorer.first_within_time, an experiment).
-    scored = first_within_time(scored, req.target_minutes)
+    scored = first_within_time(scored, req.target_minutes, window)
     # Scale "meaningfully different" to the size of the drive: 1.5 km apart is
     # a different route for a 10-minute loop and a rounding error for a 90.
     min_diff = max(0.3, 0.10 * scored[0].distance_km) if scored else 1.5
@@ -428,7 +431,7 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         roadworks=roadworks.describe(works),
         roadworks_sources=roadworks.sources(works),
         tradeoff=(None if simulated or lead is None
-                  else tradeoff_note(ev, lead, req.target_minutes)),
+                  else tradeoff_note(ev, lead, req.target_minutes, _latest(req))),
         roadworks_status=None if simulated else roadworks.status_line(works, ev.geometry),
     )
 

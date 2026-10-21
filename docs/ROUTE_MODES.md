@@ -90,6 +90,17 @@ offered**. A drive that would arrive more than the window early says so in its
 caveat. When no longer drive fits, the direct way is offered, saying why ("leaves
 no time for a longer drive", or "longer than the 20 minutes there are").
 
+**Which goes first (0.8.21, 22 Oct 2026).** By length, the first drive stays
+within two minutes of the closest-to-time candidate (FIRST_EXTRA_MIN). With
+an arrival time every drive in the window arrives in time, so the window is
+the bound instead (`scorer._in_time`): the calmest drive that arrives in time
+may go first. Founder's drive, 21 Oct: the first drive doubled back twice,
+ahead of a calmer one, for being nearer the internal aim. Reproduced from
+public places (Maidenhead to Chertsey, Quieter, 70 min): before, first was 63
+min doubling back twice with 19 bumps, third a 61-min drive with 2 bumps and
+no turn-around; after, that one is first. A calmer alternative's note says
+"about 2 min shorter, so you'd arrive that much earlier", never the aim.
+
 Each card says **leave by** (the time minus the drive), or, once that has
 passed, when it would arrive if started now. "Want a bit longer?" isn't
 offered (longer would be late). Each visit starts by length; the last arrival

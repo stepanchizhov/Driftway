@@ -422,7 +422,7 @@ def stops_met(route: EvaluatedRoute) -> float:
 
 
 def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
-                profile: str) -> List[EvaluatedRoute]:
+                profile: str, window: Optional[Tuple[float, float]] = None) -> List[EvaluatedRoute]:
     """Put a calmer drive first, if one is as good on what already counted.
 
     `ranked` is in the order the score without bumps gives. A candidate
@@ -441,8 +441,7 @@ def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
     if not ranked:
         return ranked
     lead = ranked[0]
-    limit = min(abs(ev.minutes - target_minutes) for ev in ranked) + FIRST_EXTRA_MIN + 1e-9
-    eligible = [ev for ev in ranked if abs(ev.minutes - target_minutes) <= limit]
+    eligible = _in_time(ranked, target_minutes, window)
     if not eligible:
         return ranked
     best = min(eligible, key=stops_met)
@@ -451,21 +450,38 @@ def calmer_lead(ranked: List[EvaluatedRoute], target_minutes: int,
     return [best] + [ev for ev in ranked if ev is not best]
 
 
-def first_within_time(ranked: List[EvaluatedRoute], target_minutes: int) -> List[EvaluatedRoute]:
+def _in_time(ranked: List[EvaluatedRoute], target_minutes: int,
+             window: Optional[Tuple[float, float]] = None) -> List[EvaluatedRoute]:
+    """The candidates on time: within FIRST_EXTRA_MIN of the closest-to-time
+    one; with an arrival time (`window`, the minutes that arrive in time), any
+    that arrives in time (founder's drive, 21 Oct 2026: a drive doubling back
+    twice went first, ahead of a calmer one that also arrived in time, for
+    being nearer an aim the parent never asked for)."""
+    if window is not None:
+        lo, hi = window
+        return [ev for ev in ranked if lo - 1e-9 <= ev.minutes <= hi + 1e-9]
+    limit = min(abs(ev.minutes - target_minutes) for ev in ranked) + FIRST_EXTRA_MIN + 1e-9
+    return [ev for ev in ranked if abs(ev.minutes - target_minutes) <= limit]
+
+
+def first_within_time(ranked: List[EvaluatedRoute], target_minutes: int,
+                      window: Optional[Tuple[float, float]] = None) -> List[EvaluatedRoute]:
     """The ranking, with the first drive within FIRST_EXTRA_MIN of the
-    closest-to-time candidate: if the leader is further off, the best-ranked
-    candidate within it goes first instead, and the leader stays in the list
-    (as an alternative whose card says what it trades)."""
+    closest-to-time candidate (or, with an arrival time, one that arrives in
+    time): if the leader is further off, the best-ranked candidate within it
+    goes first instead, and the leader stays in the list (as an alternative
+    whose card says what it trades)."""
     if not ranked:
         return ranked
-    limit = min(abs(ev.minutes - target_minutes) for ev in ranked) + FIRST_EXTRA_MIN + 1e-9
-    if abs(ranked[0].minutes - target_minutes) <= limit:
+    on_time = _in_time(ranked, target_minutes, window)
+    if not on_time or ranked[0] in on_time:
         return ranked
-    first = next(ev for ev in ranked if abs(ev.minutes - target_minutes) <= limit)
+    first = on_time[0]
     return [first] + [ev for ev in ranked if ev is not first]
 
 
-def tradeoff_note(ev: EvaluatedRoute, lead: EvaluatedRoute, target_minutes: int) -> Optional[str]:
+def tradeoff_note(ev: EvaluatedRoute, lead: EvaluatedRoute, target_minutes: int,
+                  latest: Optional[float] = None) -> Optional[str]:
     """For an alternative a parent meets materially fewer stops on than the
     first drive: what it gains and gives up, kind by kind, so a lower total
     cannot hide more of one kind, and how much further from the time it is."""
@@ -491,9 +507,15 @@ def tradeoff_note(ev: EvaluatedRoute, lead: EvaluatedRoute, target_minutes: int)
         n = abs(a - b)
         word = kind if n == 1 else plural[kind]
         parts.append(f"{n} {'fewer' if a < b else 'more'} {word}")
-    off = abs(ev.minutes - target_minutes) - abs(lead.minutes - target_minutes)
-    when = (f", about {round(off)} min further from your {target_minutes} min" if off >= 1
-            else "")
+    if latest is not None:
+        # An arrival time: both arrive in time; say which arrives earlier.
+        d = ev.minutes - lead.minutes
+        when = (f", about {round(-d)} min shorter, so you'd arrive that much earlier" if d <= -1
+                else f", about {round(d)} min longer, still in time" if d >= 1 else "")
+    else:
+        off = abs(ev.minutes - target_minutes) - abs(lead.minutes - target_minutes)
+        when = (f", about {round(off)} min further from your {target_minutes} min" if off >= 1
+                else "")
     return "Calmer than the first drive: " + (", ".join(parts) or "fewer stops") + when + "."
 
 

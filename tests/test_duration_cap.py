@@ -38,6 +38,30 @@ class _Turns(unittest.TestCase):
         scorer.turnaround_count = self.real
 
 
+class ArrivalWindowTests(_Turns):
+    """Arrive by a time (founder's drive, 21 Oct 2026): every drive in the
+    window arrives in time, so the calmest of them may go first, however far
+    from the internal aim."""
+
+    def test_the_calmest_drive_that_arrives_in_time_goes_first(self):
+        on_aim, twice_back, calm = route(65, bumps=20), route(63, bumps=19, turns=2), route(61, bumps=2)
+        ranked = [twice_back, on_aim, calm]
+        # By length, 61 is beyond two minutes of the closest (65): not first.
+        self.assertIs(scorer.calmer_lead(ranked, 65, "mixed")[0], twice_back)
+        # Arriving by a time, 60 to 70 minutes all arrive in time.
+        self.assertIs(scorer.calmer_lead(ranked, 65, "mixed", (60, 70))[0], calm)
+
+    def test_a_leader_outside_the_window_gives_way(self):
+        early, in_time = route(55, bumps=0), route(66, bumps=5)
+        self.assertIs(scorer.first_within_time([early, in_time], 65, (60, 70))[0], in_time)
+
+    def test_the_note_speaks_of_arriving(self):
+        lead, calm = route(63, bumps=19, turns=2), route(61, bumps=2)
+        note = scorer.tradeoff_note(calm, lead, 65, latest=70)
+        self.assertIn("2 min shorter, so you'd arrive that much earlier", note)
+        self.assertNotIn("65", note)
+
+
 class BoundTests(_Turns):
     def test_a_leader_far_from_the_time_gives_way_to_one_within_two_minutes(self):
         smooth_but_late, on_time = route(38), route(30.5)
