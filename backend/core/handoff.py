@@ -90,8 +90,11 @@ def _position(p: Coord, route: Sequence[Coord]) -> int:
     return min(range(len(route)), key=lambda i: (route[i].lat - p.lat) ** 2 + (route[i].lng - p.lng) ** 2)
 
 
-def in_route_order(points: List[Coord], route: Sequence[Coord]) -> List[Coord]:
-    return sorted(points, key=lambda p: _position(p, route))
+def _ordered(placed: List[Tuple[int, Coord]]) -> List[Coord]:
+    """Points by where they are along the drive. A pin's place is known (it
+    is a point of the route): on a road driven out and back, the nearest
+    point could be the wrong pass."""
+    return [p for _, p in sorted(placed, key=lambda ip: ip[0])]
 
 
 async def link_points(router, start: Coord, finish: Coord, route: Sequence[Coord],
@@ -100,14 +103,16 @@ async def link_points(router, start: Coord, finish: Coord, route: Sequence[Coord
     its own roads where a navigation app would otherwise leave them, up to
     LINK_MAX. The anchors alone when the router can't say what the plain
     fastest way would be."""
-    points = list(anchors)[:LINK_MAX]
+    placed = [(_position(a, route), a) for a in list(anchors)[:LINK_MAX]] if len(route) >= 2 else []
+    points = [a for a in list(anchors)[:LINK_MAX]]
     ask = getattr(router, "evaluate_as_navigation", None)
     if ask is None or len(route) < 2:
         return points
+    points = _ordered(placed)
     # Each set of points is scored by how much of the drive the stand-in
     # follows through them; the best is kept, so a pin that moves the
     # trouble elsewhere (seen live 22 Oct 2026) isn't used.
-    best, best_share, best_guess = points, -1.0, None
+    best, best_share, best_guess, best_placed = points, -1.0, None, placed
 
     async def stand_in(pts):
         try:
@@ -123,21 +128,23 @@ async def link_points(router, start: Coord, finish: Coord, route: Sequence[Coord
             break
         share = followed(route, guess.geometry)
         if share > best_share + 0.02:
-            best, best_share, best_guess = points, share, guess
+            best, best_share, best_guess, best_placed = points, share, guess, placed
         if len(points) >= LINK_MAX:
             break
         i, off = farthest_off(route, guess.geometry)
         if i < 0 or off < OFF_ROUTE_M:
             break
-        points = in_route_order(points + [route[i]], route)
+        placed = placed + [(i, route[i])]
+        points = _ordered(placed)
 
     # Full, and still straying (a loop's three turning points leave no spare
     # one): swap each point in turn for a pin where it strays most, once.
     if best_guess is not None and len(best) >= LINK_MAX and best_share < SWAP_BELOW:
         i, off = farthest_off(route, best_guess.geometry)
         if i >= 0 and off >= OFF_ROUTE_M:
-            for j in range(len(best)):
-                swap = in_route_order([p for k, p in enumerate(best) if k != j] + [route[i]], route)
+            base = sorted(best_placed, key=lambda ip: ip[0])
+            for j in range(len(base)):
+                swap = _ordered([ip for k, ip in enumerate(base) if k != j] + [(i, route[i])])
                 guess = await stand_in(swap)
                 if guess is None:
                     continue
@@ -147,6 +154,6 @@ async def link_points(router, start: Coord, finish: Coord, route: Sequence[Coord
     return best
 
 
-def pinned(anchors: Sequence[Coord], points: Optional[Sequence[Coord]]) -> int:
-    """How many of the link's points are pins rather than anchors."""
-    return max(0, len(points or ()) - len(anchors))
+def changed(anchors: Sequence[Coord], points: Optional[Sequence[Coord]]) -> bool:
+    """Whether the link differs from the anchors (pins added or swapped in)."""
+    return points is not None and [(p.lat, p.lng) for p in points] != [(a.lat, a.lng) for a in anchors]

@@ -731,9 +731,10 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
                                 snap_to_route(ev.anchors, ev.geometry)[:3])
             for ev in top), return_exceptions=True)
         links = [g if isinstance(g, list) else None for g in got]
-        pins = [handoff.pinned(ev.anchors[:3], g) for ev, g in zip(top, links)]
-        if any(pins):
-            log.info("handoff: pins added to links %s", pins)
+        changed = sum(1 for ev, g in zip(top, links)
+                      if handoff.changed(snap_to_route(ev.anchors, ev.geometry)[:3], g))
+        if changed:
+            log.info("handoff: %d of %d links pinned", changed, len(top))
 
     options = [
         _build_option(ev, start, finish, req, profile, simulated, direct,
