@@ -416,6 +416,14 @@ def exchange_token(
             status_code=403,
             detail="You need an invitation before you can use an account here.",
         )
+    if not account.email:
+        # The token carries no email; the provider is asked for a verified one
+        # (core/identity.py), which decides who is a maintainer.
+        from core.identity import verified_email_from_userinfo
+        email = identity.email if identity.email_verified and identity.email else             verified_email_from_userinfo(_bearer(request), identity.subject)
+        if email:
+            account.email = email
+            session.commit()
     return _account_public(account)
 
 

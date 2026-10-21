@@ -34,8 +34,11 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
+
+import httpx
 
 log = logging.getLogger("driftway")
 
@@ -135,6 +138,47 @@ def verify_access_token(token: str) -> VerifiedIdentity:
         email=claims.get("email"),
         email_verified=bool(claims.get("email_verified")),
     )
+
+
+#: Sign-ins asked about lately (subject -> when), so one whose address isn't
+#: verified isn't asked about on every visit.
+_userinfo_asked: Dict[str, float] = {}
+USERINFO_EVERY_S = 3600.0
+
+
+def verified_email_from_userinfo(token: str, subject: str) -> Optional[str]:
+    """The sign-in's email from Auth0's userinfo endpoint, when Auth0 says it
+    is verified; None otherwise or on any failure.
+
+    Access tokens for Driftway's API carry no email (found 22 Oct 2026: the
+    founder's account had none stored, so it wasn't recognised as a
+    maintainer). The same token may ask userinfo, since the app asks for the
+    openid scope. At most once an hour per sign-in.
+    """
+    if not token or not subject or not is_configured():
+        return None
+    now = time.monotonic()
+    if now - _userinfo_asked.get(subject, -USERINFO_EVERY_S) < USERINFO_EVERY_S:
+        return None
+    _userinfo_asked[subject] = now
+    try:
+        resp = httpx.get(f"https://{auth0_domain()}/userinfo",
+                         headers={"Authorization": f"Bearer {token}"}, timeout=5.0)
+    except httpx.HTTPError as e:
+        log.warning("userinfo unavailable (%s)", type(e).__name__)
+        return None
+    if resp.status_code != 200:
+        log.warning("userinfo answered %s", resp.status_code)
+        return None
+    try:
+        info = resp.json()
+    except ValueError:
+        return None
+    # The same person, and an address the provider has checked.
+    if info.get("sub") != subject or info.get("email_verified") is not True:
+        return None
+    email = (info.get("email") or "").strip()
+    return email or None
 
 
 def account_for_identity(

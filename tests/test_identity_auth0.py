@@ -21,6 +21,7 @@ BACKEND = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backend")
 if BACKEND not in sys.path:
     sys.path.insert(0, BACKEND)
 
+import httpx  # noqa: E402
 import jwt  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric import rsa  # noqa: E402
 
@@ -175,6 +176,45 @@ class AdmissionTests(unittest.TestCase):
                               headers={"Authorization": f"Bearer {_token()}"})
         self.assertEqual(me.status_code, 200)
         self.assertEqual(me.json()["id"], r.json()["id"])
+
+    def test_a_token_without_an_email_gets_the_verified_one_from_the_provider(self):
+        """Found 22 Oct 2026: access tokens carry no email, so the founder's
+        account had none and wasn't recognised as a maintainer."""
+        invite = self.mint()
+        bare = _token(sub="auth0|founder", email=None, email_verified=False)
+        r = self.client.post("/api/auth/accept-beta-invite",
+                             json={"invite_token": invite["invite_token"], "display_name": "Stepan"},
+                             headers={"Authorization": f"Bearer {bare}"})
+        self.assertEqual(r.status_code, 200, r.text)
+        asked = []
+
+        def userinfo(url, headers=None, timeout=None):
+            asked.append(url)
+            self.assertEqual(headers["Authorization"], f"Bearer {bare}")
+            return httpx.Response(200, json={"sub": "auth0|founder", "email": "founder@example.com",
+                                             "email_verified": True},
+                                  request=httpx.Request("GET", url))
+        with mock.patch.dict(os.environ, {"MAINTAINER_EMAILS": "founder@example.com"}), \
+                mock.patch("httpx.get", userinfo):
+            me = self.client.post("/api/auth/session", headers={"Authorization": f"Bearer {bare}"})
+            again = self.client.post("/api/auth/session", headers={"Authorization": f"Bearer {bare}"})
+        self.assertEqual(me.status_code, 200, me.text)
+        self.assertTrue(me.json()["maintainer"])
+        self.assertTrue(again.json()["maintainer"])
+        self.assertEqual(asked, [f"https://{DOMAIN}/userinfo"])             # asked once, then kept
+
+    def test_an_unverified_address_from_the_provider_is_not_kept(self):
+        invite = self.mint()
+        bare = _token(sub="auth0|someone", email=None, email_verified=False)
+        self.client.post("/api/auth/accept-beta-invite", json={"invite_token": invite["invite_token"]},
+                         headers={"Authorization": f"Bearer {bare}"})
+        unverified = lambda url, headers=None, timeout=None: httpx.Response(  # noqa: E731
+            200, json={"sub": "auth0|someone", "email": "founder@example.com", "email_verified": False},
+            request=httpx.Request("GET", url))
+        with mock.patch.dict(os.environ, {"MAINTAINER_EMAILS": "founder@example.com"}), \
+                mock.patch("httpx.get", unverified):
+            me = self.client.post("/api/auth/session", headers={"Authorization": f"Bearer {bare}"})
+        self.assertFalse(me.json()["maintainer"])
 
     def test_an_unverified_address_is_not_the_accounts(self):
         """The account's email decides who is a maintainer: a sign-in that
