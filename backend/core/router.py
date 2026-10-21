@@ -248,6 +248,12 @@ class TomTomRouter:
         may have another (core/generator.py)."""
         return await self._calculate(start, finish, anchors, profile, ferries=False)
 
+    async def evaluate_as_navigation(self, start, finish, anchors, profile="mixed"):
+        """The plain fastest way through these points, nothing avoided: a
+        stand-in for what a navigation app does with a drive's link
+        (core/handoff.py)."""
+        return await self._calculate(start, finish, anchors, profile, plain=True)
+
     async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
         """The same route, kept out of the given boxes (south, west, north,
         east): TomTom's avoidAreas, which only its POST form accepts. Used to
@@ -259,7 +265,7 @@ class TomTomRouter:
             for s, w, n, e in boxes[:10]]}}
         return await self._calculate(start, finish, anchors, profile, body=body)
 
-    async def _calculate(self, start, finish, anchors, profile, body=None, ferries=None):
+    async def _calculate(self, start, finish, anchors, profile, body=None, ferries=None, plain=False):
         # Build the "lat,lng:lat,lng:..." locations string.
         pts = [start, *anchors, finish]
         locs = ":".join(f"{p.lat:.6f},{p.lng:.6f}" for p in pts)
@@ -298,6 +304,10 @@ class TomTomRouter:
             ferries = not anchors
         if not ferries:
             params["avoid"] = params["avoid"] + ["ferries"]
+        if plain:
+            # What a navigation app does with a link: the fastest way through
+            # its points, nothing avoided.
+            params.pop("avoid")
 
         data = None
         failure = None          # why TomTom itself failed, if it did
@@ -484,6 +494,9 @@ class ORSRouter:
     async def evaluate_without_ferries(self, start, finish, anchors, profile):
         return await self._directions(start, finish, anchors, profile, ferries=False)
 
+    async def evaluate_as_navigation(self, start, finish, anchors, profile="mixed"):
+        return await self._directions(start, finish, anchors, "mixed", ferries=True)
+
     async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
         """The same route, kept out of the boxes (south, west, north, east)."""
         polygons = [[[[w, s], [e, s], [e, n], [w, n], [w, s]]] for s, w, n, e in boxes]
@@ -606,6 +619,13 @@ class FailoverRouter:
             if route is not None or tomtom_available():
                 return route
         return await self.backup.evaluate_without_ferries(start, finish, anchors, profile)
+
+    async def evaluate_as_navigation(self, start, finish, anchors, profile="mixed"):
+        if tomtom_available():
+            route = await self.primary.evaluate_as_navigation(start, finish, anchors, profile)
+            if route is not None or tomtom_available():
+                return route
+        return await self.backup.evaluate_as_navigation(start, finish, anchors, profile)
 
     async def evaluate_avoiding(self, start, finish, anchors, profile, boxes):
         if tomtom_available():

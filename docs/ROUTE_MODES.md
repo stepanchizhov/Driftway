@@ -212,6 +212,35 @@ silently dropped.
 > driven road (v0.3) makes divergence much less likely, but only a
 > Maps-native handoff would remove it.
 
+### Pins: every point the link can carry (0.8.21, 22 Oct 2026)
+
+Founder, 21 Oct 2026: a 71-minute drive on quieter roads west of London
+carried one waypoint; Google drove it in 52 minutes on the M4 and M25. "We
+need to use all the checkpoints we have if needed." `core/handoff.py` now
+spends the link's spare points (three in all): it asks the router for the
+plain fastest way through the link's points, nothing avoided (TomTom
+`evaluate_as_navigation`, a stand-in for what Google does), pins a point on
+Driftway's route where that way strays furthest (over 400 m, not within
+600 m of either end), and again until the link is full. Each set of points is
+scored by how much of the drive the stand-in follows, and the best set is
+kept: a pin that only moves the trouble elsewhere isn't used. One routing
+call per set tried: up to three per drive offered, about 2 s more per request.
+
+Live, 22 Oct 2026 (share of Driftway's drive the stand-in follows, before ->
+after; its minutes):
+
+| Drive | Points | Follows | Stand-in min / Driftway |
+|---|---|---|---|
+| Maidenhead to Chertsey, Quieter, 70 min | 1 -> 2 | 66% -> 99% | 68 -> 69 / 71 |
+| the same, second drive | 1 -> 3 | 11% -> 64% | 48 -> 60 / 67 |
+| the same, third drive | 1 -> 3 | 26% -> 70% | 52 -> 58 / 60 |
+| Windsor loop, Mixed, 30 min | 2 -> 3 | 95% -> 100% | 28 -> 30 / 30 |
+| the same, second drive | 2 -> 3 | 48% -> 100% | 19 -> 25 / 25 |
+
+The stand-in is TomTom's, not Google's: how close Google comes is for the
+comparison (docs/GOOGLE_COMPARISON.md) and the phone. A loop that already has
+three anchors has no spare point.
+
 ---
 
 ## 6a. Delayed arrival (the one-tap action)

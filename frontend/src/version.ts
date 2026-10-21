@@ -37,6 +37,14 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.21",
+    date: "22 Oct 2026",
+    changes: [
+      "Google Maps keeps closer to the drive Driftway planned: each drive's link now uses every point it can carry, placed where Google would otherwise take its own faster way, such as a motorway on a quieter drive.",
+      "Driftway's maintainers who sign in with Google are recognised as such.",
+    ],
+  },
+  {
     version: "0.8.20",
     date: "18 Oct 2026",
     changes: [

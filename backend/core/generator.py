@@ -51,7 +51,7 @@ from .models import (
     RouteOption,
 )
 from .router import EvaluatedRoute, MockRouter, Router
-from . import roadworks, steering
+from . import handoff, roadworks, steering
 from .scorer import (
     bumps_of,
     calmer_lead,
@@ -368,8 +368,11 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
                   direct: Optional[EvaluatedRoute],
                   is_direct: bool = False,
                   preferred_nav: Optional[str] = None,
-                  lead: Optional[EvaluatedRoute] = None) -> RouteOption:
-    """Turn an evaluated route into the shape the app renders."""
+                  lead: Optional[EvaluatedRoute] = None,
+                  link: Optional[List[Coord]] = None) -> RouteOption:
+    """Turn an evaluated route into the shape the app renders. `link`: the
+    points for its navigation link, when pins were added (core/handoff.py);
+    otherwise its anchors."""
     # Duration accuracy sets the confidence, since that is the promise on the
     # button. Tripping a quality rule costs one step rather than forcing "low":
     # those rules are hypotheses, and a route that lands exactly on the
@@ -405,10 +408,10 @@ def _build_option(ev: EvaluatedRoute, start: Coord, finish: Coord,
         full_geometry=ev.geometry if req.record else None,
         # A simulated route gets no navigation link at all. See the note where
         # the fallback is triggered.
-        maps_url="" if simulated else google_maps_url(start, finish, anchors, req.start_chosen),
+        maps_url="" if simulated else google_maps_url(start, finish, link or anchors, req.start_chosen),
         confidence=confidence,
         navigation=build_options(
-            start, finish, anchors,
+            start, finish, link or anchors,
             is_loop=haversine_km(start, finish) < 0.1,
             simulated=simulated,
             preferred_id=preferred_nav,
@@ -715,10 +718,24 @@ async def _generate_routes(req: GenerateRequest, router: Router) -> GenerateResp
         # direct way, said so.
         return _direct_only_response(req, start, finish, direct, provider_name)
 
+    # Hold each drive to its own roads in the navigation app: the link's
+    # spare points go where the plain fastest way would leave them
+    # (core/handoff.py). One routing call per pin.
+    links: List[Optional[List[Coord]]] = [None] * len(top)
+    if not simulated and top:
+        got = await asyncio.gather(*(
+            handoff.link_points(router, start, finish, ev.geometry,
+                                snap_to_route(ev.anchors, ev.geometry)[:3])
+            for ev in top), return_exceptions=True)
+        links = [g if isinstance(g, list) else None for g in got]
+        pins = [handoff.pinned(ev.anchors[:3], g) for ev, g in zip(top, links)]
+        if any(pins):
+            log.info("handoff: pins added to links %s", pins)
+
     options = [
         _build_option(ev, start, finish, req, profile, simulated, direct,
-                      preferred_nav=req.preferred_navigation, lead=top[0])
-        for ev in top
+                      preferred_nav=req.preferred_navigation, lead=top[0], link=link)
+        for ev, link in zip(top, links)
     ]
 
     return GenerateResponse(

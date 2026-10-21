@@ -138,6 +138,15 @@ a drive planned from the phone's location has links with no start (Google
 starts from the phone, so it offers Start; a picked start is still
 carried), which is why the start comes from the request.
 
+**Pins (0.8.21, 22 Oct 2026).** Drive links now carry up to three points:
+the anchors plus pins where the plain fastest way would leave Driftway's
+roads (docs/ROUTE_MODES.md, "Pins"). Measured so far against TomTom's plain
+fastest way only. Two field cases, both Google much shorter than Driftway:
+a 45-minute Windsor-area loop Google put at 28 minutes (18 Oct, two points),
+and a 71-minute Quieter drive west of London Google drove in 52 on the M4 and
+M25 (21 Oct, one point). Prepared cases and recorded drives made after
+0.8.21 carry the pins, so run A on them to see whether Google follows.
+
 **B: phone checklist** (OPEN, nobody has done it yet). For each link above,
 on Android (and an iPhone when one is at hand): open it, and note
 
