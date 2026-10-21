@@ -9,6 +9,8 @@ would be a fiction.
 | Operation | Calls per request |
 |---|---|
 | Drive (loop or one-way, 15 to 60 min, Windsor, Edinburgh) | **16 to 24 TomTom routing**, median 18, plus **1 TomTom incidents** (roadworks). Includes the first candidates, refinement, steering (up to 4) and moved turn-backs (up to 2). One-way drives add one direct route |
+| Pins in the drive links (0.8.21, `core/handoff.py`) | **1 to 6 more TomTom routing per drive offered**: one per set of link points tried, up to 3 sets, and up to 3 swaps for a full link that still strays. Measured 22 Oct 2026: a 30-min Windsor loop 23 -> 28 calls, a 70-min Quieter one-way drive 20 -> 35 |
+| Ferry-free direct way (0.8.20) | 1 more TomTom routing, only when the direct way crosses on a ferry |
 | Walk, openrouteservice | 5 openrouteservice directions (three round trips, two fitted again) |
 | Walk, TomTom stand-in (openrouteservice struggling) | 3 TomTom routing (6 if the loops miss their length) |
 | Walk via checkpoints, stand-in | 3 TomTom routing |
@@ -25,7 +27,8 @@ refit.
 
 **Free allowance against use** (public pricing page, read 13 Oct 2026, not
 the founder's contract): Routing, 20,000 requests a month, about 650 a day,
-which is about **30 to 40 drives a day** at 16 to 24 calls each. Other TomTom
+which is about **30 to 40 drives a day** at 16 to 24 calls each; with the
+pins (0.8.21, 25 to 35 calls) about **20 to 25 a day**. Other TomTom
 APIs have their own allowances, not checked here.
 
 ## Driftway's own ceilings (IMPLEMENTED, `core/usage.py`)
