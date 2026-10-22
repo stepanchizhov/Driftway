@@ -183,9 +183,24 @@ Read so far:
   place (windsor-central-30-quiet) Google turns round twice at the link's
   points, and on the steered Great Park loop three times against one. The
   link's points there are where Google has to turn; worth a look.
-- **Minutes:** not compared yet. Driftway's were timed on 15 Oct, Google's
-  now; re-timing Driftway's now (8 TomTom calls) needs the new TomTom key in
-  `backend/.env` (the local file still had the old one on 22 Oct).
+- **Minutes, timed at the same moment (22 Oct 2026, mid-morning).** Driftway's
+  routes re-timed with live TomTom through the same points (the same route,
+  89 to 100%), Google asked a minute later:
+
+  | Case | Overlap | km ours/Google | min TomTom/Google |
+  |---|---|---|---|
+  | englefield-green-30-mixed | 0.88 | 9.8/9.6 | **29.4/20.6** |
+  | windsor-central-30-quiet | 0.80 | 13.2/11.7 | 28.8/19.7 |
+  | dedworth-30-mixed (pinned) | 0.81 | 17.8/16.2 | 29.4/24.7 |
+  | holyport-45-quiet (pinned) | 0.68 | 25.4/22.7 | 42.0/27.9 |
+  | windsor-to-maidenhead-35 (pinned) | 0.94 | 25.5/25.4 | **31.8/32.3** |
+
+  On the same roads in and around Windsor, TomTom's time is 20 to 45% longer
+  than Google's; on the A-road drive to Maidenhead they agree. Which is right
+  only a drive can say: if Google is, a "30-minute" town loop takes about 21.
+  The field cases point the same way (a 45-minute loop Google put at 28, 18
+  Oct). Next: time a real drive that follows Driftway's route, against both
+  estimates.
 
 **B: phone checklist** (OPEN, nobody has done it yet). For each link above,
 on Android (and an iPhone when one is at hand): open it, and note
