@@ -1,0 +1,244 @@
+[
+ {
+  "id": "windsor-central-30-mixed",
+  "built_by": "plain",
+  "link": "link",
+  "waypoints": 3,
+  "ours_minutes": 30.2,
+  "google_minutes": 22.5,
+  "ours_km": 14.3,
+  "google_km": 12.2,
+  "overlap_ours_on_google": 0.57,
+  "overlap_google_on_ours": 0.72,
+  "ours_stops": {
+   "bumps": 6,
+   "lights": 6,
+   "turn_arounds": 1
+  },
+  "google_stops": {
+   "bumps": 8,
+   "lights": 7,
+   "turn_arounds": 1
+  }
+ },
+ {
+  "id": "dedworth-30-mixed",
+  "built_by": "steered",
+  "link": "pinned",
+  "waypoints": 3,
+  "ours_minutes": 30.6,
+  "google_minutes": 24.7,
+  "ours_km": 17.8,
+  "google_km": 16.2,
+  "overlap_ours_on_google": 0.81,
+  "overlap_google_on_ours": 0.89,
+  "ours_stops": {
+   "bumps": 13,
+   "lights": 3,
+   "turn_arounds": 2
+  },
+  "google_stops": {
+   "bumps": 17,
+   "lights": 0,
+   "turn_arounds": 2
+  }
+ },
+ {
+  "id": "dedworth-30-mixed",
+  "built_by": "steered",
+  "link": "anchors",
+  "waypoints": 3,
+  "ours_minutes": 30.6,
+  "google_minutes": 25.2,
+  "ours_km": 17.8,
+  "google_km": 14.9,
+  "overlap_ours_on_google": 0.5,
+  "overlap_google_on_ours": 0.79,
+  "ours_stops": {
+   "bumps": 13,
+   "lights": 3,
+   "turn_arounds": 2
+  },
+  "google_stops": {
+   "bumps": 18,
+   "lights": 3,
+   "turn_arounds": 2
+  }
+ },
+ {
+  "id": "eton-wick-30-quiet",
+  "built_by": "plain",
+  "link": "link",
+  "waypoints": 2,
+  "ours_minutes": 23.6,
+  "google_minutes": 15.1,
+  "ours_km": 7.7,
+  "google_km": 5.1,
+  "overlap_ours_on_google": 0.72,
+  "overlap_google_on_ours": 0.64,
+  "ours_stops": {
+   "bumps": 5,
+   "lights": 1,
+   "turn_arounds": 1
+  },
+  "google_stops": {
+   "bumps": 5,
+   "lights": 1,
+   "turn_arounds": 1
+  }
+ },
+ {
+  "id": "englefield-green-30-mixed",
+  "built_by": "plain",
+  "link": "link",
+  "waypoints": 3,
+  "ours_minutes": 29.4,
+  "google_minutes": 20.8,
+  "ours_km": 9.9,
+  "google_km": 9.6,
+  "overlap_ours_on_google": 0.88,
+  "overlap_google_on_ours": 0.93,
+  "ours_stops": {
+   "bumps": 0,
+   "lights": 1,
+   "turn_arounds": 2
+  },
+  "google_stops": {
+   "bumps": 2,
+   "lights": 1,
+   "turn_arounds": 2
+  }
+ },
+ {
+  "id": "holyport-45-quiet",
+  "built_by": "plain",
+  "link": "pinned",
+  "waypoints": 3,
+  "ours_minutes": 44.5,
+  "google_minutes": 28.0,
+  "ours_km": 26.4,
+  "google_km": 22.7,
+  "overlap_ours_on_google": 0.68,
+  "overlap_google_on_ours": 0.92,
+  "ours_stops": {
+   "bumps": 9,
+   "lights": 9,
+   "turn_arounds": 1
+  },
+  "google_stops": {
+   "bumps": 7,
+   "lights": 9,
+   "turn_arounds": 1
+  }
+ },
+ {
+  "id": "holyport-45-quiet",
+  "built_by": "plain",
+  "link": "anchors",
+  "waypoints": 3,
+  "ours_minutes": 44.5,
+  "google_minutes": 30.8,
+  "ours_km": 26.4,
+  "google_km": 21.1,
+  "overlap_ours_on_google": 0.73,
+  "overlap_google_on_ours": 1.0,
+  "ours_stops": {
+   "bumps": 9,
+   "lights": 9,
+   "turn_arounds": 1
+  },
+  "google_stops": {
+   "bumps": 7,
+   "lights": 9,
+   "turn_arounds": 1
+  }
+ },
+ {
+  "id": "windsor-central-30-quiet",
+  "built_by": "turn_moved",
+  "link": "link",
+  "waypoints": 3,
+  "ours_minutes": 30.6,
+  "google_minutes": 20.0,
+  "ours_km": 13.2,
+  "google_km": 11.7,
+  "overlap_ours_on_google": 0.8,
+  "overlap_google_on_ours": 0.99,
+  "ours_stops": {
+   "bumps": 7,
+   "lights": 5,
+   "turn_arounds": 0
+  },
+  "google_stops": {
+   "bumps": 3,
+   "lights": 5,
+   "turn_arounds": 2
+  }
+ },
+ {
+  "id": "great-park-30-mixed",
+  "built_by": "steered",
+  "link": "link",
+  "waypoints": 3,
+  "ours_minutes": 24.9,
+  "google_minutes": 32.6,
+  "ours_km": 12.2,
+  "google_km": 15.2,
+  "overlap_ours_on_google": 0.51,
+  "overlap_google_on_ours": 0.49,
+  "ours_stops": {
+   "bumps": 1,
+   "lights": 1,
+   "turn_arounds": 1
+  },
+  "google_stops": {
+   "bumps": 6,
+   "lights": 1,
+   "turn_arounds": 3
+  }
+ },
+ {
+  "id": "windsor-to-maidenhead-35",
+  "built_by": "plain",
+  "link": "pinned",
+  "waypoints": 3,
+  "ours_minutes": 34.9,
+  "google_minutes": 32.2,
+  "ours_km": 25.5,
+  "google_km": 25.4,
+  "overlap_ours_on_google": 0.94,
+  "overlap_google_on_ours": 0.96,
+  "ours_stops": {
+   "bumps": 3,
+   "lights": 8,
+   "turn_arounds": 0
+  },
+  "google_stops": {
+   "bumps": 3,
+   "lights": 8,
+   "turn_arounds": 1
+  }
+ },
+ {
+  "id": "windsor-to-maidenhead-35",
+  "built_by": "plain",
+  "link": "anchors",
+  "waypoints": 1,
+  "ours_minutes": 34.9,
+  "google_minutes": 30.7,
+  "ours_km": 25.5,
+  "google_km": 24.8,
+  "overlap_ours_on_google": 0.81,
+  "overlap_google_on_ours": 0.87,
+  "ours_stops": {
+   "bumps": 3,
+   "lights": 8,
+   "turn_arounds": 0
+  },
+  "google_stops": {
+   "bumps": 3,
+   "lights": 6,
+   "turn_arounds": 1
+  }
+ }
+]

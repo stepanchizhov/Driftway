@@ -154,6 +154,39 @@ about both links of a changed case, "pinned" and "anchors", so `--limit 11`
 covers every case: 8 links plus the 3 anchor-only ones. The report has a
 `link` column.
 
+**First run of A (22 Oct 2026, 11 Google requests).** Overlap is the
+share of Driftway's drive within 30 m of Google's line (strict: a parallel
+lane or the far side of a dual carriageway counts as off).
+
+| Case | Link | Overlap | Turn-arounds ours/Google | km ours/Google |
+|---|---|---|---|---|
+| windsor-central-30-mixed | 3 points | 0.57 | 1/1 | 14.3/12.2 |
+| dedworth-30-mixed | **pinned** (a point swapped) | **0.81** | 2/2 | 17.8/16.2 |
+| dedworth-30-mixed | anchors | 0.50 | 2/2 | 17.8/14.9 |
+| eton-wick-30-quiet | 2 points | 0.72 | 1/1 | 7.7/5.1 |
+| englefield-green-30-mixed | 3 points | 0.88 | 2/2 | 9.9/9.6 |
+| holyport-45-quiet | pinned (a point swapped) | 0.68 | 1/1 | 26.4/22.7 |
+| holyport-45-quiet | anchors | **0.73** | 1/1 | 26.4/21.1 |
+| windsor-central-30-quiet | 3 points (turn moved) | 0.80 | **0/2** | 13.2/11.7 |
+| great-park-30-mixed | 3 points (steered) | 0.51 | **1/3** | 12.2/15.2 |
+| windsor-to-maidenhead-35 | **pinned** (1 -> 3 points) | **0.94** | 0/1 | 25.5/25.4 |
+| windsor-to-maidenhead-35 | anchors | 0.81 | 0/1 | 25.5/24.8 |
+
+Read so far:
+
+- **Pins:** better in two of three (Dedworth 0.50 -> 0.81, Windsor to
+  Maidenhead 0.81 -> 0.94), slightly worse in one (Holyport 0.73 -> 0.68),
+  where TomTom's stand-in had predicted better. The stand-in is a guide, not
+  Google: worth checking the swap against Google on more drives (recorded
+  ones) before trusting it further.
+- **Turn-arounds Google adds:** where Driftway moved a turn-back to an easy
+  place (windsor-central-30-quiet) Google turns round twice at the link's
+  points, and on the steered Great Park loop three times against one. The
+  link's points there are where Google has to turn; worth a look.
+- **Minutes:** not compared yet. Driftway's were timed on 15 Oct, Google's
+  now; re-timing Driftway's now (8 TomTom calls) needs the new TomTom key in
+  `backend/.env` (the local file still had the old one on 22 Oct).
+
 **B: phone checklist** (OPEN, nobody has done it yet). For each link above,
 on Android (and an iPhone when one is at hand): open it, and note
 
