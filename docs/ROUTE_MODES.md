@@ -91,7 +91,9 @@ caveat. When no longer drive fits, the direct way is offered, saying why ("leave
 no time for a longer drive", or "longer than the 20 minutes there are").
 
 **Which goes first (0.8.21, 22 Oct 2026).** By length, the first drive stays
-within two minutes of the closest-to-time candidate (FIRST_EXTRA_MIN). With
+within two minutes of the closest-to-time candidate (FIRST_EXTRA_MIN), even
+when it turns round more than a calmer one a few minutes further off (founder,
+22 Oct 2026: keep it). With
 an arrival time every drive in the window arrives in time, so the window is
 the bound instead (`scorer._in_time`): the calmest drive that arrives in time
 may go first. Founder's drive, 21 Oct: the first drive doubled back twice,
