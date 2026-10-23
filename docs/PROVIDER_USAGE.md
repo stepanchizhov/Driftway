@@ -18,6 +18,7 @@ would be a fiction.
 | Place search | 1 TomTom search (openrouteservice's search when TomTom can't) |
 | Meet Halfway | 1 TomTom matrix per venue check |
 | Daily provider check (GitHub Actions) | 1 TomTom routing, 1 search, 3 openrouteservice |
+| Timing study (development only, `tools/time_check.py`) | `--pairs N`: 2 TomTom routing and 2 Google Routes per trip; `--uturns N`: 3 of each per point |
 | Google comparison (development only) | `prepare`: about 20 TomTom routing per case; `run`: 1 Google Routes per case |
 
 Retries count: a TomTom routing request is tried up to 3 times on throttling

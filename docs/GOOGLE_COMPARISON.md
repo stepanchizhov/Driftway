@@ -202,6 +202,29 @@ Read so far:
   Oct). Next: time a real drive that follows Driftway's route, against both
   estimates.
 
+**Why TomTom's loops took longer (23 Oct 2026).** The founder: "Normally,
+I was getting to the destination a bit too early and had to manually add
+more to the route in Google Maps." `tools/time_check.py`:
+
+- **Plain trips agree.** 40 random trips of 3 to 12 km in Windsor, Woking,
+  Southampton and the Isle of Wight, fastest and quieter, each timed by both
+  one after the other: on the 53 where both took the same roads, Google's
+  time over TomTom's has a median of **1.00**, in every area and speed band.
+- **TomTom charges two minutes for turning round.** Out to a point on a road
+  and back, as one route turning round there, against the same as two
+  trips: TomTom adds **2.0 to 2.1 min** at every one of the 8 points where
+  its guidance turns round, Google **nothing**. Driftway's loops often turn
+  round at their points, so each turn-round was planned about 1.5 minutes
+  longer than it drives (a real turn takes about half a minute).
+- **Fixed in 0.8.22:** `core/router.py` takes TomTom's charge off and counts
+  half a minute (TOMTOM_UTURN_MIN, UTURN_REAL_MIN). Drives are then shaped a
+  little larger to fill the time asked, and end nearer it.
+- **Still open:** time of day moves both by a lot (Google's time for one loop
+  went from 20 to 29 minutes between morning and afternoon), so single
+  comparisons are noise; and a few loops on the same roads remain slower in
+  TomTom than in Google (Englefield Green: 25.5 after the fix, 21.4). A real
+  drive timed against both is the arbiter.
+
 **B: phone checklist** (OPEN, nobody has done it yet). For each link above,
 on Android (and an iPhone when one is at hand): open it, and note
 

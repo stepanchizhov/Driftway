@@ -37,6 +37,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.22",
+    date: "23 Oct 2026",
+    changes: [
+      "Drives end nearer the time you asked: our route provider counted two minutes for every turn round, and Driftway now counts about half a minute, so drives that turn round no longer finish early.",
+    ],
+  },
+  {
     version: "0.8.21",
     date: "22 Oct 2026",
     changes: [

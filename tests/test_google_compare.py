@@ -144,5 +144,26 @@ class PinTests(unittest.TestCase):
         self.assertEqual(again, out)
 
 
+class TimeCheckTests(unittest.TestCase):
+    """tools/time_check.py: random trips, and the summary it keeps."""
+
+    def test_trips_are_three_to_twelve_km_in_each_area(self):
+        from tools import time_check as TC
+        ts = TC.trips(12)
+        self.assertEqual({t["area"] for t in ts}, set(TC.AREAS))
+        self.assertTrue(all(3.0 <= TC._km(t["start"], t["finish"]) <= 12.0 for t in ts))
+
+    def test_only_trips_on_the_same_roads_are_summarised(self):
+        from tools import time_check as TC
+        rows = [{"area": "windsor", "kind": "fastest", "tomtom_min": 20.0, "google_min": 20.0,
+                 "same_roads": True, "tomtom_kmh": 30.0},
+                {"area": "windsor", "kind": "fastest", "tomtom_min": 20.0, "google_min": 10.0,
+                 "same_roads": False, "tomtom_kmh": 30.0}]
+        out = TC.summary(rows)
+        self.assertEqual(out["same_roads"], 1)
+        self.assertEqual(out["google_over_tomtom_median"], 1.0)
+        self.assertNotIn("start", json.dumps(out))            # summary numbers only
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,129 @@
+{
+ "timed_at": "2026-10-23T13:07+00:00",
+ "points": 15,
+ "turning_on_the_spot": 13,
+ "tomtom_turn_min_median": 2.0,
+ "google_turn_min_median": 0.0,
+ "rows": [
+  {
+   "area": "windsor",
+   "tomtom_turn_min": 0.0,
+   "tomtom_extra_km": 0.1,
+   "tomtom_uturn": false,
+   "google_turn_min": 0.0,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "woking",
+   "tomtom_turn_min": 2.1,
+   "tomtom_extra_km": 0.0,
+   "tomtom_uturn": true,
+   "google_turn_min": -0.0,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "southampton",
+   "tomtom_turn_min": 0.2,
+   "tomtom_extra_km": -0.0,
+   "tomtom_uturn": false,
+   "google_turn_min": 0.4,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "isle-of-wight",
+   "tomtom_turn_min": 2.1,
+   "tomtom_extra_km": 0.0,
+   "tomtom_uturn": true,
+   "google_turn_min": 0.1,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "windsor",
+   "tomtom_turn_min": 0.1,
+   "tomtom_extra_km": -0.1,
+   "tomtom_uturn": false,
+   "google_turn_min": -0.2,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "woking",
+   "tomtom_turn_min": 2.0,
+   "tomtom_extra_km": -0.1,
+   "tomtom_uturn": true,
+   "google_turn_min": 0.0,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "southampton",
+   "tomtom_turn_min": 2.0,
+   "tomtom_extra_km": 0.0,
+   "tomtom_uturn": true,
+   "google_turn_min": 0.0,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "isle-of-wight",
+   "tomtom_turn_min": 2.1,
+   "tomtom_extra_km": -0.0,
+   "tomtom_uturn": true,
+   "google_turn_min": 0.1,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "windsor",
+   "tomtom_turn_min": 2.0,
+   "tomtom_extra_km": 0.0,
+   "tomtom_uturn": true,
+   "google_turn_min": 0.0,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "woking",
+   "tomtom_turn_min": 1.0,
+   "tomtom_extra_km": 0.2,
+   "tomtom_uturn": false,
+   "google_turn_min": 1.2,
+   "google_extra_km": 0.3
+  },
+  {
+   "area": "southampton",
+   "tomtom_turn_min": -1.6,
+   "tomtom_extra_km": 0.0,
+   "tomtom_uturn": false,
+   "google_turn_min": 0.1,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "isle-of-wight",
+   "tomtom_turn_min": 2.0,
+   "tomtom_extra_km": -0.0,
+   "tomtom_uturn": true,
+   "google_turn_min": 0.1,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "windsor",
+   "tomtom_turn_min": 1.1,
+   "tomtom_extra_km": 0.7,
+   "tomtom_uturn": false,
+   "google_turn_min": -4.1,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "woking",
+   "tomtom_turn_min": 2.0,
+   "tomtom_extra_km": 0.0,
+   "tomtom_uturn": true,
+   "google_turn_min": 0.0,
+   "google_extra_km": 0.0
+  },
+  {
+   "area": "southampton",
+   "tomtom_turn_min": 0.2,
+   "tomtom_extra_km": -0.1,
+   "tomtom_uturn": false,
+   "google_turn_min": 0.4,
+   "google_extra_km": 0.0
+  }
+ ]
+}

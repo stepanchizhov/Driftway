@@ -376,7 +376,8 @@ class TomTomRouter:
         if not routes:
             return None
         summary = routes[0].get("summary", {})
-        minutes = summary.get("travelTimeInSeconds", 0) / 60.0
+        # TomTom's time, with its turn-round charge brought down to a real one.
+        minutes = max(0.0, summary.get("travelTimeInSeconds", 0) / 60.0 - _turns_overcharged(routes[0]))
         distance_km = summary.get("lengthInMeters", 0) / 1000.0
 
         geometry: List[Coord] = []
@@ -640,6 +641,22 @@ class FailoverRouter:
             if tomtom_available():
                 return grid
         return await self.backup.travel_matrix(origins, destinations, profile)
+
+
+#: TomTom adds a fixed two minutes to a route's time for every turn-round
+#: (measured 23 Oct 2026, tools/time_check.py --uturns: 2.0 to 2.1 min at
+#: each of 8 points, where Google adds nothing). A real turn in the road takes
+#: about half a minute, so a drive that turned round twice was planned three
+#: minutes long, and ended early (founder: "I was getting to the destination
+#: a bit too early").
+TOMTOM_UTURN_MIN = 2.0
+UTURN_REAL_MIN = 0.5
+
+
+def _turns_overcharged(route: dict) -> float:
+    """Minutes TomTom's time carries beyond a real turn-round, for each it asks."""
+    return sum(1 for i in (route.get("guidance") or {}).get("instructions") or []
+               if "UTURN" in (i.get("maneuver") or "")) * (TOMTOM_UTURN_MIN - UTURN_REAL_MIN)
 
 
 def _has_uturn(route: dict) -> bool:
