@@ -68,3 +68,25 @@ export function suggestedArrival(now: Date): string {
 export function leaveBy(at: Date, minutes: number): Date {
   return new Date(at.getTime() - Math.round(minutes) * 60000);
 }
+
+/** What a drive's card says about time, planning by an arrival time:
+ *  when to leave; once that has passed, when it would arrive if started now;
+ *  once started, when it arrives from when it set off (founder, 25 Oct 2026:
+ *  the card said "arrives about 12:08" in red after he had arrived). */
+export function arrivalTag(
+  arriveAt: number,
+  minutes: number,
+  now: number,
+  startedAt: number | null = null,
+): { text: string; tone: "ok" | "warn" } {
+  const drive = Math.round(minutes) * 60000;
+  if (startedAt != null) {
+    const at = startedAt + drive;
+    return { text: `arrives about ${clock(new Date(at))}`, tone: at > arriveAt + 60000 ? "warn" : "ok" };
+  }
+  const leave = leaveBy(new Date(arriveAt), minutes);
+  if (leave.getTime() < now - 30000) {
+    return { text: `arrives about ${clock(new Date(now + drive))}`, tone: "warn" };
+  }
+  return { text: `leave by ${clock(leave)}`, tone: "ok" };
+}

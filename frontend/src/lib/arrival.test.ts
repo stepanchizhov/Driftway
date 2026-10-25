@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arrivalDate, leaveBy, minutesUntil, suggestedArrival } from "./arrival";
+import { arrivalDate, arrivalTag, leaveBy, minutesUntil, suggestedArrival } from "./arrival";
 
 const at = (h: number, m: number) => new Date(2026, 9, 18, h, m, 0, 0);
 
@@ -31,6 +31,17 @@ describe("arriving by a time", () => {
   it("suggests about 45 minutes ahead, on the five", () => {
     expect(suggestedArrival(at(10, 12))).toBe("11:00");
     expect(suggestedArrival(at(23, 40))).toBe("00:25");
+  });
+
+  it("says when to leave, then when it would arrive, then when it will", () => {
+    const by = at(12, 10).getTime();
+    expect(arrivalTag(by, 46, at(11, 0).getTime())).toEqual({ text: expect.stringContaining("leave by"), tone: "ok" });
+    // Not started and the time to leave has passed: late, said so.
+    expect(arrivalTag(by, 46, at(11, 30).getTime()).tone).toBe("warn");
+    // Started at 11:20: arrives 12:06, in time, whatever the clock says now.
+    const started = arrivalTag(by, 46, at(11, 50).getTime(), at(11, 20).getTime());
+    expect(started.tone).toBe("ok");
+    expect(started.text).toMatch(/arrives about 12:06/);
   });
 
   it("works out when to set off", () => {

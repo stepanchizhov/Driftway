@@ -219,6 +219,10 @@ more to the route in Google Maps." `tools/time_check.py`:
 - **Fixed in 0.8.22:** `core/router.py` takes TomTom's charge off and counts
   half a minute (TOMTOM_UTURN_MIN, UTURN_REAL_MIN). Drives are then shaped a
   little larger to fill the time asked, and end nearer it.
+- **First real drive after the fix (25 Oct 2026, 0.8.22):** a 46-minute
+  Quieter drive planned with Arrive by, followed as given: "The predicted
+  time matched the real time minute to minute (even while Google Maps showed
+  a longer time at the beginning)." One drive, but the first measured one.
 - **Still open:** time of day moves both by a lot (Google's time for one loop
   went from 20 to 29 minutes between morning and afternoon), so single
   comparisons are noise; and a few loops on the same roads remain slower in

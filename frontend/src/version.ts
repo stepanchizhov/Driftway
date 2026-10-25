@@ -37,6 +37,13 @@ export interface Release {
 
 export const RELEASES: Release[] = [
   {
+    version: "0.8.23",
+    date: "25 Oct 2026",
+    changes: [
+      "Once you've started a drive planned to arrive by a time, its card says when it arrives from when you set off, not from now.",
+    ],
+  },
+  {
     version: "0.8.22",
     date: "23 Oct 2026",
     changes: [

@@ -236,6 +236,8 @@ export default function App() {
   // Which route the user has launched in Google Maps (drives the inline
   // feedback prompt). Null means none started yet.
   const [startedId, setStartedId] = useState<string | null>(null);
+  // When it was started, so its card says when it arrives from then.
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   // Route ids saved to favourites this session (fills the star).
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
@@ -419,6 +421,7 @@ export default function App() {
     // The inline feedback prompt appears under the chosen route.
     window.open(url, "_blank", "noopener");
     setStartedId(route.id);
+    setStartedAt(Date.now());
   }
 
   async function onSaveRoute(route: RouteOption) {
@@ -715,6 +718,7 @@ export default function App() {
                 targetMinutes={screen.data.target_minutes}
                 onStart={onStartRoute}
                 started={startedId === r.id}
+                startedAt={startedId === r.id ? startedAt : null}
                 onSave={onSaveRoute}
                 saved={savedIds.has(r.id)}
                 units={settings.units}
